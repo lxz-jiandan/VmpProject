@@ -20,6 +20,7 @@ add_executable(VmProtect
     zElf.cpp
     zLog.cpp
     zInst.cpp
+    zFunctionData.cpp
     zFunction.cpp
 )
 target_link_libraries(VmProtect PRIVATE capstone_static)

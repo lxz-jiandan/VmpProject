@@ -47,10 +47,12 @@ inline int PFlagsToProt(ElfW(Word) flags) {
 
 } // namespace
 
+// 构造阶段只做零初始化，不触发任何系统资源分配。
 zLinker::zLinker() {
     std::memset(&header_, 0, sizeof(header_));
 }
 
+// 析构时回收文件映射与 soinfo 中复制的 name。
 zLinker::~zLinker() {
     CloseElf();
     for (auto& pair : soinfo_map_) {
@@ -84,6 +86,7 @@ bool zLinker::OpenElf(const char* path) {
     }
     file_size_ = static_cast<size_t>(sb.st_size);
 
+    // 仅只读映射输入文件；真正执行映射在 LoadSegments 阶段完成。
     mapped_file_ = mmap(nullptr, file_size_, PROT_READ, MAP_PRIVATE, fd_, 0);
     if (mapped_file_ == MAP_FAILED) {
         LOGE("Cannot mmap %s: %s", path, strerror(errno));
@@ -106,6 +109,8 @@ bool zLinker::ReadElfHeader() {
 }
 
 bool zLinker::VerifyElfHeader() {
+    // 当前实现只支持 ARM64 共享库（ET_DYN + EM_AARCH64）。
+    // 这与项目中虚拟机执行环境保持一致，避免跨架构复杂度。
     if (std::memcmp(header_.e_ident, ELFMAG, SELFMAG) != 0) {
         LOGE("Invalid ELF magic");
         return false;
@@ -166,10 +171,13 @@ bool zLinker::ReadProgramHeaders() {
 }
 
 bool zLinker::ReadElf() {
+    // 读取流程按“头 -> 校验 -> 程序头”串联，任一步失败即整体失败。
     return ReadElfHeader() && VerifyElfHeader() && ReadProgramHeaders();
 }
 
 void zLinker::CloseElf() {
+    // CloseElf 只清理“输入文件相关资源”，不回收已加载到内存的 so 映像。
+    // 这样 LoadLibrary 结束后，运行态映像仍可被 VM 调用。
     if (mapped_file_ != nullptr) {
         munmap(mapped_file_, file_size_);
         mapped_file_ = nullptr;
@@ -231,6 +239,7 @@ bool zLinker::ReserveAddressSpace() {
         return false;
     }
 
+    // 先保留整块地址空间，再按 PT_LOAD 拷贝段数据，可确保段间相对地址正确。
     void* start = mmap(nullptr, load_size_, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (start == MAP_FAILED) {
         LOGE("Cannot reserve %zu bytes: %s", load_size_, strerror(errno));
@@ -248,6 +257,7 @@ bool zLinker::ReserveAddressSpace() {
 bool zLinker::LoadSegments() {
     LOGD("Starting LoadSegments: phdr_num=%zu, file_size=%zu", phdr_num_, file_size_);
 
+    // 按 PT_LOAD 把文件段复制到保留区；BSS 区（memsz > filesz）补零。
     for (size_t i = 0; i < phdr_num_; ++i) {
         const ElfW(Phdr)* phdr = &phdr_table_[i];
         if (phdr->p_type != PT_LOAD) {
@@ -335,6 +345,7 @@ bool zLinker::CheckPhdr(ElfW(Addr) loaded) const {
 }
 
 bool zLinker::FindPhdr() {
+    // 优先使用 PT_PHDR；若不存在，则尝试从首个 PT_LOAD + e_phoff 推导。
     const ElfW(Phdr)* phdr_limit = phdr_table_ + phdr_num_;
 
     for (const ElfW(Phdr)* phdr = phdr_table_; phdr < phdr_limit; ++phdr) {
@@ -367,6 +378,7 @@ bool zLinker::FindPhdr() {
 }
 
 bool zLinker::ProtectSegments() {
+    // 完成复制后恢复为段声明的最终权限，避免长期 RWX。
     for (size_t i = 0; i < phdr_num_; ++i) {
         const ElfW(Phdr)* phdr = &phdr_table_[i];
         if (phdr->p_type != PT_LOAD) {
@@ -460,6 +472,7 @@ bool zLinker::ParseDynamic(soinfo* si) {
     si->needed_libs.clear();
     si->flags = 0;
 
+    // 先定位 PT_DYNAMIC，再遍历 DT_* 条目填充 soinfo。
     const ElfW(Phdr)* phdr_limit = si->phdr + si->phnum;
     for (const ElfW(Phdr)* phdr = si->phdr; phdr < phdr_limit; ++phdr) {
         if (phdr->p_type == PT_DYNAMIC) {
@@ -474,6 +487,7 @@ bool zLinker::ParseDynamic(soinfo* si) {
         return false;
     }
 
+    // 第一次扫描：解析符号表、哈希表、重定位表、init/fini 等核心信息。
     size_t dyn_count = 0;
     for (ElfW(Dyn)* d = si->dynamic; d->d_tag != DT_NULL && dyn_count < si->dynamic_count; ++d, ++dyn_count) {
         switch (d->d_tag) {
@@ -542,6 +556,7 @@ bool zLinker::ParseDynamic(soinfo* si) {
         }
     }
 
+    // 第二次扫描：提取 DT_NEEDED，供未定义符号兜底解析。
     if (si->strtab != nullptr) {
         dyn_count = 0;
         for (ElfW(Dyn)* d = si->dynamic; d->d_tag != DT_NULL && dyn_count < si->dynamic_count; ++d, ++dyn_count) {
@@ -572,6 +587,7 @@ void zLinker::ApplyRelaSections(soinfo* si) const {
 }
 
 bool zLinker::PrelinkImage(soinfo* si) {
+    // prelink 阶段目前主要做动态段解析与信息准备。
     if (si == nullptr) {
         return false;
     }
@@ -599,6 +615,7 @@ bool zLinker::ProcessRelaRelocation(soinfo* si, const ElfW(Rela)* rela) {
         return false;
     }
 
+    // 若重定位项引用符号，先在本 so 查找，未定义再走依赖库/全局符号表兜底。
     ElfW(Addr) sym_addr = 0;
     const char* sym_name = nullptr;
     if (sym != 0) {
@@ -623,6 +640,7 @@ bool zLinker::ProcessRelaRelocation(soinfo* si, const ElfW(Rela)* rela) {
         LOGD("mprotect failed for relocation, trying anyway: %s", strerror(errno));
     }
 
+    // 仅实现项目必需的 AArch64 RELA 类型，其它类型记录日志后跳过。
     switch (type) {
         case kRelAarch64None:
             break;
@@ -658,6 +676,7 @@ bool zLinker::RelocateImage(soinfo* si) {
         return false;
     }
 
+    // 先处理普通 RELA，再处理 PLT RELA（函数调用跳转槽）。
     if (si->rela != nullptr && si->rela_count > 0) {
         if (si->rela_count > 100000) {
             LOGE("RELA count too large: %zu", si->rela_count);
@@ -696,6 +715,7 @@ bool zLinker::LinkImage(soinfo* si) {
         return false;
     }
 
+    // 兼容 DT_INIT 与 DT_INIT_ARRAY 两类构造入口。
     if (si->init_func != nullptr) {
         si->init_func();
     }
@@ -717,6 +737,7 @@ bool zLinker::LinkImage(soinfo* si) {
 }
 
 ElfW(Sym)* zLinker::GnuLookup(uint32_t hash, const char* name, soinfo* si) const {
+    // GNU hash 查找：先过 bloom filter，再在 bucket/chain 线性探测。
     if (si == nullptr ||
         si->gnu_bucket == nullptr ||
         si->gnu_chain == nullptr ||
@@ -753,6 +774,7 @@ ElfW(Sym)* zLinker::GnuLookup(uint32_t hash, const char* name, soinfo* si) const
 }
 
 ElfW(Sym)* zLinker::ElfLookup(unsigned hash, const char* name, soinfo* si) const {
+    // SysV hash 查找：按 bucket -> chain 遍历。
     if (si == nullptr ||
         si->bucket == nullptr ||
         si->chain == nullptr ||
@@ -813,6 +835,7 @@ ElfW(Addr) zLinker::FindSymbolAddress(const char* name, soinfo* si) {
         }
     }
 
+    // 若本 so 不含定义，尝试在 DT_NEEDED 库中用系统 dlopen/dlsym 兜底。
     for (const auto& lib : si->needed_libs) {
         void* handle = dlopen(lib.c_str(), RTLD_NOW | RTLD_NOLOAD);
         if (handle == nullptr) {
@@ -838,6 +861,7 @@ bool zLinker::LoadLibrary(const char* path) {
 
     LOGI("Loading library: %s", path);
 
+    // 加载流程严格分阶段执行，便于定位失败点并保持状态一致性。
     if (!OpenElf(path)) {
         return false;
     }
@@ -894,61 +918,4 @@ soinfo* zLinker::GetSoinfo(const char* name) {
     }
     auto it = soinfo_map_.find(name);
     return (it == soinfo_map_.end()) ? nullptr : it->second.get();
-}
-
-void* zLinker::GetSymbol(const char* name) {
-    if (loaded_si_ == nullptr) {
-        LOGE("loaded_si_ is null");
-        return nullptr;
-    }
-    if (name == nullptr || name[0] == '\0') {
-        LOGE("Symbol name is null");
-        return nullptr;
-    }
-
-    if (loaded_si_->symtab != nullptr) {
-        if (loaded_si_->gnu_bucket != nullptr) {
-            uint32_t hash = GnuHash(name);
-            ElfW(Sym)* sym = GnuLookup(hash, name, loaded_si_);
-            if (sym != nullptr && sym->st_shndx != SHN_UNDEF) {
-                ElfW(Addr) addr = sym->st_value + loaded_si_->load_bias;
-                if (addr >= loaded_si_->base && addr < loaded_si_->base + loaded_si_->size) {
-                    return reinterpret_cast<void*>(addr);
-                }
-            }
-        }
-
-        if (loaded_si_->bucket != nullptr) {
-            unsigned hash = ElfHash(name);
-            ElfW(Sym)* sym = ElfLookup(hash, name, loaded_si_);
-            if (sym != nullptr && sym->st_shndx != SHN_UNDEF) {
-                ElfW(Addr) addr = sym->st_value + loaded_si_->load_bias;
-                if (addr >= loaded_si_->base && addr < loaded_si_->base + loaded_si_->size) {
-                    return reinterpret_cast<void*>(addr);
-                }
-            }
-        }
-
-        if (loaded_si_->gnu_bucket == nullptr &&
-            loaded_si_->bucket == nullptr &&
-            loaded_si_->strtab != nullptr &&
-            loaded_si_->nchain > 0) {
-            for (size_t i = 0; i < loaded_si_->nchain; ++i) {
-                ElfW(Sym)* sym = &loaded_si_->symtab[i];
-                if (sym->st_name == 0 || sym->st_shndx == SHN_UNDEF) {
-                    continue;
-                }
-                const char* sym_name = loaded_si_->strtab + sym->st_name;
-                if (std::strcmp(sym_name, name) == 0) {
-                    ElfW(Addr) addr = sym->st_value + loaded_si_->load_bias;
-                    if (addr >= loaded_si_->base && addr < loaded_si_->base + loaded_si_->size) {
-                        return reinterpret_cast<void*>(addr);
-                    }
-                }
-            }
-        }
-    }
-
-    LOGE("Symbol %s not found", name);
-    return nullptr;
 }

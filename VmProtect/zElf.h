@@ -1,7 +1,3 @@
-//
-// Created by lxz on 2025/6/13.
-//
-
 #ifndef OVERT_ZELF_H
 #define OVERT_ZELF_H
 
@@ -72,7 +68,7 @@ public:
     // 打印文件布局
     void print_layout();
 
-    // Step-2: PHT 迁移与段扩增
+    // 第二阶段：PHT 迁移与段扩增。
     bool relocate_and_expand_pht(int extra_entries, const char* output_path);
 
     // 符号查找功能
@@ -102,4 +98,4 @@ private:
     std::vector<zFunction> function_list_;
 };
 
-#endif //OVERT_ZELF_H
+#endif // OVERT_ZELF_H

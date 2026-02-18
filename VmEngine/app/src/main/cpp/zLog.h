@@ -4,16 +4,16 @@
 #include <android/log.h>
 
 
-// 模块配置开关 - 可以通过修改这个宏来控制日志输出
+// 日志总开关：1=启用日志，0=关闭日志。
 #define ZLOG_ENABLE_LOGGING 1
 
-// 当全局配置宏启用时，全局宏配置覆盖模块宏配置
+// 若存在全局配置宏，优先使用全局配置覆盖本地开关。
 #if ZCONFIG_ENABLE
 #undef ZLOG_ENABLE_LOGGING
 #define ZLOG_ENABLE_LOGGING ZCONFIG_ENABLE_LOGGING
 #endif
 
-// 日志级别定义
+// 日志级别定义（数值越大等级越高）。
 #ifndef LOG_LEVEL_VERBOSE
 #define LOG_LEVEL_VERBOSE 2
 #endif
@@ -35,17 +35,18 @@
 #endif
 
 
-// 当前日志级别 - 可以通过修改这个值来控制日志输出级别
+// 当前日志级别阈值：低于该等级的日志不会输出。
+// 建议 Release 设为 LOG_LEVEL_INFO 或更高。
 #ifndef CURRENT_LOG_LEVEL
 #define CURRENT_LOG_LEVEL LOG_LEVEL_DEBUG
 #endif
 
-// 日志标签
+// 默认日志标签。
 #ifndef LOG_TAG
 #define LOG_TAG "zLog"
 #endif
 
-// 日志宏定义
+// 日志宏封装：统一补充文件名、函数名和行号。
 #if ZLOG_ENABLE_LOGGING
 
     #define LOGV(...) zLogPrint(LOG_LEVEL_VERBOSE, LOG_TAG, __FILE_NAME__, __FUNCTION__, __LINE__, ##__VA_ARGS__)

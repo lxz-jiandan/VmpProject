@@ -1,7 +1,6 @@
 #ifndef Z_TYPE_SYSTEM_H
 #define Z_TYPE_SYSTEM_H
 
-#include "zByteCodeReader.h"
 #include <cstdint>
 #include <vector>
 
@@ -201,10 +200,6 @@ public:
     // 根据外部编码值快速创建对应基础类型。
     zType* createFromCode(uint32_t code);
 
-    // 从字节码解码类型表（完整实现）
-    // 按 VM 编码协议解码 count 个类型对象并返回类型数组。
-    zType** decodeTypeList(zByteCodeReader& reader, uint32_t count);
-
     // 释放类型
     // 释放单个类型对象及其内部附属内存。
     void freeType(zType* type);
@@ -235,29 +230,10 @@ private:
     // 分配调用类型对象并纳入托管列表。
     CallType* allocCallType();
     
-    // 解码辅助函数
-    // 解码一个基础类型标签。
-    zType* decodeBasicType(uint32_t typeTag);
-    // 解码函数/结构体类型定义。
-    zType* decodeFunctionStructType(zByteCodeReader& reader, zType** typeList, uint32_t currentIdx);
-    // 解码带位宽整数类型。
-    zType* decodeIntegerWidthType(zByteCodeReader& reader);
-    // 解码指针类型。
-    zType* decodePointerType(zByteCodeReader& reader, zType** typeList);
-    // 解码数组类型。
-    zType* decodeArrayType(zByteCodeReader& reader, zType** typeList, uint32_t kind);
-    // 解码调用签名类型。
-    zType* decodeCallType(zByteCodeReader& reader, zType** typeList);
-    
-    // 确保类型已初始化（懒加载）
-    // 对前向引用场景按需初始化 typeList[index]。
-    zType* ensureTypeInitialized(zType** typeList, uint32_t index);
-    
     std::vector<zType*> allocatedTypes_;
 };
 
 
 #endif // Z_TYPE_SYSTEM_H
-
 
 

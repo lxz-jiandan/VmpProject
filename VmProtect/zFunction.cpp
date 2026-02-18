@@ -72,46 +72,6 @@ struct zUnencodedBinHeader {
 static constexpr uint32_t Z_UNENCODED_BIN_MAGIC = 0x4642555A;
 static constexpr uint32_t Z_UNENCODED_BIN_VERSION = 2;
 
-class zBytecodeEncoder {
-public:
-    void write6bits(uint32_t value) {
-        value &= 0x3Fu;
-        bit_buf_ |= (value << bit_count_);
-        bit_count_ += 6;
-        while (bit_count_ >= 8) {
-            out_.push_back(static_cast<uint8_t>(bit_buf_ & 0xFFu));
-            bit_buf_ >>= 8;
-            bit_count_ -= 8;
-        }
-    }
-
-    void write6bitExt(uint32_t value) {
-        if (value < 32u) {
-            write6bits(value);
-            return;
-        }
-        while (value >= 32u) {
-            write6bits(0x20u | (value & 0x1Fu));
-            value >>= 5;
-        }
-        write6bits(value & 0x1Fu);
-    }
-
-    std::vector<uint8_t> finish() {
-        if (bit_count_ > 0) {
-            out_.push_back(static_cast<uint8_t>(bit_buf_ & 0xFFu));
-        }
-        bit_buf_ = 0;
-        bit_count_ = 0;
-        return std::move(out_);
-    }
-
-private:
-    std::vector<uint8_t> out_;
-    uint32_t bit_buf_ = 0;
-    int bit_count_ = 0;
-};
-
 static const char* getOpcodeName(uint32_t op) {
     switch (op) {
         case 0: return "OP_END";
@@ -177,6 +137,7 @@ static const char* getOpcodeName(uint32_t op) {
 
 template<typename ... Args>
 static std::string str_format(const std::string& format, Args ... args) {
+    // 两次 snprintf：第一次计算长度，第二次写入内容。
     int size_buf = std::snprintf(nullptr, 0, format.c_str(), args...) + 1;
     if (size_buf <= 0) return std::string();
     std::unique_ptr<char[]> buf(new(std::nothrow) char[size_buf]);
@@ -186,6 +147,7 @@ static std::string str_format(const std::string& format, Args ... args) {
 }
 
 static std::string formatOpcodeList(const std::vector<uint32_t>& opcode_list, bool trailing_comma = true) {
+    // 导出文本时使用统一缩进，保证生成文件可读性稳定。
     std::string result = "        ";
     for (size_t i = 0; i < opcode_list.size(); i++) {
         if (i > 0) result += " ";
@@ -197,6 +159,7 @@ static std::string formatOpcodeList(const std::vector<uint32_t>& opcode_list, bo
 }
 
 static std::string formatComment(const char* op_name, const char* asm_str, size_t op_name_width = 20) {
+    // 形如：// OP_BINARY_IMM   0x1dd08: sub sp, sp, #0x20
     std::string result = "// ";
     result += op_name;
 
@@ -279,35 +242,31 @@ static uint32_t getOrAddBranch(std::vector<uint64_t>& branch_id_list, uint64_t t
     return static_cast<uint32_t>(branch_id_list.size() - 1);
 }
 
-static std::vector<uint8_t> buildBytecode(
-    uint32_t registerCount,
-    uint32_t typeCount,
-    const uint32_t* typeTags,
-    uint32_t initValueCount,
-    uint32_t instCount,
-    const uint32_t* instWords,
-    uint32_t branchCount,
-    const uint32_t* branchWords
-) {
-    zBytecodeEncoder encoder;
-    encoder.write6bits(0);
-    encoder.write6bitExt(registerCount);
-    encoder.write6bitExt(0);
-    for (uint32_t i = 0; i < typeCount; i++) {
-        encoder.write6bitExt(typeTags[i]);
-    }
-    encoder.write6bitExt(initValueCount);
-    encoder.write6bitExt(instCount);
-    for (uint32_t i = 0; i < instCount; i++) {
-        encoder.write6bitExt(instWords[i]);
-    }
-    encoder.write6bitExt(branchCount);
-    if (branchWords) {
-        for (uint32_t i = 0; i < branchCount; i++) {
-            encoder.write6bitExt(branchWords[i]);
+static std::vector<uint32_t> flattenInstByAddress(const std::map<uint64_t, std::vector<uint32_t>>& instByAddress);
+static uint64_t inferFunctionAddress(const zUnencodedBytecode& unencoded);
+
+static bool buildEncodedDataFromUnencoded(const zUnencodedBytecode& unencoded, zFunctionData& out, std::string* error) {
+    // 仅做字段映射与基础校验，不在这里执行额外语义推导。
+    out = zFunctionData{};
+    out.marker = 0;
+    out.register_count = unencoded.registerCount;
+    out.first_inst_count = 0;
+    out.type_count = unencoded.typeCount;
+    out.type_tags = unencoded.typeTags;
+    out.init_value_count = unencoded.initValueCount;
+    if (out.init_value_count != 0) {
+        if (error) {
+            *error = "init_value_count != 0 is not supported by current exporter";
         }
+        return false;
     }
-    return encoder.finish();
+    out.inst_words = flattenInstByAddress(unencoded.instByAddress);
+    out.inst_count = static_cast<uint32_t>(out.inst_words.size());
+    out.branch_count = unencoded.branchCount;
+    out.branch_words = unencoded.branchWords;
+    out.branch_addrs = unencoded.branchAddrWords;
+    out.function_offset = inferFunctionAddress(unencoded);
+    return out.validate(error);
 }
 
 static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* code, size_t size, uint64_t base_addr) {
@@ -319,6 +278,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
     std::vector<uint32_t> reg_id_list;
     std::vector<uint32_t> type_id_list;
 
+    // 打开 Capstone 详细模式，后续依赖操作数信息做指令映射。
     cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
     cs_insn* insn = nullptr;
     size_t count = cs_disasm(handle, code, size, base_addr, 0, &insn);
@@ -330,6 +290,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
         reg_id_list.push_back(static_cast<uint32_t>(i));
     }
 
+    // 在指令流头部插入运行时约定的初始化指令。
     (void)getOrAddReg(reg_id_list, 0);
     unencoded.instByAddress[0] = { OP_ALLOC_RETURN, 0, 0, 0, 0 };
 
@@ -339,6 +300,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
 
     std::vector<uint64_t> branch_id_list;
 
+    // 遍历反汇编结果，把 ARM64 指令翻译成 VM opcode 序列。
     for (size_t j = 0; j < count; j++) {
         uint64_t addr = insn[j].address;
         unsigned int id = insn[j].id;
@@ -697,6 +659,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
 }
 
 static std::vector<uint32_t> flattenInstByAddress(const std::map<uint64_t, std::vector<uint32_t>>& instByAddress) {
+    // 按地址有序展开，确保输出顺序稳定。
     std::vector<uint32_t> flat;
     for (const auto& kv : instByAddress) {
         for (uint32_t word : kv.second) {
@@ -704,20 +667,6 @@ static std::vector<uint32_t> flattenInstByAddress(const std::map<uint64_t, std::
         }
     }
     return flat;
-}
-
-static std::vector<uint8_t> encodeBytecode(const zUnencodedBytecode& unencoded) {
-    std::vector<uint32_t> inst_words = flattenInstByAddress(unencoded.instByAddress);
-    return buildBytecode(
-        unencoded.registerCount,
-        unencoded.typeCount,
-        unencoded.typeTags.empty() ? nullptr : unencoded.typeTags.data(),
-        unencoded.initValueCount,
-        unencoded.instCount,
-        inst_words.empty() ? nullptr : inst_words.data(),
-        unencoded.branchCount,
-        unencoded.branchWords.empty() ? nullptr : unencoded.branchWords.data()
-    );
 }
 
 static void write_u32_bin(std::ostream& out, uint32_t value) {
@@ -759,6 +708,7 @@ static bool read_string_bin(const std::vector<uint8_t>& data, size_t& cursor, st
 }
 
 static bool writeUnencodedToBinaryStream(std::ostream& out, const zUnencodedBytecode& unencoded) {
+    // 先写 header，再写各区段，读取端按同顺序恢复。
     zUnencodedBinHeader header;
     header.magic = Z_UNENCODED_BIN_MAGIC;
     header.version = Z_UNENCODED_BIN_VERSION;
@@ -828,6 +778,7 @@ static bool readUnencodedFromBinaryBytes(const std::vector<uint8_t>& data, zUnen
         return false;
     }
 
+    // 先恢复元信息，再按段顺序恢复具体内容。
     out = zUnencodedBytecode();
     out.registerCount = header.registerCount;
     out.typeCount = header.typeCount;
@@ -943,6 +894,7 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
     bool in_inst_list = false;
     uint32_t auto_addr = 0;
 
+    // 第一阶段：提取 reg/type/branch/inst 等静态定义。
     while (std::getline(in, line)) {
         std::string trimmed = trim_copy(line);
         if (trimmed.empty()) continue;
@@ -1089,6 +1041,7 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
 }
 
 static std::vector<uint8_t> parseFunctionBytesFromDisasm(const std::map<uint64_t, std::string>& asm_by_address) {
+    // 这里是轻量近似恢复，仅用于调试展示，不作为真实机器码回放。
     std::vector<uint8_t> bytes;
     for (const auto& kv : asm_by_address) {
         const std::string& asm_text = kv.second;
@@ -1107,7 +1060,22 @@ static std::vector<uint8_t> parseFunctionBytesFromDisasm(const std::map<uint64_t
     return bytes;
 }
 
+static uint64_t inferFunctionAddress(const zUnencodedBytecode& unencoded) {
+    for (const auto& kv : unencoded.instByAddress) {
+        auto asm_it = unencoded.asmByAddress.find(kv.first);
+        if (asm_it != unencoded.asmByAddress.end() && !asm_it->second.empty()) {
+            return kv.first;
+        }
+    }
+
+    if (!unencoded.asmByAddress.empty()) {
+        return unencoded.asmByAddress.begin()->first;
+    }
+    return 0;
+}
+
 static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& unencoded) {
+    // 输出结构保持与历史 fun_xxx.txt 格式一致，便于双向回归。
     out << "static const uint32_t reg_id_list[] = { ";
     for (size_t i = 0; i < unencoded.regList.size(); i++) {
         if (i > 0) out << ", ";
@@ -1149,6 +1117,8 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
     }
 
     out << "static const uint32_t inst_id_count = " << unencoded.instCount << ";\n";
+    out << "static const uint64_t fun_addr = "
+        << str_format("0x%" PRIx64, inferFunctionAddress(unencoded)) << ";\n";
     out << "uint32_t inst_id_list[] = {\n";
 
     const size_t comment_column = 54;
@@ -1174,30 +1144,29 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
 
 }
 
-zFunction::zFunction(std::string function_name, Elf64_Addr function_offset, std::vector<uint8_t> function_bytes)
-    : function_name_(std::move(function_name)),
-      function_offset_(function_offset),
-      function_bytes_(std::move(function_bytes)) {
+// 用既有 zFunctionData 初始化函数对象。
+zFunction::zFunction(const zFunctionData& data)
+    : zFunctionData(data) {
 }
 
 const std::string& zFunction::name() const {
-    return function_name_;
+    return function_name;
 }
 
 Elf64_Addr zFunction::offset() const {
-    return function_offset_;
+    return function_offset;
 }
 
 size_t zFunction::size() const {
-    return function_bytes_.size();
+    return function_bytes.size();
 }
 
 const uint8_t* zFunction::data() const {
-    return function_bytes_.empty() ? nullptr : function_bytes_.data();
+    return function_bytes.empty() ? nullptr : function_bytes.data();
 }
 
 bool zFunction::empty() const {
-    return function_bytes_.empty();
+    return function_bytes.empty();
 }
 
 void zFunction::set_unencoded_cache(
@@ -1213,30 +1182,32 @@ void zFunction::set_unencoded_cache(
     std::vector<uint32_t> branch_words,
     std::vector<uint64_t> branch_addr_words
 ) const {
-    unencoded_register_count_ = register_count;
-    unencoded_reg_list_ = std::move(reg_id_list);
-    unencoded_type_count_ = type_count;
-    unencoded_type_tags_ = std::move(type_tags);
-    unencoded_init_value_count_ = init_value_count;
-    unencoded_inst_by_address_ = std::move(inst_by_address);
-    unencoded_asm_by_address_ = std::move(asm_by_address);
-    unencoded_inst_count_ = inst_count;
-    unencoded_branch_count_ = branch_count;
-    unencoded_branch_words_ = std::move(branch_words);
-    unencoded_branch_addr_words_ = std::move(branch_addr_words);
+    // 统一缓存入口：文本导入和 capstone 导出都复用这份缓存结构。
+    register_count_cache_ = register_count;
+    register_ids_cache_ = std::move(reg_id_list);
+    type_count_cache_ = type_count;
+    type_tags_cache_ = std::move(type_tags);
+    init_value_count_cache_ = init_value_count;
+    inst_words_by_addr_cache_ = std::move(inst_by_address);
+    asm_text_by_addr_cache_ = std::move(asm_by_address);
+    inst_count_cache_ = inst_count;
+    branch_count_cache_ = branch_count;
+    branch_words_cache_ = std::move(branch_words);
+    branch_addrs_cache_ = std::move(branch_addr_words);
     unencoded_ready_ = true;
 }
 
 void zFunction::rebuild_asm_list_from_unencoded() const {
     asm_list_.clear();
-    for (const auto& kv : unencoded_inst_by_address_) {
+    // 把按地址缓存的 opcode 行重建成展示用的 zInst 列表。
+    for (const auto& kv : inst_words_by_addr_cache_) {
         uint64_t addr = kv.first;
         std::vector<uint8_t> raw(4, 0);
         std::string asm_text;
         std::string asm_type = "vm";
 
-        auto it = unencoded_asm_by_address_.find(addr);
-        if (it != unencoded_asm_by_address_.end()) {
+        auto it = asm_text_by_addr_cache_.find(addr);
+        if (it != asm_text_by_addr_cache_.end()) {
             asm_text = it->second;
             std::istringstream ss(asm_text);
             ss >> asm_type;
@@ -1248,9 +1219,11 @@ void zFunction::rebuild_asm_list_from_unencoded() const {
     asm_ready_ = true;
 }
 
+// 确保未编码缓存可用：优先复用缓存，缺失时再由机器码反推。
 void zFunction::ensure_unencoded_ready() const {
     if (unencoded_ready_) return;
 
+    // 没有原始机器码时，写入空缓存，避免后续重复判空分支。
     if (!data() || size() == 0) {
         set_unencoded_cache(0, {}, 0, {}, 0, {}, {}, 0, 0, {}, {});
         return;
@@ -1265,6 +1238,7 @@ void zFunction::ensure_unencoded_ready() const {
     zUnencodedBytecode unencoded = buildUnencodedByCapstone(handle, data(), size(), offset());
     cs_close(&handle);
 
+    // 解析完成后一次性更新缓存。
     set_unencoded_cache(
             unencoded.registerCount,
             std::move(unencoded.regList),
@@ -1280,11 +1254,13 @@ void zFunction::ensure_unencoded_ready() const {
     );
 }
 
+// 确保反汇编展示列表可用：优先复用未编码缓存，其次走 Capstone。
 void zFunction::ensure_asm_ready() const {
     if (asm_ready_) {
         return;
     }
 
+    // 未编码缓存已就绪时，直接重建展示列表，避免重复反汇编。
     if (unencoded_ready_) {
         rebuild_asm_list_from_unencoded();
         return;
@@ -1304,6 +1280,7 @@ void zFunction::ensure_asm_ready() const {
 
     cs_insn* insn = nullptr;
     size_t count = cs_disasm(handle, data(), size(), offset(), 0, &insn);
+    // 逐条指令转成 zInst 结构，统一供 assemblyInfo() 输出。
     for (size_t i = 0; i < count; i++) {
         const cs_insn& item = insn[i];
         std::vector<uint8_t> raw(item.bytes, item.bytes + item.size);
@@ -1331,25 +1308,17 @@ void zFunction::ensure_asm_ready() const {
     asm_ready_ = true;
 }
 
-zFunction& zFunction::analyzeAsm() {
+zFunction& zFunction::analyzeAssembly() {
     ensure_asm_ready();
     return *this;
 }
 
-zFunction& zFunction::analyzeasm() {
-    return analyzeAsm();
-}
-
-const std::vector<zInst>& zFunction::asmList() const {
+const std::vector<zInst>& zFunction::assemblyList() const {
     ensure_asm_ready();
     return asm_list_;
 }
 
-const std::vector<zInst>& zFunction::asmlist() const {
-    return asmList();
-}
-
-std::string zFunction::getAsmInfo() const {
+std::string zFunction::assemblyInfo() const {
     ensure_asm_ready();
 
     std::ostringstream oss;
@@ -1362,27 +1331,31 @@ std::string zFunction::getAsmInfo() const {
     return oss.str();
 }
 
-std::string zFunction::getasminfo() const {
-    return getAsmInfo();
-}
-
 zFunction zFunction::fromUnencodedTxt(const char* file_path, const std::string& function_name, Elf64_Addr function_offset) {
-    zFunction function(function_name, function_offset, {});
+    zFunctionData data;
+    data.function_name = function_name;
+    data.function_offset = function_offset;
+    zFunction function(data);
     function.loadUnencodedTxt(file_path);
     return function;
 }
 
 zFunction zFunction::fromUnencodedBin(const char* file_path, const std::string& function_name, Elf64_Addr function_offset) {
-    zFunction function(function_name, function_offset, {});
+    zFunctionData data;
+    data.function_name = function_name;
+    data.function_offset = function_offset;
+    zFunction function(data);
     function.loadUnencodedBin(file_path);
     return function;
 }
 
+// 从未编码文本加载并重建缓存/展示列表。
 bool zFunction::loadUnencodedTxt(const char* file_path) {
     if (!file_path || file_path[0] == '\0') return false;
     std::ifstream in(file_path, std::ios::binary);
     if (!in) return false;
 
+    // 文本 -> 未编码结构 -> 缓存 -> 展示列表。
     std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     zUnencodedBytecode parsed;
     if (!parseUnencodedFromTextContent(content, parsed)) return false;
@@ -1401,16 +1374,18 @@ bool zFunction::loadUnencodedTxt(const char* file_path) {
         std::move(parsed.branchAddrWords)
     );
 
-    function_bytes_ = parseFunctionBytesFromDisasm(unencoded_asm_by_address_);
+    function_bytes = parseFunctionBytesFromDisasm(asm_text_by_addr_cache_);
     rebuild_asm_list_from_unencoded();
     return true;
 }
 
+// 从未编码二进制加载并重建缓存/展示列表。
 bool zFunction::loadUnencodedBin(const char* file_path) {
     if (!file_path || file_path[0] == '\0') return false;
     std::ifstream in(file_path, std::ios::binary);
     if (!in) return false;
 
+    // 二进制未编码格式导入，流程与文本导入保持一致。
     std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     zUnencodedBytecode parsed;
     if (!readUnencodedFromBinaryBytes(bytes, parsed)) return false;
@@ -1429,27 +1404,29 @@ bool zFunction::loadUnencodedBin(const char* file_path) {
         std::move(parsed.branchAddrWords)
     );
 
-    function_bytes_ = parseFunctionBytesFromDisasm(unencoded_asm_by_address_);
+    function_bytes = parseFunctionBytesFromDisasm(asm_text_by_addr_cache_);
     rebuild_asm_list_from_unencoded();
     return true;
 }
 
+// 按导出模式输出函数数据。
 bool zFunction::dump(const char* file_path, DumpMode mode) const {
     if (!file_path || file_path[0] == '\0') return false;
 
+    // 从缓存恢复统一中间结构，避免不同导出模式重复拼装。
     auto build_unencoded_from_cache = [this]() {
         zUnencodedBytecode unencoded;
-        unencoded.registerCount = unencoded_register_count_;
-        unencoded.regList = unencoded_reg_list_;
-        unencoded.typeCount = unencoded_type_count_;
-        unencoded.typeTags = unencoded_type_tags_;
-        unencoded.initValueCount = unencoded_init_value_count_;
-        unencoded.instByAddress = unencoded_inst_by_address_;
-        unencoded.asmByAddress = unencoded_asm_by_address_;
-        unencoded.instCount = unencoded_inst_count_;
-        unencoded.branchCount = unencoded_branch_count_;
-        unencoded.branchWords = unencoded_branch_words_;
-        unencoded.branchAddrWords = unencoded_branch_addr_words_;
+        unencoded.registerCount = register_count_cache_;
+        unencoded.regList = register_ids_cache_;
+        unencoded.typeCount = type_count_cache_;
+        unencoded.typeTags = type_tags_cache_;
+        unencoded.initValueCount = init_value_count_cache_;
+        unencoded.instByAddress = inst_words_by_addr_cache_;
+        unencoded.asmByAddress = asm_text_by_addr_cache_;
+        unencoded.instCount = inst_count_cache_;
+        unencoded.branchCount = branch_count_cache_;
+        unencoded.branchWords = branch_words_cache_;
+        unencoded.branchAddrWords = branch_addrs_cache_;
         return unencoded;
     };
 
@@ -1465,7 +1442,30 @@ bool zFunction::dump(const char* file_path, DumpMode mode) const {
     zUnencodedBytecode unencoded = build_unencoded_from_cache();
 
     if (mode == DumpMode::ENCODED) {
-        std::vector<uint8_t> encoded = encodeBytecode(unencoded);
+        // 编码导出时做“往返一致性”校验，保证序列化协议稳定。
+        zFunctionData source_data;
+        std::string error;
+        if (!buildEncodedDataFromUnencoded(unencoded, source_data, &error)) {
+            LOGE("dump encoded failed: build source data error: %s", error.c_str());
+            return false;
+        }
+
+        std::vector<uint8_t> encoded;
+        if (!source_data.serializeEncoded(encoded, &error)) {
+            LOGE("dump encoded failed: serialize error: %s", error.c_str());
+            return false;
+        }
+
+        zFunctionData decoded_data;
+        if (!zFunctionData::deserializeEncoded(encoded.data(), encoded.size(), decoded_data, &error)) {
+            LOGE("dump encoded failed: deserialize error: %s", error.c_str());
+            return false;
+        }
+        if (!source_data.encodedEquals(decoded_data, &error)) {
+            LOGE("dump encoded failed: round-trip mismatch: %s", error.c_str());
+            return false;
+        }
+
         std::ofstream out(file_path, std::ios::binary);
         if (!out) return false;
         if (!encoded.empty()) {
@@ -1478,3 +1478,4 @@ bool zFunction::dump(const char* file_path, DumpMode mode) const {
     if (!out) return false;
     return writeUnencodedToStream(out, unencoded);
 }
+

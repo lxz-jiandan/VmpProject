@@ -7,6 +7,8 @@
 
 #include "zLog.h"
 
+// 通过反射调用 ActivityThread.currentApplication() 获取进程级 Application。
+// 这是 native 层在“没有 Java 显式传 context”时最通用的兜底方案。
 jobject zAssetManager::getCurrentApplicationContext(JNIEnv* env) {
     if (env == nullptr) {
         return nullptr;
@@ -31,17 +33,18 @@ jobject zAssetManager::getCurrentApplicationContext(JNIEnv* env) {
     return appContext;
 }
 
-bool zAssetManager::loadAssetTextByFileName(JNIEnv* env, const char* assetFileName, std::string& textOut) {
+bool zAssetManager::loadAssetDataByFileName(JNIEnv* env, const char* assetFileName, std::vector<uint8_t>& dataOut) {
+    // 无 context 场景：先拿到 Application 再复用重载实现。
     jobject appContext = getCurrentApplicationContext(env);
     if (appContext == nullptr) {
         return false;
     }
-    bool ok = loadAssetTextByFileName(env, appContext, assetFileName, textOut);
+    bool ok = loadAssetDataByFileName(env, appContext, assetFileName, dataOut);
     env->DeleteLocalRef(appContext);
     return ok;
 }
 
-bool zAssetManager::loadAssetTextByFileName(JNIEnv* env, jobject context, const char* assetFileName, std::string& textOut) {
+bool zAssetManager::loadAssetDataByFileName(JNIEnv* env, jobject context, const char* assetFileName, std::vector<uint8_t>& dataOut) {
     if (env == nullptr || context == nullptr) {
         return false;
     }
@@ -49,25 +52,9 @@ bool zAssetManager::loadAssetTextByFileName(JNIEnv* env, jobject context, const 
         return false;
     }
 
-    jclass contextCls = env->GetObjectClass(context);
-    if (contextCls == nullptr) {
-        return false;
-    }
+    dataOut.clear();
 
-    jmethodID getAssetsMid = env->GetMethodID(contextCls, "getAssets", "()Landroid/content/res/AssetManager;");
-    if (getAssetsMid == nullptr) {
-        env->DeleteLocalRef(contextCls);
-        return false;
-    }
-
-    jobject assetManagerObj = env->CallObjectMethod(context, getAssetsMid);
-    env->DeleteLocalRef(contextCls);
-    if (assetManagerObj == nullptr) {
-        return false;
-    }
-
-    AAssetManager* assetManager = AAssetManager_fromJava(env, assetManagerObj);
-    env->DeleteLocalRef(assetManagerObj);
+    AAssetManager* assetManager = getAssetManagerFromContext(env, context);
     if (assetManager == nullptr) {
         return false;
     }
@@ -79,16 +66,22 @@ bool zAssetManager::loadAssetTextByFileName(JNIEnv* env, jobject context, const 
     }
 
     off_t len = AAsset_getLength(asset);
-    if (len <= 0) {
+    if (len < 0) {
         AAsset_close(asset);
         return false;
     }
 
-    textOut.resize(static_cast<size_t>(len));
-    int64_t readLen = AAsset_read(asset, &textOut[0], static_cast<size_t>(len));
+    if (len == 0) {
+        AAsset_close(asset);
+        return true;
+    }
+
+    dataOut.resize(static_cast<size_t>(len));
+    int64_t readLen = AAsset_read(asset, dataOut.data(), static_cast<size_t>(len));
     AAsset_close(asset);
     if (readLen != len) {
         LOGW("read asset failed: %s read=%lld len=%lld", assetFileName, static_cast<long long>(readLen), static_cast<long long>(len));
+        dataOut.clear();
         return false;
     }
 
@@ -198,6 +191,7 @@ AAssetManager* zAssetManager::getAssetManagerFromContext(JNIEnv* env, jobject co
 }
 
 bool zAssetManager::extractAssetToFile(JNIEnv* env, const char* assetFileName, std::string& outPath) {
+    // 无 context 场景：先拿 Application 再复用重载版本。
     jobject appContext = getCurrentApplicationContext(env);
     if (appContext == nullptr) {
         return false;
@@ -228,6 +222,7 @@ bool zAssetManager::extractAssetToFile(JNIEnv* env, jobject context, const char*
     if (!outPath.empty() && outPath.back() != '/') {
         outPath.push_back('/');
     }
+    // 最终目标路径形如：/data/user/0/<pkg>/files/<assetFileName>
     outPath += assetFileName;
 
     AAsset* asset = AAssetManager_open(assetManager, assetFileName, AASSET_MODE_STREAMING);
@@ -248,6 +243,7 @@ bool zAssetManager::extractAssetToFile(JNIEnv* env, jobject context, const char*
     int readBytes = 0;
     bool ok = true;
 
+    // 流式拷贝避免一次性申请大块内存，适合任意大小二进制资源（so/dat/bin）。
     while ((readBytes = AAsset_read(asset, buffer.data(), buffer.size())) > 0) {
         if (!writeAll(fd, buffer.data(), static_cast<size_t>(readBytes))) {
             LOGE("write asset failed: %s", outPath.c_str());

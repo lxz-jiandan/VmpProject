@@ -53,40 +53,33 @@ uint32_t inst_id_list[] = {
 
 
 int main(int argc, char* argv[]) {
-    const char* so_path = "D:\\work\\2026\\0202_my_vmp\\VmProtect\\libdemo.so";
+    const char* so_path = "D:\\work\\2026\\0217_vmp_project\\VmpProject\\VmProtect\\libdemo.so";
 
-    // 加载和解析 ELF 文件
+    // 1) 加载并解析目标 so，建立符号与函数索引。
     zElf elf(so_path);
 
-    // 要查找的函数名（可以从命令行参数获取，或者硬编码）fun_add fun_for fun_for_add
-    const char* function_name = argc > 1 ? argv[1] : "fun_for_add";  // 默认查找 "fun_for_add" 函数
+    // 2) 读取待导出的函数名：支持命令行覆盖，默认 fun_for_add。
+    const char* function_name = argc > 1 ? argv[1] : "fun_for_add";
 
+    // 3) 获取函数对象并做基础有效性校验。
     zFunction* function = elf.getfunction(function_name);
     if (!function) {
         LOGE("获取 zFunction 失败: %s", function_name);
         return 1;
     }
 
+    // 4) 打印函数基本信息和反汇编结果，便于核对导出质量。
     LOGI("找到函数 %s 在偏移: 0x%llx", function->name().c_str(), (unsigned long long)function->offset());
     LOGI("函数大小: %zu 字节 (0x%zx)", function->size(), function->size());
 
     LOGI("\n========== 汇编信息 %s ==========\n", function_name);
-    function->analyzeasm();
-    std::string asm_info = function->getasminfo();
+    function->analyzeAssembly();
+    std::string asm_info = function->assemblyInfo();
     LOGI("%s", asm_info.c_str());
 
+    // 5) 同时导出未编码文本与编码二进制，供 Engine 回归使用。
     function->dump("fun_for_add.txt", zFunction::DumpMode::UNENCODED);
-    function->dump("fun_for_add.bin", zFunction::DumpMode::UNENCODED_BIN);
-
-    zFunction function_from_txt = zFunction::fromUnencodedTxt("function_unencoded.txt", function->name(), function->offset());
-    zFunction function_from_bin = zFunction::fromUnencodedBin("function_unencoded.bin", function->name(), function->offset());
-
-    LOGI("\n========== 反序列化验证 %s ==========" , function_name);
-    LOGI("from txt: name=%s offset=0x%llx", function_from_txt.name().c_str(), (unsigned long long)function_from_txt.offset());
-    LOGI("from bin: name=%s offset=0x%llx", function_from_bin.name().c_str(), (unsigned long long)function_from_bin.offset());
-
-    function_from_txt.dump("function_unencoded_test.txt", zFunction::DumpMode::UNENCODED);
-    function_from_bin.dump("function_unencoded_bin_test.txt", zFunction::DumpMode::UNENCODED);
+    function->dump("fun_for_add.bin", zFunction::DumpMode::ENCODED);
 
     return 0;
 }

@@ -1,4 +1,3 @@
-static const uint32_t fun_addr = 0x1dd08;
 static const uint32_t reg_id_list[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 };
 static const uint32_t reg_id_count = sizeof(reg_id_list)/sizeof(uint32_t);
 static const uint32_t type_id_count = 2;
@@ -8,6 +7,7 @@ uint32_t branch_id_list[] = { 55, 119, 71, 0, 101, 0 };
 static const uint64_t branch_addr_count = 6;
 uint64_t branch_addr_list[] = { 0x1dd28, 0x1dd64, 0x1dd38, 0x425b0, 0x1dd54, 0x425c0 };
 static const uint32_t inst_id_count = 173;
+static const uint64_t fun_addr = 0x1dd08;
 uint32_t inst_id_list[] = {
         6, 0, 0, 0, 0,                                // OP_ALLOC_RETURN
         51, 0, 0, 0, 29, 31,                          // OP_ALLOC_VSP

@@ -1,7 +1,3 @@
-//
-// Created by lxz on 2025/6/13.
-//
-
 #include "zElf.h"
 #include "elf.h"
 #include "zLog.h"
@@ -39,7 +35,7 @@ zElf::zElf(const char *elf_file_name) {
 }
 
 /**
- * 解析ELF头部
+ * 解析 ELF 头部
  */
 void zElf::parse_elf_head() {
     LOGD("parse_elf_head called");
@@ -49,12 +45,12 @@ void zElf::parse_elf_head() {
         return;
     }
 
-    // 设置ELF头部指针
+    // 设置 ELF 头部指针。
     elf_header = (Elf64_Ehdr *) elf_file_ptr;
     LOGD("elf_header->e_shoff 0x%llx", (unsigned long long)elf_header->e_shoff);
     LOGD("elf_header->e_shnum %x", elf_header->e_shnum);
 
-    // 获取ELF头部大小
+    // 记录 ELF 头部大小。
     elf_header_size = elf_header->e_ehsize;
 
     // 设置程序头表指针和数量
@@ -266,7 +262,7 @@ void zElf::print_layout() {
 
     std::vector<MemRegion> regions;
 
-    // 1. ELF Header
+    // 1) ELF 文件头
     regions.push_back({
         0,
         (unsigned long long)(elf_header_size - 1),
@@ -275,7 +271,7 @@ void zElf::print_layout() {
         0
     });
 
-    // 2. Program Header Table (顶层)
+    // 2) 程序头表（顶层区域）
     Elf64_Off phdr_offset = elf_header->e_phoff;
     Elf64_Xword phdr_size = elf_header->e_phentsize * program_header_table_num;
     regions.push_back({
@@ -286,7 +282,7 @@ void zElf::print_layout() {
         0
     });
 
-    // 2.1 添加每个 Program Header Element (子项)
+    // 2.1) 添加每个程序头表项（子项）
     for (int i = 0; i < program_header_table_num; i++) {
         Elf64_Off entry_offset = phdr_offset + i * elf_header->e_phentsize;
 
@@ -327,7 +323,7 @@ void zElf::print_layout() {
         strcpy(regions.back().name, name);
     }
 
-    // 3. Section 数据段（作为顶层项）
+    // 3) 节区数据段（作为顶层项）
     if (section_header_table && section_header_table_num > 0) {
         Elf64_Shdr *section = section_header_table;
         for (int i = 0; i < section_header_table_num; i++) {
@@ -355,7 +351,7 @@ void zElf::print_layout() {
         }
     }
 
-    // 4. Section Header Table（物理表）
+    // 4) 节头表（物理表）
     if (section_header_table && section_header_table_num > 0) {
         Elf64_Off shdr_physical_offset = elf_header->e_shoff;
         Elf64_Xword shdr_physical_size = elf_header->e_shentsize * section_header_table_num;
@@ -368,11 +364,11 @@ void zElf::print_layout() {
             0
         });
 
-        // 添加每个 section header entry 作为子项
+        // 添加每个节头表项作为子项
         for (int i = 0; i < section_header_table_num; i++) {
             Elf64_Off entry_offset = shdr_physical_offset + i * elf_header->e_shentsize;
 
-            // 获取 section 名称
+            // 获取节名称
             const char *section_name = "";
             if (i == 0) {
                 section_name = "SHN_UNDEF";
@@ -406,10 +402,10 @@ void zElf::print_layout() {
         return a.start < b.start;
     });
 
-    // 分别为顶层和子项添加 gap
+    // 分别为顶层和子项补齐空洞区间
     std::vector<MemRegion> all_regions_with_gaps;
 
-    // 1. 处理顶层区域(level 0) 的 gap
+    // 1) 处理顶层区域（level=0）的空洞
     std::vector<MemRegion> top_level;
     for (const auto& r : regions) {
         if (r.level == 0) top_level.push_back(r);
@@ -435,8 +431,8 @@ void zElf::print_layout() {
         }
     }
 
-    // 2. 处理子项(level 1) 的 gap - 需要根据所属的父级分别处理
-    // 2.1 Program Header Table 的子项
+    // 2) 处理子项（level=1）的空洞，需要按所属父级分别处理
+    // 2.1) 程序头表的子项
     std::vector<MemRegion> program_children;
     Elf64_Off program_start = 0, program_end = 0;
     for (const auto& r : top_level) {
@@ -473,7 +469,7 @@ void zElf::print_layout() {
         }
     }
 
-    // 2.2 Section Header Table 的子项
+    // 2.2) 节头表的子项
     std::vector<MemRegion> section_header_children;
     Elf64_Off section_header_start = 0;
     for (const auto& r : top_level) {
@@ -509,7 +505,7 @@ void zElf::print_layout() {
         }
     }
 
-    // 用包含 gap 的完整列表替换原列表
+    // 用包含空洞的完整列表替换原列表
     regions = all_regions_with_gaps;
 
     // 按地址顺序显示所有内容
@@ -519,7 +515,7 @@ void zElf::print_layout() {
             printf("0x%08llx-0x%08llx    0x%08llx    %s\n",
                    region.start, region.end, region.size, region.name);
 
-            // 如果是 program_header_table，显示其子项
+            // 如果当前是 program_header_table，则输出其子项。
             if (strcmp(region.name, "program_header_table") == 0) {
                 for (const auto& child : regions) {
                     if (child.level == 1 && child.start >= region.start && child.end <= region.end) {
@@ -529,7 +525,7 @@ void zElf::print_layout() {
                 }
             }
 
-            // 如果是 section_header_table，显示其子项
+            // 如果当前是 section_header_table，则输出其子项。
             if (strcmp(region.name, "section_header_table") == 0) {
                 for (const auto& child : regions) {
                     if (child.level == 1 && child.start >= region.start && child.end <= region.end) {
@@ -548,8 +544,8 @@ void zElf::print_layout() {
 }
 
 /**
- * Step-2: PHT 迁移与段扩增
- * 将 Program Header Table 从文件头部迁移至文件末尾，并增加条目数量
+ * 步骤2：PHT 迁移与段扩容
+ * 将 Program Header Table 从文件头部迁移到文件末尾，并扩展条目数量。
  * @param extra_entries 要新增的 PHT 条目数量（建议 4 个）
  * @param output_path 输出文件路径
  * @return 成功返回 true，否则返回 false
@@ -601,7 +597,7 @@ bool zElf::relocate_and_expand_pht(int extra_entries, const char* output_path) {
     // ========== 第三阶段：创建自救 LOAD 段（手术刀方案）==========
     LOGI("\n[Phase 3] Create Self-Rescue LOAD Segment (Surgical)");
 
-    // 使用最后一个新增槽位 (Index = old_ph_num + extra_entries - 1)
+    // 使用最后一个新增槽位（索引 = old_ph_num + extra_entries - 1）。
     int rescue_load_idx = old_ph_num + extra_entries - 1;
     LOGI("  Creating new PT_LOAD at index %d", rescue_load_idx);
 
@@ -688,7 +684,7 @@ bool zElf::relocate_and_expand_pht(int extra_entries, const char* output_path) {
     memcpy(new_file_ptr + NEW_PHT_OFFSET, new_pht_buffer, new_pht_size);
     LOGI("  Placed new PHT at offset 0x%llx", (unsigned long long)NEW_PHT_OFFSET);
 
-    // 更新 ELF Header
+    // 更新 ELF Header（新的 e_phoff / e_phnum）。
     Elf64_Ehdr* new_elf_header = (Elf64_Ehdr*)new_file_ptr;
     Elf64_Off old_e_phoff = new_elf_header->e_phoff;
     Elf64_Half old_e_phnum = new_elf_header->e_phnum;
@@ -847,8 +843,6 @@ char* zElf::get_symbol_file_address(const char *symbol_name) {
         LOGE("get_symbol_file_address %s failed", symbol_name);
         return nullptr;
     }
-    // LOGI("get_symbol_file_address %s offset: 0x%llx", symbol_name, (unsigned long long)symbol_offset);
-
     return elf_file_ptr + symbol_offset;
 }
 
@@ -893,14 +887,17 @@ Elf64_Sym* zElf::find_symbol_info(const char *symbol_name) {
 }
 
 bool zElf::add_function_from_symbol(const char* symbol_name, Elf64_Xword symbol_size) {
+    // 过滤空名字，避免污染函数缓存。
     if (!symbol_name || symbol_name[0] == '\0') {
         return false;
     }
 
+    // 已存在则直接跳过，避免重复构建。
     if (find_function_in_list(symbol_name) != nullptr) {
         return false;
     }
 
+    // 先定位符号偏移，再取文件视图地址。
     Elf64_Addr symbol_offset = find_symbol_offset(symbol_name);
     if (symbol_offset == 0) {
         return false;
@@ -911,11 +908,17 @@ bool zElf::add_function_from_symbol(const char* symbol_name, Elf64_Xword symbol_
         return false;
     }
 
+    // 若符号未给 size，退化为固定窗口，便于回归调试。
     size_t symbol_bytes_size = symbol_size > 0 ? static_cast<size_t>(symbol_size) : 256;
     std::vector<uint8_t> symbol_bytes(symbol_bytes_size);
     memcpy(symbol_bytes.data(), symbol_file_addr, symbol_bytes_size);
 
-    function_list_.emplace_back(symbol_name, symbol_offset, std::move(symbol_bytes));
+    // 统一按 zFunctionData 构建函数对象，和当前 zFunction 构造签名保持一致。
+    zFunctionData data;
+    data.function_name = symbol_name;
+    data.function_offset = symbol_offset;
+    data.function_bytes = std::move(symbol_bytes);
+    function_list_.emplace_back(data);
     return true;
 }
 
@@ -933,12 +936,14 @@ zFunction* zElf::find_function_in_list(const char* function_name) {
 }
 
 bool zElf::build_function_list() {
+    // 每次重建前先清空，避免旧状态残留。
     function_list_.clear();
 
     if (!elf_file_ptr) {
         return false;
     }
 
+    // 优先扫描动态符号表（导出符号）。
     if (dynamic_symbol_table && dynamic_string_table) {
         for (uint64_t i = 0; i < dynamic_symbol_table_num; i++) {
             Elf64_Sym* symbol = &dynamic_symbol_table[i];
@@ -953,6 +958,7 @@ bool zElf::build_function_list() {
         }
     }
 
+    // 再扫描节符号表（补充非导出符号）。
     if (symbol_table && string_table) {
         for (uint64_t i = 0; i < section_symbol_num; i++) {
             Elf64_Sym* symbol = &symbol_table[i];
@@ -973,11 +979,13 @@ zFunction* zElf::getFunction(const char* function_name) {
         return nullptr;
     }
 
+    // 先走缓存，避免重复查表与拷贝。
     zFunction* function = find_function_in_list(function_name);
     if (function) {
         return function;
     }
 
+    // 缓存未命中时，按符号信息补建并回填缓存。
     Elf64_Sym* symbol = find_symbol_info(function_name);
     if (!symbol) {
         return nullptr;

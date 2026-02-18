@@ -8,6 +8,20 @@
 #include <iostream>
 #include <atomic>
 
+#ifndef VM_TRACE
+#define VM_TRACE 0
+#endif
+
+#if VM_TRACE
+#define VM_TRACE_LOGD(...) LOGD(__VA_ARGS__)
+#else
+#define VM_TRACE_LOGD(...) ((void)0)
+#endif
+
+#ifndef VM_DEBUG_HOOK
+#define VM_DEBUG_HOOK 0
+#endif
+
 // GCC/Clang 原子操作封装：统一提供 32/64 位原子原语，供 VM 指令实现复用。
 // 32 位原子加：返回加之前的旧值。
 inline uint32_t atomic_fetch_add(uint32_t* ptr, uint32_t val) {
@@ -125,7 +139,7 @@ void initOpcodeTable() {
     g_opcode_table[OP_ADRP]           = op_adrp;
 }
 
-// subOp 高 bit：0x40 表示本指令更新 VM 标志寄存器（如 ARM64 SUBS/ADDS）
+// subOp 高位标记：0x40 表示本条运算需要更新 VM 标志寄存器（对应 ARM64 SUBS/ADDS）。
 #define BIN_UPDATE_FLAGS  0x40u
 
 // ============================================================================
@@ -186,7 +200,7 @@ static inline VMRegSlot& vmGetRegChecked(VMContext* ctx, uint32_t idx) {
 #define GET_REG(idx) vmGetRegChecked(ctx, static_cast<uint32_t>(idx))
 #define GET_TYPE(idx) (((idx) < ctx->type_count && ctx->types != nullptr) ? ctx->types[(idx)] : nullptr)
 
-// 调试用：x0 为指针时解引用得到 *x0，空指针或无效时返回 0
+// 调试辅助：读取 x0 的当前值，便于关键路径打点。
 static inline uint64_t log_x0_deref(VMContext* ctx) {
     if (!ctx || ctx->register_count == 0) return 0;
     return GET_REG(0).value;
@@ -766,7 +780,7 @@ void op_binary(VMContext* ctx) {
 
 // OP_BINARY_IMM：执行寄存器与立即数二元运算，可选更新 NZCV。
 void op_binary_imm(VMContext* ctx) {
-    // 布局: [0]=opcode(52), [1]=subOp, [2]=typeIdx, [3]=lhsReg, [4]=imm, [5]=dstReg；subOp 高 bit 0x40 表示更新标志
+    // 布局: [0]=opcode(52), [1]=subOp, [2]=typeIdx, [3]=lhsReg, [4]=imm, [5]=dstReg；subOp 的 0x40 标记表示更新 NZCV
     uint32_t subOp = GET_INST(1);
     uint32_t typeIdx = GET_INST(2);
     uint32_t lhsReg = GET_INST(3);
@@ -788,14 +802,18 @@ void op_binary_imm(VMContext* ctx) {
             setFlagsFromAdd(ctx, lhs, rhs, result, is64);
         else
             setFlagsFromResultNZ(ctx, result, type);
-        LOGD("[OP_BINARY_IMM] updateFlags subOp=0x%x result=%" PRIu64 " -> nzcv=0x%x *x0=%" PRIu64, (unsigned)subOp, (unsigned long long)result, (unsigned)ctx->nzcv, (unsigned long long)log_x0_deref(ctx));
+        VM_TRACE_LOGD("[OP_BINARY_IMM] updateFlags subOp=0x%x result=%" PRIu64 " -> nzcv=0x%x *x0=%" PRIu64,
+                      (unsigned)subOp,
+                      (unsigned long long)result,
+                      (unsigned)ctx->nzcv,
+                      (unsigned long long)log_x0_deref(ctx));
     }
     ctx->pc += 6;
 }
 
 // OP_TYPE_CONVERT：按 src/dst 类型执行转换并写入目标寄存器。
 void op_type_convert(VMContext* ctx) {
-    // [pc+1]=sub_op, [pc+2]=dst_type, [pc+3]=src_type, [pc+4]=src_reg, [pc+5]=dst_reg
+    // 参数槽位：[pc+1]=sub_op, [pc+2]=dst_type, [pc+3]=src_type, [pc+4]=src_reg, [pc+5]=dst_reg
     uint32_t subOp = GET_INST(1);
     uint32_t dstTypeIdx = GET_INST(2);
     uint32_t srcTypeIdx = GET_INST(3);
@@ -814,7 +832,7 @@ void op_type_convert(VMContext* ctx) {
 
 // OP_LOAD_CONST：加载 32 位立即数到寄存器。
 void op_load_const(VMContext* ctx) {
-    // [pc+1]=dst_reg, [pc+2]=value
+    // 参数槽位：[pc+1]=dst_reg, [pc+2]=value
     uint32_t dstReg = GET_INST(1);
     uint32_t value = GET_INST(2);
     GET_REG(dstReg).value = value;
@@ -823,7 +841,7 @@ void op_load_const(VMContext* ctx) {
 
 // OP_STORE_CONST：将立即数按类型写入目标地址。
 void op_store_const(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=value
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=value
     uint32_t typeIdx = GET_INST(1);
     uint32_t addrReg = GET_INST(2);
     uint32_t value = GET_INST(3);
@@ -843,7 +861,7 @@ void op_store_const(VMContext* ctx) {
 
 // OP_GET_ELEMENT：按索引与元素大小计算元素地址/访问位置。
 void op_get_element(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=base_reg, [pc+3]=index_reg, [pc+4]=dst_reg
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=base_reg, [pc+3]=index_reg, [pc+4]=dst_reg
     uint32_t typeIdx = GET_INST(1);
     uint32_t baseReg = GET_INST(2);
     uint32_t indexReg = GET_INST(3);
@@ -860,16 +878,16 @@ void op_get_element(VMContext* ctx) {
 
 // OP_ALLOC_RETURN：初始化返回缓冲相关寄存器语义。
 void op_alloc_return(VMContext* ctx) {
-    // 布局: [opcode][result_type][size_type][size_reg][dst_reg]；申请一块用于存放返回值的内存，首条必须为本指令
+    // 布局: [opcode][result_type][size_type][size_reg][dst_reg]
     uint32_t dstReg = GET_INST(4);
-    void* ptr = calloc(8, 8);
-    uint64_t addr = reinterpret_cast<uint64_t>(ptr);
-    ctx->ret_value = addr;
-
-    // 此处不更新 dstReg 的内容，否则会污染虚拟寄存器
-//    GET_REG(dstReg).value = addr;
-//    GET_REG(dstReg).ownership = 1;
-    LOGD("[OP_ALLOC_RETURN] dstReg=%u addr=0x%llx" " *x0=0x%llx", (unsigned)dstReg, (unsigned long long)addr, (unsigned long long)log_x0_deref(ctx));
+    // 避免每次执行都分配临时堆内存；优先复用调用方传入的返回缓冲。
+    ctx->ret_value = (ctx->ret_buffer != nullptr)
+                     ? reinterpret_cast<uint64_t>(ctx->ret_buffer)
+                     : 0;
+    VM_TRACE_LOGD("[OP_ALLOC_RETURN] dstReg=%u ret_value=0x%llx *x0=0x%llx",
+                  (unsigned)dstReg,
+                  (unsigned long long)ctx->ret_value,
+                  (unsigned long long)log_x0_deref(ctx));
     ctx->pc += 5;
 }
 
@@ -883,20 +901,36 @@ void op_alloc_vsp(VMContext* ctx) {
 
     void* block = malloc(kVspSize);
     if (!block) {
-        ctx->pc += 5;
+        ctx->pc += 6;
         return;
     }
-    uint64_t vspValue = reinterpret_cast<uint64_t>(static_cast<char*>(block) + kVspSize);
-    GET_REG(fpReg).value = vspValue;
-    GET_REG(spReg).value = vspValue;
-    GET_REG(fpReg).ownership = 1;
-    LOGD("[OP_ALLOC_VSP] spReg=%u vsp=0x%llx *x0=0x%llx", (unsigned)vspValue, (unsigned long long)vspValue, (unsigned long long)log_x0_deref(ctx));
+    const uint64_t blockBase = reinterpret_cast<uint64_t>(block);
+    const uint64_t vspValue = blockBase + kVspSize;
+
+    VMRegSlot& fpSlot = GET_REG(fpReg);
+    fpSlot.value = vspValue;
+    fpSlot.reserved = blockBase;
+    fpSlot.ownership = 1;
+
+    if (spReg != fpReg) {
+        VMRegSlot& spSlot = GET_REG(spReg);
+        spSlot.value = vspValue;
+        spSlot.reserved = 0;
+        spSlot.ownership = 0;
+    }
+
+    VM_TRACE_LOGD("[OP_ALLOC_VSP] fpReg=%u spReg=%u vsp=0x%llx base=0x%llx *x0=0x%llx",
+                  (unsigned)fpReg,
+                  (unsigned)spReg,
+                  (unsigned long long)vspValue,
+                  (unsigned long long)blockBase,
+                  (unsigned long long)log_x0_deref(ctx));
     ctx->pc += 6;
 }
 
 // OP_STORE：把源寄存器值写入目标地址。
 void op_store(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=value_reg
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=value_reg
     uint32_t typeIdx = GET_INST(1);
     uint32_t addrReg = GET_INST(2);
     uint32_t valueReg = GET_INST(3);
@@ -909,7 +943,7 @@ void op_store(VMContext* ctx) {
 
 // OP_LOAD_CONST64：加载 64 位立即数到寄存器。
 void op_load_const64(VMContext* ctx) {
-    // [pc+1]=dst_reg, [pc+2]=low32, [pc+3]=high32
+    // 参数槽位：[pc+1]=dst_reg, [pc+2]=low32, [pc+3]=high32
     uint32_t dstReg = GET_INST(1);
     uint64_t low = GET_INST(2);
     uint64_t high = GET_INST(3);
@@ -924,7 +958,7 @@ void op_nop(VMContext* ctx) {
 
 // OP_COPY：根据类型语义复制源寄存器到目标寄存器。
 void op_copy(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=src_reg, [pc+3]=dst_reg
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=src_reg, [pc+3]=dst_reg
     uint32_t typeIdx = GET_INST(1);
     uint32_t srcReg = GET_INST(2);
     uint32_t dstReg = GET_INST(3);
@@ -937,7 +971,7 @@ void op_copy(VMContext* ctx) {
 
 // OP_GET_FIELD：按偏移从基址读取字段值。
 void op_get_field(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=base_reg, [pc+3]=offset, [pc+4]=dst_reg
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=base_reg, [pc+3]=offset, [pc+4]=dst_reg
     uint32_t typeIdx = GET_INST(1);
     uint32_t baseReg = GET_INST(2);
     int32_t offset = GET_INST(3);
@@ -961,7 +995,7 @@ void op_get_field(VMContext* ctx) {
 
 // OP_CMP：执行比较并写结果，必要时更新条件标志位。
 void op_cmp(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=lhs_reg, [pc+3]=rhs_reg, [pc+4]=result_reg, [pc+5]=cmp_op；同时按 lhs-rhs 更新 NZCV
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=lhs_reg, [pc+3]=rhs_reg, [pc+4]=result_reg, [pc+5]=cmp_op；同时按 lhs-rhs 更新 NZCV
     uint32_t typeIdx = GET_INST(1);
     uint32_t lhsReg = GET_INST(2);
     uint32_t rhsReg = GET_INST(3);
@@ -980,7 +1014,11 @@ void op_cmp(VMContext* ctx) {
         uint64_t diff = lhs - rhs;
         if (!is64) diff &= 0xFFFFFFFFu;
         setFlagsFromSub(ctx, lhs, rhs, diff, is64);
-        LOGD("[OP_CMP] lhs=%" PRIu64 " rhs=%" PRIu64 " -> nzcv=0x%x *x0=%" PRIu64, (unsigned long long)lhs, (unsigned long long)rhs, (unsigned)ctx->nzcv, (unsigned long long)log_x0_deref(ctx));
+        VM_TRACE_LOGD("[OP_CMP] lhs=%" PRIu64 " rhs=%" PRIu64 " -> nzcv=0x%x *x0=%" PRIu64,
+                      (unsigned long long)lhs,
+                      (unsigned long long)rhs,
+                      (unsigned)ctx->nzcv,
+                      (unsigned long long)log_x0_deref(ctx));
     }
     ctx->pc += 6;
 }
@@ -988,7 +1026,7 @@ void op_cmp(VMContext* ctx) {
 // OP_SET_FIELD：按偏移向基址写入字段值。
 void op_set_field(VMContext* ctx) {
 
-    // [pc+1]=type_idx, [pc+2]=base_reg, [pc+3]=offset, [pc+4]=value_reg（value_reg>=register_count 表示 str wzr/xzr，存 0）
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=base_reg, [pc+3]=offset, [pc+4]=value_reg（value_reg>=register_count 表示 str wzr/xzr，存 0）
     uint32_t typeIdx = GET_INST(1);
     uint32_t baseReg = GET_INST(2);
     int32_t offset = GET_INST(3);
@@ -999,8 +1037,12 @@ void op_set_field(VMContext* ctx) {
     uint64_t value = (valueReg < ctx->register_count) ? GET_REG(valueReg).value : 0;
     void* fieldAddr = reinterpret_cast<void*>(base + offset);
 
-    LOGD("[OP_SET_FIELD] baseReg=%u offset=0x%x valueReg=%u value=0x%llx *x0=0x%llx",
-        (unsigned)baseReg, (unsigned)offset, (unsigned)valueReg, (unsigned long long)value, (unsigned long long)log_x0_deref(ctx));
+    VM_TRACE_LOGD("[OP_SET_FIELD] baseReg=%u offset=0x%x valueReg=%u value=0x%llx *x0=0x%llx",
+                  (unsigned)baseReg,
+                  (unsigned)offset,
+                  (unsigned)valueReg,
+                  (unsigned long long)value,
+                  (unsigned long long)log_x0_deref(ctx));
 
     if (fieldAddr && type) {
         switch (type->size) {
@@ -1017,8 +1059,8 @@ void op_set_field(VMContext* ctx) {
 // OP_RESTORE_REG：从保存区恢复寄存器值。
 void op_restore_reg(VMContext* ctx) {
     // 布局: [opcode][dst_slot][reserved][pair_count][pairs...]
-    // [pc+0]=opcode=14, [pc+1]=dst_slot, [pc+2]=reserved, [pc+3]=pair_count
-    // [pc+4..pc+3+2*pair_count]=(reg_slot, branch_id) 对
+    // 参数槽位：[pc+0]=opcode=14, [pc+1]=dst_slot, [pc+2]=reserved, [pc+3]=pair_count
+    // 参数槽位：[pc+4..pc+3+2*pair_count]=(reg_slot, branch_id) 对
     // pc 步进 = 4 + 2*pair_count
     
     uint32_t dstSlot = GET_INST(1);
@@ -1045,8 +1087,8 @@ void op_restore_reg(VMContext* ctx) {
 
 // OP_CALL：执行直接调用并按约定处理返回值与现场。
 void op_call(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=param_count, [pc+3]=type_mask, [pc+4]=result_reg,
-    // [pc+5]=func_ptr_reg, [pc+6..]=param_regs
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=param_count, [pc+3]=type_mask, [pc+4]=result_reg,
+    // 参数槽位：[pc+5]=func_ptr_reg, [pc+6..]=param_regs
     uint32_t paramCount = GET_INST(2);
     uint32_t typeMask = GET_INST(3);
     uint32_t resultReg = GET_INST(4);
@@ -1108,15 +1150,19 @@ void op_call(VMContext* ctx) {
 
 // OP_RETURN：设置返回值并终止当前执行流。
 void op_return(VMContext* ctx) {
-    // [pc+1]=has_value, [pc+2]=value_reg (optional)
+    // 参数槽位：[pc+1]=has_value, [pc+2]=value_reg（可选）
     uint32_t hasValue = GET_INST(1);
     if (hasValue) {
         uint32_t valueReg = GET_INST(2);
         ctx->ret_value = GET_REG(valueReg).value;
-        LOGD("[OP_RETURN] valueReg=%u ret_value=%" PRIu64 " *x0=%" PRIu64, (unsigned)valueReg, (unsigned long long)ctx->ret_value, (unsigned long long)log_x0_deref(ctx));
+        VM_TRACE_LOGD("[OP_RETURN] valueReg=%u ret_value=%" PRIu64 " *x0=%" PRIu64,
+                      (unsigned)valueReg,
+                      (unsigned long long)ctx->ret_value,
+                      (unsigned long long)log_x0_deref(ctx));
         if (ctx->ret_buffer) {
             *static_cast<uint64_t*>(ctx->ret_buffer) = ctx->ret_value;
-            GET_REG(valueReg).ownership = 1;
+            // 返回值写回后不应改变槽位释放语义，避免将普通整数当作指针 free。
+            GET_REG(valueReg).ownership = 0;
         }
     }
     ctx->running = false;
@@ -1124,13 +1170,17 @@ void op_return(VMContext* ctx) {
 
 // OP_BRANCH：无条件跳转到分支表目标。
 void op_branch(VMContext* ctx) {
-    // [pc+1]=branchId；targetPc = ctx->branch_id_list[branchId]
+    // 参数槽位：[pc+1]=branchId；targetPc = ctx->branch_id_list[branchId]
     uint32_t branchId = GET_INST(1);
     uint32_t target = 0;
     if (ctx->branch_id_list && branchId < ctx->branch_count)
         target = ctx->branch_id_list[branchId];
-    LOGD("[OP_BRANCH] branchId=%u branch_count=%u targetPc=%u inst_count=%u *x0=%" PRIu64,
-        (unsigned)branchId, (unsigned)ctx->branch_count, (unsigned)target, (unsigned)ctx->inst_count, (unsigned long long)log_x0_deref(ctx));
+    VM_TRACE_LOGD("[OP_BRANCH] branchId=%u branch_count=%u targetPc=%u inst_count=%u *x0=%" PRIu64,
+                  (unsigned)branchId,
+                  (unsigned)ctx->branch_count,
+                  (unsigned)target,
+                  (unsigned)ctx->inst_count,
+                  (unsigned long long)log_x0_deref(ctx));
     if (target < ctx->inst_count) {
         ctx->pc = target;
     } else {
@@ -1140,7 +1190,7 @@ void op_branch(VMContext* ctx) {
 
 // OP_BRANCH_IF：按条件寄存器值决定是否跳转。
 void op_branch_if(VMContext* ctx) {
-    // [pc+1]=cond_reg, [pc+2]=true_target, [pc+3]=false_target；true/false_target 为 branch_list 下标时用 branch_id_list[] 解析，否则视为直接 targetPc（兼容手写测试）
+    // 参数槽位：[pc+1]=cond_reg, [pc+2]=true_target, [pc+3]=false_target；true/false_target 为 branch_list 下标时用 branch_id_list[] 解析，否则视为直接 targetPc（兼容手写测试）
     uint32_t condReg = GET_INST(1);
     uint32_t trueTarget = GET_INST(2);
     uint32_t falseTarget = GET_INST(3);
@@ -1165,8 +1215,14 @@ void op_branch_if_cc(VMContext* ctx) {
     bool taken = evaluateCondition(ctx->nzcv, cc);
     uint32_t targetPc = (ctx->branch_id_list && branchId < ctx->branch_count) ? ctx->branch_id_list[branchId] : fallthroughPc;
 
-    LOGD("[OP_BRANCH_IF_CC] cc=%u branchId=%u nzcv=0x%x taken=%d targetPc=%u fallthrough=%u *x0=%" PRIu64,
-        (unsigned)cc, (unsigned)branchId, (unsigned)ctx->nzcv, (int)taken, (unsigned)targetPc, (unsigned)fallthroughPc, (unsigned long long)log_x0_deref(ctx));
+    VM_TRACE_LOGD("[OP_BRANCH_IF_CC] cc=%u branchId=%u nzcv=0x%x taken=%d targetPc=%u fallthrough=%u *x0=%" PRIu64,
+                  (unsigned)cc,
+                  (unsigned)branchId,
+                  (unsigned)ctx->nzcv,
+                  (int)taken,
+                  (unsigned)targetPc,
+                  (unsigned)fallthroughPc,
+                  (unsigned long long)log_x0_deref(ctx));
 
     if (taken) {
         if (targetPc < ctx->inst_count)
@@ -1191,23 +1247,21 @@ void op_set_return_pc(VMContext* ctx) {
 // OP_BL：带链接跳转，保存返回位点并跳转到目标。
 void op_bl(VMContext* ctx) {
     // [0]=OP_BL, [1]=branchId；语义由你实现：通常设 LR=返回地址、跳转到 branch_id_list[branchId]
-
-    uint32_t pc = ctx->pc;
-
-    static const char* str = "zLog";
-    static const char* str2 = "fun_for_add ret: %d";
-
-    if(pc == 136){
+#if VM_DEBUG_HOOK
+    if (ctx->pc == 136) {
+        static const char* str = "zLog";
+        static const char* str2 = "fun_for_add ret: %d";
         GET_REG(0).value = 6;
         GET_REG(1).value = reinterpret_cast<uint64_t>(str);
         GET_REG(2).value = reinterpret_cast<uint64_t>(str2);
     }
+#endif
 
     uint32_t branchId = GET_INST(1);
     if (!ctx->running) {
         return;
     }
-    LOGE("op_bl branchId %d", branchId);
+    VM_TRACE_LOGD("[OP_BL] branchId=%u", (unsigned)branchId);
 
     if (ctx->branch_addr_list == nullptr || branchId >= ctx->branch_count) {
         LOGE("op_bl invalid branch target: branchId=%u branch_count=%u", branchId, ctx->branch_count);
@@ -1221,8 +1275,9 @@ void op_bl(VMContext* ctx) {
     }
     uint64_t new_addr = ctx->branch_addr_list[branchId];
 
-    LOGE("new_sp 0x%llx", new_sp);
-    LOGE("new_addr 0x%llx", new_addr);
+    VM_TRACE_LOGD("[OP_BL] new_sp=0x%llx new_addr=0x%llx",
+                  (unsigned long long)new_sp,
+                  (unsigned long long)new_addr);
 
     uint64_t args[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     const uint32_t argCount = (ctx->register_count < 8) ? ctx->register_count : 8;
@@ -1255,7 +1310,7 @@ void op_bl(VMContext* ctx) {
 
 // OP_ADRP：基于模块基址 + offset 计算地址并写入目标寄存器。
 void op_adrp(VMContext* ctx) {
-    // [pc+1]=dst_reg, [pc+2]=offset_low32, [pc+3]=offset_high32
+    // 参数槽位：[pc+1]=dst_reg, [pc+2]=offset_low32, [pc+3]=offset_high32
     uint32_t dstReg = GET_INST(1);
     uint32_t low = GET_INST(2);
     uint32_t high = GET_INST(3);
@@ -1269,7 +1324,7 @@ void op_adrp(VMContext* ctx) {
 
 // OP_ALLOC_MEMORY：按类型大小在堆上分配对象存储。
 void op_alloc_memory(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=dst_reg
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=dst_reg
     uint32_t typeIdx = GET_INST(1);
     uint32_t dstReg = GET_INST(2);
 
@@ -1280,15 +1335,17 @@ void op_alloc_memory(VMContext* ctx) {
     if (ctx->ret_buffer) {
         *static_cast<uint64_t*>(ctx->ret_buffer) = reinterpret_cast<uint64_t>(ptr);
     }
-    GET_REG(dstReg).value = reinterpret_cast<uint64_t>(ptr);
-    GET_REG(dstReg).ownership = 1;
+    VMRegSlot& dstSlot = GET_REG(dstReg);
+    dstSlot.value = reinterpret_cast<uint64_t>(ptr);
+    dstSlot.reserved = dstSlot.value;
+    dstSlot.ownership = 1;
 
     ctx->pc += 3;
 }
 
 // OP_MOV：将源寄存器值直接移动到目标寄存器。
 void op_mov(VMContext* ctx) {
-    // [pc+1]=src_reg, [pc+2]=dst_reg
+    // 参数槽位：[pc+1]=src_reg, [pc+2]=dst_reg
     uint32_t srcReg = GET_INST(1);
     uint32_t dstReg = GET_INST(2);
 
@@ -1300,7 +1357,7 @@ void op_mov(VMContext* ctx) {
 
 // OP_LOAD_IMM：加载立即数并做必要的位宽处理。
 void op_load_imm(VMContext* ctx) {
-    // [pc+1]=dst_reg, [pc+2]=imm_value
+    // 参数槽位：[pc+1]=dst_reg, [pc+2]=imm_value
     uint32_t dstReg = GET_INST(1);
     uint32_t immValue = GET_INST(2);
 
@@ -1313,7 +1370,7 @@ void op_load_imm(VMContext* ctx) {
 // OP_DYNAMIC_CAST：执行运行时类型转换或兼容性检查。
 void op_dynamic_cast(VMContext* ctx) {
     // 布局: [opcode][cmp_reg][type_idx][default_branch][pair_count][pairs...]
-    // [pc+0]=opcode=22, [pc+1]=cmp_reg, [pc+2]=type_idx(取mask), [pc+3]=default_branch_idx, [pc+4]=pair_count
+    // 参数槽位：[pc+0]=opcode=22, [pc+1]=cmp_reg, [pc+2]=type_idx(取mask), [pc+3]=default_branch_idx, [pc+4]=pair_count
     // 随后 2*pair_count 个：(value_reg, branch_id)
     // 跳转: target_pc = branch_list[branch_idx], pc = target_pc
     
@@ -1341,7 +1398,7 @@ void op_dynamic_cast(VMContext* ctx) {
 
     ctx->saved_branch_id = targetBranchIdx;
     
-    if (ctx->branch_id_list && targetBranchIdx < ctx->inst_count) {
+    if (ctx->branch_id_list && targetBranchIdx < ctx->branch_count) {
         uint32_t targetPc = ctx->branch_id_list[targetBranchIdx];
         ctx->pc = targetPc;
     } else {
@@ -1351,7 +1408,7 @@ void op_dynamic_cast(VMContext* ctx) {
 
 // OP_UNARY：执行一元算子并写回目标寄存器。
 void op_unary(VMContext* ctx) {
-    // [pc+1]=sub_op, [pc+2]=type_idx, [pc+3]=src_reg, [pc+4]=dst_reg
+    // 参数槽位：[pc+1]=sub_op, [pc+2]=type_idx, [pc+3]=src_reg, [pc+4]=dst_reg
     uint32_t subOp = GET_INST(1);
     uint32_t typeIdx = GET_INST(2);
     uint32_t srcReg = GET_INST(3);
@@ -1367,13 +1424,13 @@ void op_unary(VMContext* ctx) {
 
 // OP_PHI：在多前驱值中选择当前控制流对应的输入。
 void op_phi(VMContext* ctx) {
-    // PHI 节点 - 简化处理
+    // 目前仅保留占位语义：直接跳过，后续可按 SSA 前驱补全。
     ctx->pc += 1;
 }
 
 // OP_SELECT：基于条件寄存器选择两路值之一。
 void op_select(VMContext* ctx) {
-    // [pc+1]=cond_reg, [pc+2]=true_reg, [pc+3]=false_reg, [pc+4]=dst_reg
+    // 参数槽位：[pc+1]=cond_reg, [pc+2]=true_reg, [pc+3]=false_reg, [pc+4]=dst_reg
     uint32_t condReg = GET_INST(1);
     uint32_t trueReg = GET_INST(2);
     uint32_t falseReg = GET_INST(3);
@@ -1387,7 +1444,7 @@ void op_select(VMContext* ctx) {
 
 // OP_MEMCPY：执行内存块复制。
 void op_memcpy(VMContext* ctx) {
-    // [pc+1]=dst_reg, [pc+2]=src_reg, [pc+3]=size_reg
+    // 参数槽位：[pc+1]=dst_reg, [pc+2]=src_reg, [pc+3]=size_reg
     uint32_t dstReg = GET_INST(1);
     uint32_t srcReg = GET_INST(2);
     uint32_t sizeReg = GET_INST(3);
@@ -1405,7 +1462,7 @@ void op_memcpy(VMContext* ctx) {
 
 // OP_MEMSET：执行内存块填充。
 void op_memset(VMContext* ctx) {
-    // [pc+1]=dst_reg, [pc+2]=value_reg, [pc+3]=size_reg
+    // 参数槽位：[pc+1]=dst_reg, [pc+2]=value_reg, [pc+3]=size_reg
     uint32_t dstReg = GET_INST(1);
     uint32_t valueReg = GET_INST(2);
     uint32_t sizeReg = GET_INST(3);
@@ -1423,7 +1480,7 @@ void op_memset(VMContext* ctx) {
 
 // OP_STRLEN：计算字符串长度并写入目标寄存器。
 void op_strlen(VMContext* ctx) {
-    // [pc+1]=str_reg, [pc+2]=dst_reg
+    // 参数槽位：[pc+1]=str_reg, [pc+2]=dst_reg
     uint32_t strReg = GET_INST(1);
     uint32_t dstReg = GET_INST(2);
 
@@ -1436,7 +1493,7 @@ void op_strlen(VMContext* ctx) {
 // OP_FETCH_NEXT：推进到下一执行片段或下一条语义指令。
 void op_fetch_next(VMContext* ctx) {
     // 布局: [opcode][has_cmp][branch_id][cmp_reg][type_idx][alt_branch]
-    // [pc+0]=opcode=29, [pc+1]=has_cmp, [pc+2]=branch_id, [pc+3]=cmp_reg, [pc+4]=type_idx, [pc+5]=alt_branch
+    // 参数槽位：[pc+0]=opcode=29, [pc+1]=has_cmp, [pc+2]=branch_id, [pc+3]=cmp_reg, [pc+4]=type_idx, [pc+5]=alt_branch
     // pc 步进 = 6（如果不跳转），否则 pc = branch_list[target_branch]
     
     uint32_t hasCmp = GET_INST(1);
@@ -1456,7 +1513,7 @@ void op_fetch_next(VMContext* ctx) {
     // 保存 branch_id（用于后续的 RESTORE_REG 匹配）
     ctx->saved_branch_id = branchIdFromInst;
     
-    if (ctx->branch_id_list && targetBranchIdx < ctx->inst_count) {
+    if (ctx->branch_id_list && targetBranchIdx < ctx->branch_count) {
         uint32_t targetPc = ctx->branch_id_list[targetBranchIdx];
         ctx->pc = targetPc;
     } else {
@@ -1466,13 +1523,13 @@ void op_fetch_next(VMContext* ctx) {
 
 // OP_CALL_INDIRECT：通过函数指针执行间接调用。
 void op_call_indirect(VMContext* ctx) {
-    // 间接调用 - 与 op_call 类似
+    // 复用 op_call 逻辑，调用目标由寄存器中函数指针决定。
     op_call(ctx);
 }
 
 // OP_SWITCH：根据 case 值跳转到对应分支目标。
 void op_switch(VMContext* ctx) {
-    // [pc+1]=value_reg, [pc+2]=default_target, [pc+3]=case_count, [pc+4..]=cases
+    // 参数槽位：[pc+1]=value_reg, [pc+2]=default_target, [pc+3]=case_count, [pc+4..]=cases
     uint32_t valueReg = GET_INST(1);
     uint32_t defaultTarget = GET_INST(2);
     uint32_t caseCount = GET_INST(3);
@@ -1498,7 +1555,7 @@ void op_switch(VMContext* ctx) {
 
 // OP_GET_PTR：获取地址值并写入目标寄存器。
 void op_get_ptr(VMContext* ctx) {
-    // [pc+1]=base_reg, [pc+2]=offset, [pc+3]=dst_reg
+    // 参数槽位：[pc+1]=base_reg, [pc+2]=offset, [pc+3]=dst_reg
     uint32_t baseReg = GET_INST(1);
     uint32_t offset = GET_INST(2);
     uint32_t dstReg = GET_INST(3);
@@ -1510,7 +1567,7 @@ void op_get_ptr(VMContext* ctx) {
 
 // OP_BITCAST：按位重解释，不改变底层 bit 模式。
 void op_bitcast(VMContext* ctx) {
-    // [pc+1]=src_reg, [pc+2]=dst_reg
+    // 参数槽位：[pc+1]=src_reg, [pc+2]=dst_reg
     uint32_t srcReg = GET_INST(1);
     uint32_t dstReg = GET_INST(2);
 
@@ -1521,7 +1578,7 @@ void op_bitcast(VMContext* ctx) {
 
 // OP_SIGN_EXTEND：按源位宽做有符号扩展。
 void op_sign_extend(VMContext* ctx) {
-    // [pc+1]=src_type, [pc+2]=dst_type, [pc+3]=src_reg, [pc+4]=dst_reg
+    // 参数槽位：[pc+1]=src_type, [pc+2]=dst_type, [pc+3]=src_reg, [pc+4]=dst_reg
     uint32_t srcTypeIdx = GET_INST(1);
     uint32_t dstTypeIdx = GET_INST(2);
     uint32_t srcReg = GET_INST(3);
@@ -1548,7 +1605,7 @@ void op_sign_extend(VMContext* ctx) {
 
 // OP_ZERO_EXTEND：按源位宽做无符号零扩展。
 void op_zero_extend(VMContext* ctx) {
-    // [pc+1]=src_type, [pc+2]=dst_type, [pc+3]=src_reg, [pc+4]=dst_reg
+    // 参数槽位：[pc+1]=src_type, [pc+2]=dst_type, [pc+3]=src_reg, [pc+4]=dst_reg
     uint32_t srcTypeIdx = GET_INST(1);
     uint32_t srcReg = GET_INST(3);
     uint32_t dstReg = GET_INST(4);
@@ -1567,7 +1624,7 @@ void op_zero_extend(VMContext* ctx) {
 
 // OP_TRUNCATE：按目标位宽截断高位数据。
 void op_truncate(VMContext* ctx) {
-    // [pc+1]=dst_type, [pc+2]=src_reg, [pc+3]=dst_reg
+    // 参数槽位：[pc+1]=dst_type, [pc+2]=src_reg, [pc+3]=dst_reg
     uint32_t dstTypeIdx = GET_INST(1);
     uint32_t srcReg = GET_INST(2);
     uint32_t dstReg = GET_INST(3);
@@ -1586,7 +1643,7 @@ void op_truncate(VMContext* ctx) {
 
 // OP_FLOAT_EXTEND：浮点窄类型扩展到宽类型。
 void op_float_extend(VMContext* ctx) {
-    // float -> double
+    // 当前实现固定按 float -> double 扩展。
     uint32_t srcReg = GET_INST(1);
     uint32_t dstReg = GET_INST(2);
 
@@ -1600,7 +1657,7 @@ void op_float_extend(VMContext* ctx) {
 
 // OP_FLOAT_TRUNCATE：浮点宽类型截断到窄类型。
 void op_float_truncate(VMContext* ctx) {
-    // double -> float
+    // 当前实现固定按 double -> float 截断。
     uint32_t srcReg = GET_INST(1);
     uint32_t dstReg = GET_INST(2);
 
@@ -1615,7 +1672,7 @@ void op_float_truncate(VMContext* ctx) {
 
 // OP_INT_TO_FLOAT：整数转浮点。
 void op_int_to_float(VMContext* ctx) {
-    // [pc+1]=is_signed, [pc+2]=dst_type, [pc+3]=src_reg, [pc+4]=dst_reg
+    // 参数槽位：[pc+1]=is_signed, [pc+2]=dst_type, [pc+3]=src_reg, [pc+4]=dst_reg
     uint32_t isSigned = GET_INST(1);
     uint32_t dstTypeIdx = GET_INST(2);
     uint32_t srcReg = GET_INST(3);
@@ -1639,7 +1696,7 @@ void op_int_to_float(VMContext* ctx) {
 // OP_ARRAY_ELEM：按元素下标和类型信息计算元素地址。
 void op_array_elem(VMContext* ctx) {
     // 布局: [opcode][dst_reg][reserved][elem_type][dim_count][base_reg][idx_regs...]
-    // [pc+0]=opcode=40, [pc+1]=dst_reg, [pc+2]=reserved, [pc+3]=elem_type, [pc+4]=dim_count
+    // 参数槽位：[pc+0]=opcode=40, [pc+1]=dst_reg, [pc+2]=reserved, [pc+3]=elem_type, [pc+4]=dim_count
     // 若 dim_count > 0: [pc+5]=base_reg, [pc+6..pc+5+dim_count]=各维索引寄存器
     // pc 步进 = 6 + dim_count (如果有维度) 或 5 (如果 dim_count=0)
     
@@ -1678,7 +1735,7 @@ void op_array_elem(VMContext* ctx) {
 
 // OP_FLOAT_TO_INT：浮点转整数，按目标类型处理符号与位宽。
 void op_float_to_int(VMContext* ctx) {
-    // [pc+1]=is_signed, [pc+2]=src_type, [pc+3]=src_reg, [pc+4]=dst_reg
+    // 参数槽位：[pc+1]=is_signed, [pc+2]=src_type, [pc+3]=src_reg, [pc+4]=dst_reg
     uint32_t isSigned = GET_INST(1);
     uint32_t srcTypeIdx = GET_INST(2);
     uint32_t srcReg = GET_INST(3);
@@ -1702,7 +1759,7 @@ void op_float_to_int(VMContext* ctx) {
 // OP_READ：从地址读取值到寄存器。
 void op_read(VMContext* ctx) {
     // 布局: [opcode][type_idx][dst_reg][addr_reg]
-    // [pc+0]=opcode=42, [pc+1]=type_idx, [pc+2]=dst_reg, [pc+3]=addr_reg
+    // 参数槽位：[pc+0]=opcode=42, [pc+1]=type_idx, [pc+2]=dst_reg, [pc+3]=addr_reg
     // pc 步进 = 4
     
     uint32_t typeIdx = GET_INST(1);
@@ -1717,7 +1774,7 @@ void op_read(VMContext* ctx) {
 
 // OP_WRITE：把寄存器值写回地址。
 void op_write(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=value_reg
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=value_reg
     uint32_t typeIdx = GET_INST(1);
     uint32_t addrReg = GET_INST(2);
     uint32_t valueReg = GET_INST(3);
@@ -1730,7 +1787,7 @@ void op_write(VMContext* ctx) {
 
 // OP_LEA：执行地址计算（base + index * scale + offset）。
 void op_lea(VMContext* ctx) {
-    // [pc+1]=base_reg, [pc+2]=index_reg, [pc+3]=scale, [pc+4]=offset, [pc+5]=dst_reg
+    // 参数槽位：[pc+1]=base_reg, [pc+2]=index_reg, [pc+3]=scale, [pc+4]=offset, [pc+5]=dst_reg
     uint32_t baseReg = GET_INST(1);
     uint32_t indexReg = GET_INST(2);
     uint32_t scale = GET_INST(3);
@@ -1747,7 +1804,7 @@ void op_lea(VMContext* ctx) {
 
 // OP_ATOMIC_ADD：执行原子加并返回旧值。
 void op_atomic_add(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=value_reg, [pc+4]=result_reg
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=value_reg, [pc+4]=result_reg
     uint32_t typeIdx = GET_INST(1);
     uint32_t addrReg = GET_INST(2);
     uint32_t valueReg = GET_INST(3);
@@ -1776,7 +1833,7 @@ void op_atomic_add(VMContext* ctx) {
 
 // OP_ATOMIC_SUB：执行原子减并返回旧值。
 void op_atomic_sub(VMContext* ctx) {
-    // 类似 atomic_add
+    // 参数布局与 op_atomic_add 一致，仅运算符替换为减法。
     uint32_t typeIdx = GET_INST(1);
     uint32_t addrReg = GET_INST(2);
     uint32_t valueReg = GET_INST(3);
@@ -1805,7 +1862,7 @@ void op_atomic_sub(VMContext* ctx) {
 
 // OP_ATOMIC_XCHG：执行原子交换并返回旧值。
 void op_atomic_xchg(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=value_reg, [pc+4]=result_reg
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=value_reg, [pc+4]=result_reg
     uint32_t typeIdx = GET_INST(1);
     uint32_t addrReg = GET_INST(2);
     uint32_t valueReg = GET_INST(3);
@@ -1834,7 +1891,7 @@ void op_atomic_xchg(VMContext* ctx) {
 
 // OP_ATOMIC_CAS：执行原子比较交换并返回交换前值。
 void op_atomic_cas(VMContext* ctx) {
-    // [pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=expected_reg, [pc+4]=new_reg, [pc+5]=result_reg
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=addr_reg, [pc+3]=expected_reg, [pc+4]=new_reg, [pc+5]=result_reg
     uint32_t typeIdx = GET_INST(1);
     uint32_t addrReg = GET_INST(2);
     uint32_t expectedReg = GET_INST(3);

@@ -38,7 +38,7 @@ enum Opcode : uint32_t {
     OP_STRLEN         = 28,     // 字符串长度
     OP_FETCH_NEXT     = 29,     // 取下一条
     OP_CALL_INDIRECT  = 30,     // 间接调用
-    OP_SWITCH         = 31,     // Switch 跳转
+    OP_SWITCH         = 31,     // 多路分支跳转
     OP_GET_PTR        = 32,     // 获取指针
     OP_BITCAST        = 33,     // 位转换
     OP_SIGN_EXTEND    = 34,     // 符号扩展
@@ -59,11 +59,11 @@ enum Opcode : uint32_t {
     OP_FENCE          = 49,     // 内存屏障
     OP_UNREACHABLE    = 50,     // 不可达
     OP_ALLOC_VSP      = 51,     // 动态申请虚拟栈（堆上），紧接 OP_ALLOC_RETURN 后
-    OP_BINARY_IMM     = 52,     // 二元运算 reg op imm -> dstReg，右操作数为立即数，避免虚拟 scratch
-    OP_BRANCH_IF_CC   = 53,     // 按标志位条件跳转：根据 nzcv 与 cc 决定是否跳转到 branch_list[branchId]
-    OP_SET_RETURN_PC  = 54,     // 运行时设置 dstReg = 当前 pc + offset（用于 BL 的 LR，由解释器填真实返回地址）
-    OP_BL             = 55,     // BL 分支：语义由解释器实现（[1]=branchId，跳转目标 branches[branchId]）
-    OP_ADRP           = 56,     // ADRP：按模块基址+offset 计算地址
+    OP_BINARY_IMM     = 52,     // 二元运算（寄存器 + 立即数），结果写入目标寄存器
+    OP_BRANCH_IF_CC   = 53,     // 按 NZCV 条件码跳转到 branch_list[branchId]
+    OP_SET_RETURN_PC  = 54,     // 运行时写入返回地址寄存器（dstReg = 当前 pc + offset）
+    OP_BL             = 55,     // 带链接跳转（branchId -> branches[branchId]）
+    OP_ADRP           = 56,     // 基于模块基址 + 页偏移计算地址
 
     OP_MAX            = 64      // 最大 opcode 数量
 };
@@ -87,7 +87,7 @@ enum BinaryOp : uint32_t {
     BIN_OR   = 5,     // 或
     BIN_MOD  = 6,     // 取模
     BIN_IDIV = 7,     // 整数除法
-    BIN_FMOD = 8,     // fmod/整数取模
+    BIN_FMOD = 8,     // 浮点 fmod / 整数取模
     BIN_MUL  = 9,     // 乘法
     BIN_LSR  = 0xA,   // 逻辑右移
     BIN_SHL  = 0xB,   // 左移
@@ -139,16 +139,16 @@ enum CompareOp : uint32_t {
 enum ConvertOp : uint32_t {
     CONV_COPY       = 0,    // 同宽拷贝
     CONV_SEXT       = 1,    // 有符号扩展
-    CONV_F2D        = 2,    // float -> double
-    CONV_F2U        = 3,    // float -> uint
-    CONV_F2I        = 4,    // float -> int
+    CONV_F2D        = 2,    // float 转 double
+    CONV_F2U        = 3,    // float 转无符号整数
+    CONV_F2I        = 4,    // float 转有符号整数
     CONV_COPY2      = 5,    // 同宽拷贝
-    CONV_S2F        = 6,    // signed -> float
+    CONV_S2F        = 6,    // 有符号整数转 float
     CONV_TRUNC      = 7,    // 截断
-    CONV_U2F        = 8,    // unsigned -> float
+    CONV_U2F        = 8,    // 无符号整数转 float
     CONV_ASR_TRUNC  = 9,    // 算术右移截断
     CONV_COPY3      = 0xA,  // 同宽拷贝
-    CONV_D2F        = 0xB,  // double -> float
+    CONV_D2F        = 0xB,  // double 转 float
     CONV_COPY4      = 0xC,  // 同宽拷贝
 };
 
@@ -258,7 +258,7 @@ void op_float_to_int(VMContext* ctx);
 void op_read(VMContext* ctx);
 // 向地址写入指定类型值。
 void op_write(VMContext* ctx);
-// 地址计算（load effective address）。
+// 地址计算（有效地址 LEA）。
 void op_lea(VMContext* ctx);
 // 原子加操作。
 void op_atomic_add(VMContext* ctx);
@@ -331,4 +331,3 @@ void setVmModuleBase(uint64_t base);
 
 
 #endif // Z_VM_OPCODES_H
-

@@ -3,45 +3,54 @@
 
 #include "elf.h"
 #include "zInst.h"
+#include "zFunctionData.h"
 #include <string>
 #include <vector>
 #include <map>
 #include <cstddef>
 #include <cstdint>
 
-class zFunction {
+class zFunction : public zFunctionData {
 public:
+    // 导出模式：文本未编码、二进制未编码、最终编码。
     enum class DumpMode {
         UNENCODED,
         UNENCODED_BIN,
         ENCODED,
     };
 
-    zFunction() = default;
-    zFunction(std::string function_name, Elf64_Addr function_offset, std::vector<uint8_t> function_bytes);
+    // 基于现有 zFunctionData 构造函数对象。
+    explicit zFunction(const zFunctionData& data);
 
+    // 基础访问器。
     const std::string& name() const;
     Elf64_Addr offset() const;
     size_t size() const;
     const uint8_t* data() const;
     bool empty() const;
 
-    zFunction& analyzeAsm();
-    zFunction& analyzeasm();
-    const std::vector<zInst>& asmList() const;
-    const std::vector<zInst>& asmlist() const;
-    std::string getAsmInfo() const;
-    std::string getasminfo() const;
+    // 反汇编分析与输出。
+    zFunction& analyzeAssembly();
+    const std::vector<zInst>& assemblyList() const;
+    std::string assemblyInfo() const;
+
+    // 按指定模式导出到文件。
     bool dump(const char* file_path, DumpMode mode) const;
 
+    // 从未编码文本/二进制直接创建 zFunction。
     static zFunction fromUnencodedTxt(const char* file_path, const std::string& function_name = "", Elf64_Addr function_offset = 0);
     static zFunction fromUnencodedBin(const char* file_path, const std::string& function_name = "", Elf64_Addr function_offset = 0);
+
+    // 读取未编码文本/二进制到当前对象。
     bool loadUnencodedTxt(const char* file_path);
     bool loadUnencodedBin(const char* file_path);
 
 private:
+    // 确保反汇编缓存与未编码缓存可用。
     void ensure_asm_ready() const;
     void ensure_unencoded_ready() const;
+
+    // 更新未编码缓存快照。
     void set_unencoded_cache(
         uint32_t register_count,
         std::vector<uint32_t> reg_id_list,
@@ -55,26 +64,26 @@ private:
         std::vector<uint32_t> branch_words,
         std::vector<uint64_t> branch_addr_words
     ) const;
+
+    // 用未编码缓存重建 asm_list_。
     void rebuild_asm_list_from_unencoded() const;
 
-    std::string function_name_;
-    Elf64_Addr function_offset_ = 0;
-    std::vector<uint8_t> function_bytes_;
     mutable bool asm_ready_ = false;
     mutable std::vector<zInst> asm_list_;
 
     mutable bool unencoded_ready_ = false;
-    mutable uint32_t unencoded_register_count_ = 0;
-    mutable std::vector<uint32_t> unencoded_reg_list_;
-    mutable uint32_t unencoded_type_count_ = 0;
-    mutable std::vector<uint32_t> unencoded_type_tags_;
-    mutable uint32_t unencoded_init_value_count_ = 0;
-    mutable std::map<uint64_t, std::vector<uint32_t>> unencoded_inst_by_address_;
-    mutable std::map<uint64_t, std::string> unencoded_asm_by_address_;
-    mutable uint32_t unencoded_inst_count_ = 0;
-    mutable uint32_t unencoded_branch_count_ = 0;
-    mutable std::vector<uint32_t> unencoded_branch_words_;
-    mutable std::vector<uint64_t> unencoded_branch_addr_words_;
+    mutable uint32_t register_count_cache_ = 0;
+    mutable std::vector<uint32_t> register_ids_cache_;
+    mutable uint32_t type_count_cache_ = 0;
+    mutable std::vector<uint32_t> type_tags_cache_;
+    mutable uint32_t init_value_count_cache_ = 0;
+    mutable std::map<uint64_t, std::vector<uint32_t>> inst_words_by_addr_cache_;
+    mutable std::map<uint64_t, std::string> asm_text_by_addr_cache_;
+    mutable uint32_t inst_count_cache_ = 0;
+    mutable uint32_t branch_count_cache_ = 0;
+    mutable std::vector<uint32_t> branch_words_cache_;
+    mutable std::vector<uint64_t> branch_addrs_cache_;
 };
 
 #endif
+

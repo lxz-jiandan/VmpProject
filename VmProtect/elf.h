@@ -1,18 +1,16 @@
 /****************************************************************************
  ****************************************************************************
  ***
- ***   This header was automatically generated from a Linux kernel header
- ***   of the same name, to make information necessary for userspace to
- ***   call into the kernel available to libc.  It contains only constants,
- ***   structures, and macros generated from the original header, and thus,
- ***   contains no copyrightable information.
+ ***   该头文件由 Linux 内核同名头自动生成，
+ ***   用于向用户态 libc 暴露内核调用所需常量/结构/宏。
+ ***   文件内容仅包含自动生成的常量、结构体和宏定义。
  ***
  ****************************************************************************
  ****************************************************************************/
 #ifndef _UAPI_LINUX_ELF_H
 #define _UAPI_LINUX_ELF_H
 
-// Basic types
+// 基础整数类型
 typedef signed char __s8;
 typedef unsigned char __u8;
 typedef signed short __s16;
@@ -22,7 +20,7 @@ typedef unsigned int __u32;
 typedef signed long long __s64;
 typedef unsigned long long __u64;
 
-// ELF machine types (from elf-em.h)
+// ELF 机器类型（来自 elf-em.h）
 #define EM_NONE 0
 #define EM_M32 1
 #define EM_SPARC 2
@@ -72,10 +70,10 @@ typedef unsigned long long __u64;
 #define EM_S390_OLD 0xA390
 #define EM_CYGNUS_MN10300 0xbeef
 
-// DT_GNU_HASH definition
+// DT_GNU_HASH 定义
 #define DT_GNU_HASH 0x6ffffef5
 
-// PT_GNU_* definitions
+// PT_GNU_* 定义
 #define PT_GNU_RELRO 0x6474e552
 typedef __u32 Elf32_Addr;
 typedef __u16 Elf32_Half;
