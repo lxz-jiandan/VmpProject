@@ -168,9 +168,6 @@ bool zFunctionData::validate(std::string* error) const {
     if (branch_count != static_cast<uint32_t>(branch_words.size())) {
         return failWith(error, "branch_count does not match branch_words.size()");
     }
-    if (branch_count != static_cast<uint32_t>(branch_addrs.size())) {
-        return failWith(error, "branch_count does not match branch_addrs.size()");
-    }
     if (init_value_count > first_inst_count) {
         return failWith(error, "init_value_count cannot exceed first_inst_count");
     }

@@ -17,6 +17,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         zFunctionData.cpp
         zAssetManager.cpp
         zFunction.cpp
+        zSoBinBundle.cpp
         zLog.cpp)
 
 # 当前目录头文件作为私有 include，供本模块内部源码互相引用。

@@ -12,6 +12,7 @@
 #include <iterator>
 #include <cctype>
 #include <cstdlib>
+#include <unordered_map>
 #include <capstone/capstone.h>
 #include <capstone/arm64.h>
 
@@ -39,6 +40,7 @@ enum : uint32_t {
 
 enum : uint32_t {
     TYPE_TAG_INT32_SIGNED_2 = 4,
+    TYPE_TAG_INT8_UNSIGNED = 0x15,
     TYPE_TAG_INT64_SIGNED = 0xE,
 };
 
@@ -274,6 +276,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
     unencoded.initValueCount = 0;
     unencoded.branchCount = 0;
     unencoded.branchWords.clear();
+    unencoded.branchAddrWords.clear();
 
     std::vector<uint32_t> reg_id_list;
     std::vector<uint32_t> type_id_list;
@@ -298,7 +301,10 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
     uint32_t vsp_idx = getOrAddReg(reg_id_list, 31);
     unencoded.instByAddress[1] = { OP_ALLOC_VSP, 0, 0, 0, vfp_idx, vsp_idx };
 
+    // 本地跳转目标表：仅供 OP_BRANCH/OP_BRANCH_IF_CC 使用。
     std::vector<uint64_t> branch_id_list;
+    // 调用目标表：仅供 OP_BL 使用，后续可做全局共享重映射。
+    std::vector<uint64_t> call_target_list;
 
     // 遍历反汇编结果，把 ARM64 指令翻译成 VM opcode 序列。
     for (size_t j = 0; j < count; j++) {
@@ -340,12 +346,41 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 }
                 break;
             }
+            case ARM64_INS_STRB: {
+                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
+                    int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
+                    uint32_t value_reg_idx = (ops[0].reg == ARM64_REG_WZR || ops[0].reg == ARM64_REG_XZR)
+                                             ? static_cast<uint32_t>(-1)
+                                             : getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
+                    opcode_list = {
+                        OP_SET_FIELD,
+                        getOrAddTypeTag(type_id_list, TYPE_TAG_INT8_UNSIGNED),
+                        getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].mem.base)),
+                        static_cast<uint32_t>(offset),
+                        value_reg_idx
+                    };
+                }
+                break;
+            }
             case ARM64_INS_LDR: {
                 if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
                     opcode_list = {
                         OP_GET_FIELD,
                         getOrAddTypeTag(type_id_list, TYPE_TAG_INT32_SIGNED_2),
+                        getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].mem.base)),
+                        static_cast<uint32_t>(offset),
+                        getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg))
+                    };
+                }
+                break;
+            }
+            case ARM64_INS_LDRB: {
+                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
+                    int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
+                    opcode_list = {
+                        OP_GET_FIELD,
+                        getOrAddTypeTag(type_id_list, TYPE_TAG_INT8_UNSIGNED),
                         getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].mem.base)),
                         static_cast<uint32_t>(offset),
                         getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg))
@@ -363,6 +398,40 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                     } else if (ops[2].type == ARM64_OP_REG) {
                         uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
                         opcode_list = { OP_BINARY, BIN_ADD, getOrAddTypeTag(type_id_list, TYPE_TAG_INT32_SIGNED_2), lhs_idx, rhs_idx, dst_idx };
+                    }
+                }
+                break;
+            }
+            case ARM64_INS_LSL:
+            case ARM64_INS_LSLR:
+            case ARM64_INS_ALIAS_LSL: {
+                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_REG) {
+                    uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
+                    uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
+                    uint32_t type_idx = getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED);
+                    if (op_count >= 3) {
+                        if (ops[2].type == ARM64_OP_IMM) {
+                            opcode_list = {
+                                OP_BINARY_IMM,
+                                BIN_SHL,
+                                type_idx,
+                                lhs_idx,
+                                static_cast<uint32_t>(ops[2].imm),
+                                dst_idx
+                            };
+                        } else if (ops[2].type == ARM64_OP_REG) {
+                            uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
+                            opcode_list = { OP_BINARY, BIN_SHL, type_idx, lhs_idx, rhs_idx, dst_idx };
+                        }
+                    } else if (ops[1].shift.type == ARM64_SFT_LSL) {
+                        opcode_list = {
+                            OP_BINARY_IMM,
+                            BIN_SHL,
+                            type_idx,
+                            lhs_idx,
+                            static_cast<uint32_t>(ops[1].shift.value),
+                            dst_idx
+                        };
                     }
                 }
                 break;
@@ -476,6 +545,13 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 }
                 break;
             }
+            case ARM64_INS_MRS: {
+                if (op_count >= 1 && ops[0].type == ARM64_OP_REG) {
+                    uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
+                    opcode_list = { OP_LOAD_IMM, dst_idx, 0 };
+                }
+                break;
+            }
             case ARM64_INS_RET:
                 opcode_list = { OP_RETURN, 1, getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X0)) };
                 break;
@@ -484,6 +560,19 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                     opcode_list = { OP_RETURN, 1, getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X0)) };
                 }
                 break;
+            case ARM64_INS_BLR: {
+                if (op_count >= 1 && ops[0].type == ARM64_OP_REG) {
+                    uint32_t func_reg = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
+                    uint32_t x0 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X0));
+                    uint32_t x1 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X1));
+                    uint32_t x2 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X2));
+                    uint32_t x3 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X3));
+                    uint32_t x4 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X4));
+                    uint32_t x5 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X5));
+                    opcode_list = { OP_CALL, 0, 6, 1, x0, func_reg, x0, x1, x2, x3, x4, x5 };
+                }
+                break;
+            }
             case ARM64_INS_B: {
                 if (op_count >= 1 && ops[0].type == ARM64_OP_IMM && detail) {
                     arm64_cc cc = detail->aarch64.cc;
@@ -517,6 +606,30 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                         default:
                             break;
                     }
+                }
+                break;
+            }
+            case ARM64_INS_TBZ:
+            case ARM64_INS_TBNZ: {
+                static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
+                if (op_count >= 3 &&
+                    ops[0].type == ARM64_OP_REG &&
+                    ops[1].type == ARM64_OP_IMM &&
+                    ops[2].type == ARM64_OP_IMM) {
+                    uint32_t src_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
+                    uint32_t tmp_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X16));
+                    uint32_t type_idx = getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED);
+                    uint32_t bit = static_cast<uint32_t>(ops[1].imm) & 63u;
+                    uint64_t target_addr = static_cast<uint64_t>(ops[2].imm);
+                    uint32_t branch_id = getOrAddBranch(branch_id_list, target_addr);
+                    uint32_t cond_cc = (id == ARM64_INS_TBZ)
+                                       ? static_cast<uint32_t>(ARM64_CC_EQ)
+                                       : static_cast<uint32_t>(ARM64_CC_NE);
+                    opcode_list = {
+                        OP_BINARY_IMM, BIN_LSR, type_idx, src_idx, bit, tmp_idx,
+                        OP_BINARY_IMM, BIN_AND | BIN_UPDATE_FLAGS, type_idx, tmp_idx, 1, tmp_idx,
+                        OP_BRANCH_IF_CC, cond_cc, branch_id
+                    };
                 }
                 break;
             }
@@ -585,10 +698,23 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 }
                 break;
             }
+            case ARM64_INS_LDURB: {
+                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
+                    int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
+                    opcode_list = {
+                        OP_GET_FIELD,
+                        getOrAddTypeTag(type_id_list, TYPE_TAG_INT8_UNSIGNED),
+                        getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].mem.base)),
+                        static_cast<uint32_t>(offset),
+                        getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg))
+                    };
+                }
+                break;
+            }
             case ARM64_INS_BL: {
                 if (op_count >= 1 && ops[0].type == ARM64_OP_IMM) {
                     uint64_t target_addr = static_cast<uint64_t>(ops[0].imm);
-                    uint32_t branch_id = getOrAddBranch(branch_id_list, target_addr);
+                    uint32_t branch_id = getOrAddBranch(call_target_list, target_addr);
                     opcode_list = { OP_BL, branch_id };
                 }
                 break;
@@ -611,7 +737,46 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             default:
-                LOGE("Unsupported instruction: %d %s", insn[j].id, insn[j].mnemonic);
+                // 某些 capstone 版本会把 LSL 记为不同 ID，但 mnemonic 仍是 lsl。
+                if (insn[j].mnemonic && std::strcmp(insn[j].mnemonic, "lsl") == 0) {
+                    if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_REG) {
+                        uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
+                        uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
+                        uint32_t type_idx = getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED);
+                        if (op_count >= 3) {
+                            if (ops[2].type == ARM64_OP_IMM) {
+                                opcode_list = {
+                                    OP_BINARY_IMM,
+                                    BIN_SHL,
+                                    type_idx,
+                                    lhs_idx,
+                                    static_cast<uint32_t>(ops[2].imm),
+                                    dst_idx
+                                };
+                            } else if (ops[2].type == ARM64_OP_REG) {
+                                uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
+                                opcode_list = { OP_BINARY, BIN_SHL, type_idx, lhs_idx, rhs_idx, dst_idx };
+                            }
+                        } else if (ops[1].shift.type == ARM64_SFT_LSL) {
+                            opcode_list = {
+                                OP_BINARY_IMM,
+                                BIN_SHL,
+                                type_idx,
+                                lhs_idx,
+                                static_cast<uint32_t>(ops[1].shift.value),
+                                dst_idx
+                            };
+                        }
+                        if (!opcode_list.empty()) {
+                            break;
+                        }
+                    }
+                }
+                LOGE("Unsupported instruction: %d %s %s (op_count=%u)",
+                     insn[j].id,
+                     insn[j].mnemonic ? insn[j].mnemonic : "",
+                     insn[j].op_str ? insn[j].op_str : "",
+                     static_cast<unsigned>(op_count));
                 break;
         }
 
@@ -633,7 +798,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
         pc += static_cast<uint32_t>(kv.second.size());
     }
 
-    unencoded.branchAddrWords = branch_id_list;
+    unencoded.branchAddrWords = call_target_list;
     unencoded.branchWords.clear();
     for (uint64_t arm_addr : branch_id_list) {
         auto it = addr_to_pc.find(arm_addr);
@@ -1018,9 +1183,6 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
     if (out.branchWords.size() != out.branchCount) {
         return false;
     }
-    if (out.branchAddrWords.size() != out.branchCount) {
-        return false;
-    }
     if (parsed_branch_addr_count != out.branchAddrWords.size()) {
         return false;
     }
@@ -1329,6 +1491,57 @@ std::string zFunction::assemblyInfo() const {
         oss << asm_list_[i].getInfo();
     }
     return oss.str();
+}
+
+const std::vector<uint64_t>& zFunction::sharedBranchAddrs() const {
+    ensure_unencoded_ready();
+    return branch_addrs_cache_;
+}
+
+bool zFunction::remapBlToSharedBranchAddrs(const std::vector<uint64_t>& shared_branch_addrs) {
+    ensure_unencoded_ready();
+    if (shared_branch_addrs.empty()) {
+        for (const auto& kv : inst_words_by_addr_cache_) {
+            const std::vector<uint32_t>& words = kv.second;
+            if (!words.empty() && words[0] == OP_BL) {
+                return false;
+            }
+        }
+        branch_addrs_cache_.clear();
+        return true;
+    }
+
+    std::unordered_map<uint64_t, uint32_t> global_index_map;
+    global_index_map.reserve(shared_branch_addrs.size());
+    for (uint32_t i = 0; i < static_cast<uint32_t>(shared_branch_addrs.size()); ++i) {
+        global_index_map.emplace(shared_branch_addrs[i], i);
+    }
+
+    for (auto& kv : inst_words_by_addr_cache_) {
+        std::vector<uint32_t>& words = kv.second;
+        if (words.empty() || words[0] != OP_BL) {
+            continue;
+        }
+        if (words.size() < 2) {
+            return false;
+        }
+
+        const uint32_t local_index = words[1];
+        if (local_index >= branch_addrs_cache_.size()) {
+            return false;
+        }
+
+        const uint64_t target_addr = branch_addrs_cache_[local_index];
+        auto it = global_index_map.find(target_addr);
+        if (it == global_index_map.end()) {
+            return false;
+        }
+        words[1] = it->second;
+    }
+
+    // 所有函数统一写入同一份全局 branch_addr_list，保证索引语义一致。
+    branch_addrs_cache_ = shared_branch_addrs;
+    return true;
 }
 
 zFunction zFunction::fromUnencodedTxt(const char* file_path, const std::string& function_name, Elf64_Addr function_offset) {

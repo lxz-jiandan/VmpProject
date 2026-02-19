@@ -118,6 +118,22 @@ soinfo* zVmEngine::GetSoinfo(const char* name) {
     return linker_->GetSoinfo(name);
 }
 
+void zVmEngine::setSharedBranchAddrs(const char* soName, std::vector<uint64_t> branchAddrs) {
+    if (soName == nullptr || soName[0] == '\0') {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(shared_branch_mutex_);
+    shared_branch_addrs_map_[soName] = std::move(branchAddrs);
+}
+
+void zVmEngine::clearSharedBranchAddrs(const char* soName) {
+    if (soName == nullptr || soName[0] == '\0') {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(shared_branch_mutex_);
+    shared_branch_addrs_map_.erase(soName);
+}
+
 // 清空缓存：释放所有 VmState 及其附属动态内存。
 void zVmEngine::clearCache() {
     std::unique_lock<std::shared_timed_mutex> lock(cache_mutex_);
@@ -131,21 +147,38 @@ void zVmEngine::clearCache() {
 uint64_t zVmEngine::executeState(
     zFunction* function,
     VMRegSlot* registers,
-    void* retBuffer
+    void* retBuffer,
+    const char* soName
 ) {
     if (function == nullptr) {
         return 0;
     }
+    if (soName == nullptr || soName[0] == '\0') {
+        LOGE("executeState failed: invalid soName");
+        return 0;
+    }
 
     uint64_t* branchAddrPtr = function->ext_list;
-    std::vector<uint64_t> branchAddrsList = function->branchAddrs();
+    std::vector<uint64_t> branchAddrsList;
+    {
+        std::lock_guard<std::mutex> lock(shared_branch_mutex_);
+        auto it = shared_branch_addrs_map_.find(soName);
+        if (it != shared_branch_addrs_map_.end()) {
+            branchAddrsList = it->second;
+        }
+    }
+    if (branchAddrsList.empty()) {
+        branchAddrsList = function->branchAddrs();
+    }
     if (!branchAddrsList.empty()) {
-        soinfo* soInfo = GetSoinfo("libdemo.so");
-        if (soInfo != nullptr) {
-            setVmModuleBase(soInfo->base);
-            for (uint64_t& addr : branchAddrsList) {
-                addr += soInfo->base;
-            }
+        soinfo* soInfo = GetSoinfo(soName);
+        if (soInfo == nullptr) {
+            LOGE("executeState failed: soinfo not found for %s", soName);
+            return 0;
+        }
+        setVmModuleBase(soInfo->base);
+        for (uint64_t& addr : branchAddrsList) {
+            addr += soInfo->base;
         }
         branchAddrPtr = branchAddrsList.data();
     }
@@ -160,15 +193,23 @@ uint64_t zVmEngine::executeState(
         function->inst_list,
         function->branch_count,
         function->branch_words_ptr,
+        branchAddrsList.empty() ? function->branch_count : static_cast<uint32_t>(branchAddrsList.size()),
         branchAddrPtr
     );
 }
 
 uint64_t zVmEngine::execute(
     void* retBuffer,
+    const char* soName,
     uint64_t funAddr,
     const zParams& params
 ) {
+    if (soName == nullptr || soName[0] == '\0') {
+        LOGE("execute by fun_addr failed: soName is empty, fun_addr=0x%llx",
+             static_cast<unsigned long long>(funAddr));
+        return 0;
+    }
+
     // 先在缓存中定位目标函数。
     std::shared_lock<std::shared_timed_mutex> lock(cache_mutex_);
     auto it = cache_.find(funAddr);
@@ -200,7 +241,7 @@ uint64_t zVmEngine::execute(
             }
         }
 
-        const uint64_t result = executeState(function, registers, retBuffer);
+        const uint64_t result = executeState(function, registers, retBuffer, soName);
         freeRegManager(regMgr);
         return result;
     }
@@ -246,25 +287,32 @@ uint64_t zVmEngine::execute(
 
     std::vector<uint32_t> instList = function->instWords();
     std::vector<uint32_t> branchWordList = function->branchWords();
-    std::vector<uint64_t> branchAddrList = function->branchAddrs();
+    std::vector<uint64_t> branchAddrList;
+    {
+        std::lock_guard<std::mutex> lock(shared_branch_mutex_);
+        auto it = shared_branch_addrs_map_.find(soName);
+        if (it != shared_branch_addrs_map_.end()) {
+            branchAddrList = it->second;
+        }
+    }
+    if (branchAddrList.empty()) {
+        branchAddrList = function->branchAddrs();
+    }
     if (instList.size() < instCount || branchWordList.size() < branchCount) {
         LOGE("execute by fun_addr failed: instruction or branch list too short, fun_addr=0x%llx",
              static_cast<unsigned long long>(funAddr));
         return 0;
     }
-    if (!branchAddrList.empty() && branchAddrList.size() < branchCount) {
-        LOGE("execute by fun_addr failed: branch addr list too short, fun_addr=0x%llx",
-             static_cast<unsigned long long>(funAddr));
+    // 分支地址按模块基址重定位，和 encoded 路径保持一致。
+    soinfo* soInfo = GetSoinfo(soName);
+    if (soInfo == nullptr) {
+        LOGE("execute by fun_addr failed: soinfo not found for %s, fun_addr=0x%llx",
+             soName, static_cast<unsigned long long>(funAddr));
         return 0;
     }
-
-    // 分支地址按模块基址重定位，和 encoded 路径保持一致。
-    soinfo* soInfo = GetSoinfo("libdemo.so");
-    if (soInfo != nullptr) {
-        setVmModuleBase(soInfo->base);
-        for (size_t i = 0; i < branchAddrList.size(); ++i) {
-            branchAddrList[i] += soInfo->base;
-        }
+    setVmModuleBase(soInfo->base);
+    for (size_t i = 0; i < branchAddrList.size(); ++i) {
+        branchAddrList[i] += soInfo->base;
     }
 
     uint32_t* branchWordsPtr = branchWordList.empty() ? nullptr : branchWordList.data();
@@ -279,6 +327,7 @@ uint64_t zVmEngine::execute(
         instList.data(),
         branchCount,
         branchWordsPtr,
+        branchAddrList.empty() ? branchCount : static_cast<uint32_t>(branchAddrList.size()),
         branchAddrsPtr
     );
 }
@@ -294,6 +343,7 @@ uint64_t zVmEngine::execute(
     uint32_t* instructions,
     uint32_t branchCount,
     uint32_t* branch_id_list,
+    uint32_t branchAddrCount,
     uint64_t* branch_addr_list
 ) {
     if (instCount == 0 || instructions == nullptr) return 0;
@@ -313,6 +363,7 @@ uint64_t zVmEngine::execute(
     ctx.instructions = instructions;
     ctx.branch_count = branchCount;
     ctx.branch_id_list = branch_id_list;
+    ctx.branch_addr_count = branchAddrCount;
     ctx.branch_addr_list = branch_addr_list;
     ctx.pc = 0;
     ctx.branch_id = 0;

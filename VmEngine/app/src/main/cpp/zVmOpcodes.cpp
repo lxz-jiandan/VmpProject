@@ -979,6 +979,12 @@ void op_get_field(VMContext* ctx) {
 
     zType* type = GET_TYPE(typeIdx);
     uint64_t base = GET_REG(baseReg).value;
+    if (base == 0) {
+        GET_REG(dstReg).value = 0;
+        GET_REG(dstReg).ownership = 0;
+        ctx->pc += 5;
+        return;
+    }
     void* fieldAddr = reinterpret_cast<void*>(base + offset);
 
     if (fieldAddr && type) {
@@ -1034,6 +1040,10 @@ void op_set_field(VMContext* ctx) {
 
     zType* type = GET_TYPE(typeIdx);
     uint64_t base = GET_REG(baseReg).value;
+    if (base == 0) {
+        ctx->pc += 5;
+        return;
+    }
     uint64_t value = (valueReg < ctx->register_count) ? GET_REG(valueReg).value : 0;
     void* fieldAddr = reinterpret_cast<void*>(base + offset);
 
@@ -1244,6 +1254,36 @@ void op_set_return_pc(VMContext* ctx) {
     ctx->pc += 3;
 }
 
+// 以 AArch64 ABI 调用原生地址：显式传入 x0..x7 和 x8（用于 sret 等隐藏参数）。
+static uint64_t call_native_with_x8(uint64_t target_addr, const uint64_t args[8], uint64_t x8_value) {
+#if defined(__aarch64__)
+    register uint64_t x0 asm("x0") = args[0];
+    register uint64_t x1 asm("x1") = args[1];
+    register uint64_t x2 asm("x2") = args[2];
+    register uint64_t x3 asm("x3") = args[3];
+    register uint64_t x4 asm("x4") = args[4];
+    register uint64_t x5 asm("x5") = args[5];
+    register uint64_t x6 asm("x6") = args[6];
+    register uint64_t x7 asm("x7") = args[7];
+    register uint64_t x8 asm("x8") = x8_value;
+    register uint64_t x16 asm("x16") = target_addr;
+    asm volatile(
+        "blr x16"
+        : "+r"(x0), "+r"(x1), "+r"(x2), "+r"(x3), "+r"(x4),
+          "+r"(x5), "+r"(x6), "+r"(x7), "+r"(x8), "+r"(x16)
+        :
+        : "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x17", "x30", "memory", "cc");
+    return x0;
+#else
+    using BlrFunc8 = uint64_t (*)(
+        uint64_t, uint64_t, uint64_t, uint64_t,
+        uint64_t, uint64_t, uint64_t, uint64_t
+    );
+    auto fn = reinterpret_cast<BlrFunc8>(target_addr);
+    return fn(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]);
+#endif
+}
+
 // OP_BL：带链接跳转，保存返回位点并跳转到目标。
 void op_bl(VMContext* ctx) {
     // [0]=OP_BL, [1]=branchId；语义由你实现：通常设 LR=返回地址、跳转到 branch_id_list[branchId]
@@ -1263,8 +1303,8 @@ void op_bl(VMContext* ctx) {
     }
     VM_TRACE_LOGD("[OP_BL] branchId=%u", (unsigned)branchId);
 
-    if (ctx->branch_addr_list == nullptr || branchId >= ctx->branch_count) {
-        LOGE("op_bl invalid branch target: branchId=%u branch_count=%u", branchId, ctx->branch_count);
+    if (ctx->branch_addr_list == nullptr || branchId >= ctx->branch_addr_count) {
+        LOGE("op_bl invalid branch target: branchId=%u branch_addr_count=%u", branchId, ctx->branch_addr_count);
         ctx->running = false;
         return;
     }
@@ -1288,15 +1328,11 @@ void op_bl(VMContext* ctx) {
         }
     }
 
-    using BlrFunc8 = uint64_t (*)(
-        uint64_t, uint64_t, uint64_t, uint64_t,
-        uint64_t, uint64_t, uint64_t, uint64_t
-    );
-    auto fn = reinterpret_cast<BlrFunc8>(new_addr);
-    uint64_t value = fn(
-        args[0], args[1], args[2], args[3],
-        args[4], args[5], args[6], args[7]
-    );
+    uint64_t arg_x8 = 0;
+    if (ctx->register_count > 8) {
+        arg_x8 = GET_REG(8).value;
+    }
+    uint64_t value = call_native_with_x8(new_addr, args, arg_x8);
 
     if (ctx->register_count > 0) {
         GET_REG(0).value = value;

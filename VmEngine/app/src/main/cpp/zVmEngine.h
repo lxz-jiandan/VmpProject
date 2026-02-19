@@ -9,6 +9,7 @@
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -63,6 +64,7 @@ struct VMContext {
     uint32_t*    instructions;     // 指令数组
     uint32_t     branch_count;     // 分支表项数
     uint32_t*    branch_id_list;   // 分支表：branch_id -> 目标 pc
+    uint32_t     branch_addr_count;// 外部调用地址表项数（供 OP_BL 使用）
     uint64_t*    branch_addr_list; // 分支表：branch_id -> 目标原生地址（可选）
 
     uint32_t     pc;               // 程序计数器
@@ -101,12 +103,14 @@ public:
         uint32_t* instructions,
         uint32_t branchCount,
         uint32_t* branches,
+        uint32_t branchAddrCount,
         uint64_t* ext_list
     );
 
-    // 通过 fun_addr 执行缓存中的函数，参数由 zParams 写入寄存器。
+    // 通过 soName + fun_addr 执行缓存中的函数，参数由 zParams 写入寄存器。
     uint64_t execute(
         void* retBuffer,
+        const char* soName,
         uint64_t funAddr,
         const zParams& params
     );
@@ -118,6 +122,10 @@ public:
     bool LoadLibrary(const char* path);
     // 查询已加载 so 的 soinfo。
     soinfo* GetSoinfo(const char* name);
+    // 设置模块级共享 branch_addr_list（覆盖函数内同名数据）。
+    void setSharedBranchAddrs(const char* soName, std::vector<uint64_t> branchAddrs);
+    // 清理模块级共享 branch_addr_list。
+    void clearSharedBranchAddrs(const char* soName);
 
     // 清除缓存并释放函数对象及其附属资源。
     void clearCache();
@@ -136,12 +144,15 @@ private:
     std::unique_ptr<zLinker> linker_;
     mutable std::shared_timed_mutex cache_mutex_;
     mutable std::mutex linker_mutex_;
+    mutable std::mutex shared_branch_mutex_;
+    std::unordered_map<std::string, std::vector<uint64_t>> shared_branch_addrs_map_;
 
     // 使用指定寄存器区执行已解码状态，并写入返回缓冲。
     uint64_t executeState(
         zFunction* function,
         VMRegSlot* registers,
-        void* retBuffer
+        void* retBuffer,
+        const char* soName
     );
 
     // 释放单个函数对象及其附属资源。

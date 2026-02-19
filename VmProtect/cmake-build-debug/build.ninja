@@ -77,6 +77,13 @@ build CMakeFiles/VmProtect.dir/zInst.cpp.obj: CXX_COMPILER__VmProtect_Debug D$:/
   OBJECT_DIR = CMakeFiles\VmProtect.dir
   OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
 
+build CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj: CXX_COMPILER__VmProtect_Debug D$:/work/2026/0217_vmp_project/VmpProject/VmProtect/zSoBinBundle.cpp || cmake_object_order_depends_target_VmProtect
+  DEP_FILE = CMakeFiles\VmProtect.dir\zSoBinBundle.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -isystem D:/work/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
+
 build CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj: CXX_COMPILER__VmProtect_Debug D$:/work/2026/0217_vmp_project/VmpProject/VmProtect/zFunctionData.cpp || cmake_object_order_depends_target_VmProtect
   DEP_FILE = CMakeFiles\VmProtect.dir\zFunctionData.cpp.obj.d
   FLAGS = -g -std=c++17
@@ -99,7 +106,7 @@ build CMakeFiles/VmProtect.dir/zFunction.cpp.obj: CXX_COMPILER__VmProtect_Debug 
 #############################################
 # Link the executable VmProtect.exe
 
-build VmProtect.exe: CXX_EXECUTABLE_LINKER__VmProtect_Debug CMakeFiles/VmProtect.dir/main.cpp.obj CMakeFiles/VmProtect.dir/zElf.cpp.obj CMakeFiles/VmProtect.dir/zLog.cpp.obj CMakeFiles/VmProtect.dir/zInst.cpp.obj CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj CMakeFiles/VmProtect.dir/zFunction.cpp.obj | ../capstone_sdk/lib/capstone.lib
+build VmProtect.exe: CXX_EXECUTABLE_LINKER__VmProtect_Debug CMakeFiles/VmProtect.dir/main.cpp.obj CMakeFiles/VmProtect.dir/zElf.cpp.obj CMakeFiles/VmProtect.dir/zLog.cpp.obj CMakeFiles/VmProtect.dir/zInst.cpp.obj CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj CMakeFiles/VmProtect.dir/zFunction.cpp.obj | ../capstone_sdk/lib/capstone.lib
   FLAGS = -g
   LINK_LIBRARIES = ../capstone_sdk/lib/capstone.lib  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\VmProtect.dir

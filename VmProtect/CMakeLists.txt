@@ -20,6 +20,7 @@ add_executable(VmProtect
     zElf.cpp
     zLog.cpp
     zInst.cpp
+    zSoBinBundle.cpp
     zFunctionData.cpp
     zFunction.cpp
 )

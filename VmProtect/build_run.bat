@@ -11,8 +11,8 @@ set "BUILD_DIR=%ROOT_DIR%\cmake-build-debug"
 set "TARGET=VmProtect"
 set "ASSET_DIR=%ROOT_DIR%\..\VmEngine\app\src\main\assets"
 
-set "RUN_ARG=%~1"
-if "%RUN_ARG%"=="" set "RUN_ARG=fun_for_add"
+set "RUN_ARGS=%*"
+if "%RUN_ARGS%"=="" set "RUN_ARGS=fun_for fun_add fun_for_add fun_if_sub fun_countdown_muladd fun_loop_call_mix fun_call_chain fun_branch_call fun_cpp_make_string fun_cpp_string_len fun_cpp_vector_sum fun_cpp_virtual_mix"
 
 set "PATH=D:\Clion2022\bin\mingw\bin;%PATH%"
 
@@ -41,7 +41,7 @@ if errorlevel 1 (
 )
 
 pushd "%BUILD_DIR%"
-".\%TARGET%.exe" "%RUN_ARG%"
+".\%TARGET%.exe" %RUN_ARGS%
 set "RET=%ERRORLEVEL%"
 popd
 
@@ -53,32 +53,60 @@ if not "%RET%"=="0" (
 if not exist "%ASSET_DIR%" (
     echo [WARN] asset dir not found: %ASSET_DIR%
 ) else (
-    if not exist "%BUILD_DIR%\fun_for_add.txt" (
-        echo [ERROR] missing exported file: %BUILD_DIR%\fun_for_add.txt
-        popd
-        exit /b 1
-    )
-    if not exist "%BUILD_DIR%\fun_for_add.bin" (
-        echo [ERROR] missing exported file: %BUILD_DIR%\fun_for_add.bin
+    if not exist "%BUILD_DIR%\libdemo_expand.so" (
+        echo [ERROR] missing exported file: %BUILD_DIR%\libdemo_expand.so
         popd
         exit /b 1
     )
 
-    copy /Y "%BUILD_DIR%\fun_for_add.txt" "%ASSET_DIR%\fun_for_add.txt" >nul
+    if not exist "%BUILD_DIR%\branch_addr_list.txt" (
+        echo [ERROR] missing exported file: %BUILD_DIR%\branch_addr_list.txt
+        popd
+        exit /b 1
+    )
+
+    copy /Y "%BUILD_DIR%\libdemo_expand.so" "%ASSET_DIR%\libdemo_expand.so" >nul
     if errorlevel 1 (
-        echo [ERROR] failed to copy fun_for_add.txt to assets
+        echo [ERROR] failed to copy libdemo_expand.so to assets
         popd
         exit /b 1
     )
 
-    copy /Y "%BUILD_DIR%\fun_for_add.bin" "%ASSET_DIR%\fun_for_add.bin" >nul
+    copy /Y "%BUILD_DIR%\branch_addr_list.txt" "%ASSET_DIR%\branch_addr_list.txt" >nul
     if errorlevel 1 (
-        echo [ERROR] failed to copy fun_for_add.bin to assets
+        echo [ERROR] failed to copy branch_addr_list.txt to assets
         popd
         exit /b 1
     )
 
-    echo [OK] exported fun_for_add.txt and fun_for_add.bin to %ASSET_DIR%
+    for %%F in (%RUN_ARGS%) do (
+        if not exist "%BUILD_DIR%\%%F.txt" (
+            echo [ERROR] missing exported file: %BUILD_DIR%\%%F.txt
+            popd
+            exit /b 1
+        )
+        if not exist "%BUILD_DIR%\%%F.bin" (
+            echo [ERROR] missing exported file: %BUILD_DIR%\%%F.bin
+            popd
+            exit /b 1
+        )
+
+        copy /Y "%BUILD_DIR%\%%F.txt" "%ASSET_DIR%\%%F.txt" >nul
+        if errorlevel 1 (
+            echo [ERROR] failed to copy %%F.txt to assets
+            popd
+            exit /b 1
+        )
+
+        copy /Y "%BUILD_DIR%\%%F.bin" "%ASSET_DIR%\%%F.bin" >nul
+        if errorlevel 1 (
+            echo [ERROR] failed to copy %%F.bin to assets
+            popd
+            exit /b 1
+        )
+    )
+
+    echo [OK] exported libdemo_expand.so + branch_addr_list.txt + function txt/bin to %ASSET_DIR%
 )
 
 popd

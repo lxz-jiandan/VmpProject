@@ -1,8 +1,0 @@
-# ninja log v5
-2629	3411	7931424569142393	VmProtect.exe	ae47402ae47c594d
-23	147	7930363209375818	CMakeFiles/VmProtect.dir/zLog.cpp.obj	12e23878b4e83486
-3	673	7931424541794236	CMakeFiles/VmProtect.dir/main.cpp.obj	6a01444d3886b17b
-8	574	7930363213651369	CMakeFiles/VmProtect.dir/zInst.cpp.obj	cefab0407cd814db
-13	1606	7931424551109490	CMakeFiles/VmProtect.dir/zElf.cpp.obj	37a4fbcafae34fca
-28	2626	7931424561286319	CMakeFiles/VmProtect.dir/zFunction.cpp.obj	772bdc629e6d3530
-20	1169	7931424546737106	CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj	f6cd1e7ac476ee74

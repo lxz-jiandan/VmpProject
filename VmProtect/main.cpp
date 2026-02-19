@@ -1,85 +1,185 @@
+#include <cinttypes>
+#include <fstream>
+#include <string>
+#include <unordered_set>
 #include <vector>
+
 #include "zElf.h"
-#include "zLog.h"
 #include "zFunction.h"
+#include "zLog.h"
+#include "zSoBinBundle.h"
 
-static const uint32_t reg_id_list[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 };
-static const uint32_t reg_id_count = sizeof(reg_id_list)/sizeof(uint32_t);
-static const uint32_t type_id_count = 2;
-static const uint32_t type_id_list[] = { 14, 4 };
-static const uint32_t branch_id_count = 6;
-uint32_t branch_id_list[] = { 55, 119, 71, 0, 101, 0 };
-static const uint64_t branch_addr_count = 6;
-uint64_t branch_addr_list[] = { 0x1dd28, 0x1dd64, 0x1dd38, 0x425b0, 0x1dd54, 0x425c0 };
-static const uint32_t inst_id_count = 173;
-uint32_t inst_id_list[] = {
-        6, 0, 0, 0, 0,                                // OP_ALLOC_RETURN
-        51, 0, 0, 0, 29, 31,                          // OP_ALLOC_VSP
-        52, 1, 0, 31, 32, 31,                         // OP_BINARY_IMM       0x1dd08: sub sp, sp, #0x20
-        13, 0, 31, 16, 29, 13, 0, 31, 24, 30,         // OP_SET_FIELD        0x1dd0c: stp x29, x30, [sp, #0x10]
-        52, 4, 0, 31, 16, 29,                         // OP_BINARY_IMM       0x1dd10: add x29, sp, #0x10
-        13, 1, 29, 4294967292, 0,                     // OP_SET_FIELD        0x1dd14: stur w0, [x29, #-4]
-        13, 1, 31, 8, 1,                              // OP_SET_FIELD        0x1dd18: str w1, [sp, #8]
-        13, 1, 31, 4, 4294967295,                     // OP_SET_FIELD        0x1dd1c: str wzr, [sp, #4]
-        13, 1, 31, 0, 4294967295,                     // OP_SET_FIELD        0x1dd20: str wzr, [sp]
-        17, 0,                                        // OP_BRANCH           0x1dd24: b 0x1dd28
-        11, 1, 31, 0, 8,                              // OP_GET_FIELD        0x1dd28: ldr w8, [sp]
-        52, 65, 0, 8, 5, 8,                           // OP_BINARY_IMM       0x1dd2c: subs w8, w8, #5
-        53, 10, 1,                                    // OP_BRANCH_IF_CC     0x1dd30: b.ge 0x1dd64
-        17, 2,                                        // OP_BRANCH           0x1dd34: b 0x1dd38
-        11, 1, 29, 4294967292, 0,                     // OP_GET_FIELD        0x1dd38: ldur w0, [x29, #-4]
-        11, 1, 31, 8, 1,                              // OP_GET_FIELD        0x1dd3c: ldr w1, [sp, #8]
-        55, 3,                                        // OP_BL               0x1dd40: bl 0x425b0
-        11, 1, 31, 4, 8,                              // OP_GET_FIELD        0x1dd44: ldr w8, [sp, #4]
-        1, 4, 1, 8, 0, 8,                             // OP_BINARY           0x1dd48: add w8, w8, w0
-        13, 1, 31, 4, 8,                              // OP_SET_FIELD        0x1dd4c: str w8, [sp, #4]
-        17, 4,                                        // OP_BRANCH           0x1dd50: b 0x1dd54
-        11, 1, 31, 0, 8,                              // OP_GET_FIELD        0x1dd54: ldr w8, [sp]
-        52, 4, 0, 8, 1, 8,                            // OP_BINARY_IMM       0x1dd58: add w8, w8, #1
-        13, 1, 31, 0, 8,                              // OP_SET_FIELD        0x1dd5c: str w8, [sp]
-        17, 0,                                        // OP_BRANCH           0x1dd60: b 0x1dd28
-        11, 1, 31, 4, 3,                              // OP_GET_FIELD        0x1dd64: ldr w3, [sp, #4]
-        21, 0, 6,                                     // OP_LOAD_IMM         0x1dd68: mov w0, #6
-        56, 0, 81920, 0,                              // OP_ADRP             0x1dd6c: adrp x1, 0x14000
-        52, 4, 0, 0, 250, 0,                          // OP_BINARY_IMM       0x1dd70: add x1, x1, #0xfa
-        56, 0, 81920, 0,                              // OP_ADRP             0x1dd74: adrp x2, 0x14000
-        52, 4, 0, 0, 254, 0,                          // OP_BINARY_IMM       0x1dd78: add x2, x2, #0xfe
-        55, 5,                                        // OP_BL               0x1dd7c: bl 0x425c0
-        11, 1, 31, 4, 0,                              // OP_GET_FIELD        0x1dd80: ldr w0, [sp, #4]
-        11, 0, 31, 16, 29, 11, 0, 31, 24, 30,         // OP_GET_FIELD        0x1dd84: ldp x29, x30, [sp, #0x10]
-        52, 4, 0, 31, 32, 31,                         // OP_BINARY_IMM       0x1dd88: add sp, sp, #0x20
-        16, 1, 0,                                     // OP_RETURN           0x1dd8c: ret
-};
+namespace {
 
+bool readFileBytes(const char* path, std::vector<uint8_t>& out) {
+    out.clear();
+    if (!path || path[0] == '\0') {
+        return false;
+    }
+
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        return false;
+    }
+    in.seekg(0, std::ios::end);
+    const std::streamoff size = in.tellg();
+    if (size < 0) {
+        return false;
+    }
+    in.seekg(0, std::ios::beg);
+
+    out.resize(static_cast<size_t>(size));
+    if (!out.empty()) {
+        in.read(reinterpret_cast<char*>(out.data()), static_cast<std::streamsize>(out.size()));
+    }
+    return static_cast<bool>(in);
+}
+
+bool writeSharedBranchAddrList(const char* file_path, const std::vector<uint64_t>& branch_addrs) {
+    if (file_path == nullptr || file_path[0] == '\0') {
+        return false;
+    }
+
+    std::ofstream out(file_path, std::ios::trunc);
+    if (!out) {
+        return false;
+    }
+
+    out << "static const uint64_t branch_addr_count = " << branch_addrs.size() << ";\n";
+    if (branch_addrs.empty()) {
+        out << "uint64_t branch_addr_list[1] = {};\n";
+        return static_cast<bool>(out);
+    }
+
+    out << "uint64_t branch_addr_list[] = { ";
+    for (size_t i = 0; i < branch_addrs.size(); ++i) {
+        if (i > 0) {
+            out << ", ";
+        }
+        out << "0x" << std::hex << branch_addrs[i] << std::dec;
+    }
+    out << " };\n";
+    return static_cast<bool>(out);
+}
+
+void appendUniqueBranchAddrs(
+    const std::vector<uint64_t>& local_addrs,
+    std::unordered_set<uint64_t>& seen_addrs,
+    std::vector<uint64_t>& out_shared
+) {
+    for (uint64_t addr : local_addrs) {
+        if (seen_addrs.insert(addr).second) {
+            out_shared.push_back(addr);
+        }
+    }
+}
+
+} // namespace
 
 int main(int argc, char* argv[]) {
     const char* so_path = "D:\\work\\2026\\0217_vmp_project\\VmpProject\\VmProtect\\libdemo.so";
+    const char* expanded_so_path = "libdemo_expand.so";
+    const char* shared_branch_file = "branch_addr_list.txt";
 
-    // 1) 加载并解析目标 so，建立符号与函数索引。
     zElf elf(so_path);
 
-    // 2) 读取待导出的函数名：支持命令行覆盖，默认 fun_for_add。
-    const char* function_name = argc > 1 ? argv[1] : "fun_for_add";
+    // 支持多函数导出；默认覆盖三条回归函数。
+    std::vector<std::string> function_names;
+    for (int i = 1; i < argc; ++i) {
+        if (argv[i] && argv[i][0] != '\0') {
+            function_names.emplace_back(argv[i]);
+        }
+    }
+    if (function_names.empty()) {
+        function_names = {
+            "fun_for",
+            "fun_add",
+            "fun_for_add",
+            "fun_if_sub",
+            "fun_countdown_muladd",
+            "fun_loop_call_mix",
+            "fun_call_chain",
+            "fun_branch_call",
+            "fun_cpp_make_string",
+            "fun_cpp_string_len",
+            "fun_cpp_vector_sum",
+            "fun_cpp_virtual_mix",
+        };
+    }
 
-    // 3) 获取函数对象并做基础有效性校验。
-    zFunction* function = elf.getfunction(function_name);
-    if (!function) {
-        LOGE("获取 zFunction 失败: %s", function_name);
+    std::vector<zFunction*> functions;
+    functions.reserve(function_names.size());
+    for (const std::string& function_name : function_names) {
+        zFunction* function = elf.getfunction(function_name.c_str());
+        if (!function) {
+            LOGE("获取 zFunction 失败: %s", function_name.c_str());
+            return 1;
+        }
+
+        LOGI("找到函数 %s 在偏移: 0x%llx",
+             function->name().c_str(),
+             static_cast<unsigned long long>(function->offset()));
+        functions.push_back(function);
+    }
+
+    // 第一阶段：收集全局共享 branch_addr_list（顺序稳定：按函数顺序 + 首次出现顺序）。
+    std::vector<uint64_t> shared_branch_addrs;
+    std::unordered_set<uint64_t> seen_addrs;
+    for (zFunction* function : functions) {
+        appendUniqueBranchAddrs(function->sharedBranchAddrs(), seen_addrs, shared_branch_addrs);
+    }
+
+    if (!writeSharedBranchAddrList(shared_branch_file, shared_branch_addrs)) {
+        LOGE("写入共享分支地址文件失败: %s", shared_branch_file);
         return 1;
     }
 
-    // 4) 打印函数基本信息和反汇编结果，便于核对导出质量。
-    LOGI("找到函数 %s 在偏移: 0x%llx", function->name().c_str(), (unsigned long long)function->offset());
-    LOGI("函数大小: %zu 字节 (0x%zx)", function->size(), function->size());
+    std::vector<zSoBinPayload> payloads;
+    payloads.reserve(functions.size());
 
-    LOGI("\n========== 汇编信息 %s ==========\n", function_name);
-    function->analyzeAssembly();
-    std::string asm_info = function->assemblyInfo();
-    LOGI("%s", asm_info.c_str());
+    // 第二阶段：统一 remap OP_BL 索引后导出 txt/bin，再收集 bin 载荷。
+    for (size_t i = 0; i < functions.size(); ++i) {
+        zFunction* function = functions[i];
+        const std::string& function_name = function_names[i];
 
-    // 5) 同时导出未编码文本与编码二进制，供 Engine 回归使用。
-    function->dump("fun_for_add.txt", zFunction::DumpMode::UNENCODED);
-    function->dump("fun_for_add.bin", zFunction::DumpMode::ENCODED);
+        if (!function->remapBlToSharedBranchAddrs(shared_branch_addrs)) {
+            LOGE("重映射 OP_BL 到共享分支表失败: %s", function_name.c_str());
+            return 1;
+        }
 
+        const std::string txt_name = function_name + ".txt";
+        const std::string bin_name = function_name + ".bin";
+
+        if (!function->dump(txt_name.c_str(), zFunction::DumpMode::UNENCODED)) {
+            LOGE("导出未编码文本失败: %s", txt_name.c_str());
+            return 1;
+        }
+        if (!function->dump(bin_name.c_str(), zFunction::DumpMode::ENCODED)) {
+            LOGE("导出编码二进制失败: %s", bin_name.c_str());
+            return 1;
+        }
+
+        zSoBinPayload payload;
+        payload.fun_addr = static_cast<uint64_t>(function->offset());
+        if (!readFileBytes(bin_name.c_str(), payload.encoded_bytes) || payload.encoded_bytes.empty()) {
+            LOGE("读取编码二进制失败: %s", bin_name.c_str());
+            return 1;
+        }
+        payloads.push_back(std::move(payload));
+    }
+
+    // 第三阶段：生成带多 payload + 共享 branch_addr_list 的扩展 so。
+    if (!zSoBinBundleWriter::writeExpandedSo(
+            so_path,
+            expanded_so_path,
+            payloads,
+            shared_branch_addrs)) {
+        LOGE("生成扩展 so 失败: %s", expanded_so_path);
+        return 1;
+    }
+
+    LOGI("导出完成: payload_count=%u shared_branch_addr_count=%u",
+         static_cast<unsigned int>(payloads.size()),
+         static_cast<unsigned int>(shared_branch_addrs.size()));
     return 0;
 }
