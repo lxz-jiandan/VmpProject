@@ -35,17 +35,7 @@ public:
     // 判断当前对象是否还没有可执行指令数据。
     bool empty() const;
 
-    // 获取寄存器、类型、分支、指令四类列表的元素数量。
-    uint32_t registerIdCount() const;
-    uint32_t typeTagCount() const;
-    uint32_t branchWordCount() const;
-    uint32_t instWordCount() const;
-
-    // 以只读引用方式返回解析后的各类列表，避免额外拷贝。
-    const std::vector<uint32_t>& registerIds() const;
-    const std::vector<uint32_t>& typeTags() const;
-    const std::vector<uint32_t>& branchWords() const;
-    const std::vector<uint32_t>& instWords() const;
+    // 以只读引用方式返回解析后的分支地址列表。
     const std::vector<uint64_t>& branchAddrs() const;
     uint64_t functionAddress() const;
     void setFunctionAddress(uint64_t functionAddress);

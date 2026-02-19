@@ -4,37 +4,37 @@ static const uint32_t type_id_count = 2;
 static const uint32_t type_id_list[] = { 14, 4 };
 static const uint32_t branch_id_count = 4;
 uint32_t branch_id_list[] = { 39, 117, 55, 99 };
-static const uint64_t branch_addr_count = 26;
-uint64_t branch_addr_list[] = { 0x47770, 0x47790, 0x47780, 0x477a0, 0x477b0, 0x477c0, 0x477e0, 0x477f0, 0x20e30, 0x47800, 0x47810, 0x43ae0, 0x47820, 0x477d0, 0x20ed8, 0x21048, 0x2106c, 0x210d4, 0x211ec, 0x2121c, 0x2114c, 0x2124c, 0x478b0, 0x478c0, 0x478d0, 0x478e0 };
+static const uint64_t branch_addr_count = 27;
+uint64_t branch_addr_list[] = { 0x481e0, 0x48200, 0x481f0, 0x48210, 0x48220, 0x48230, 0x48250, 0x48260, 0x21230, 0x48270, 0x48280, 0x44550, 0x48290, 0x48240, 0x212d8, 0x21448, 0x2146c, 0x214d4, 0x215ec, 0x2161c, 0x2154c, 0x2164c, 0x48320, 0x48330, 0x48340, 0x48350, 0x21a30 };
 static const uint32_t inst_id_count = 131;
-static const uint64_t fun_addr = 0x20950;
+static const uint64_t fun_addr = 0x20d50;
 uint32_t inst_id_list[] = {
         6, 0, 0, 0, 0,                                // OP_ALLOC_RETURN
         51, 0, 0, 0, 29, 31,                          // OP_ALLOC_VSP
-        52, 1, 0, 31, 16, 31,                         // OP_BINARY_IMM       0x20950: sub sp, sp, #0x10
-        13, 1, 31, 12, 0,                             // OP_SET_FIELD        0x20954: str w0, [sp, #0xc]
-        13, 1, 31, 8, 1,                              // OP_SET_FIELD        0x20958: str w1, [sp, #8]
-        13, 1, 31, 4, 4294967295,                     // OP_SET_FIELD        0x2095c: str wzr, [sp, #4]
-        13, 1, 31, 0, 4294967295,                     // OP_SET_FIELD        0x20960: str wzr, [sp]
-        17, 0,                                        // OP_BRANCH           0x20964: b 0x20968
-        11, 1, 31, 0, 8,                              // OP_GET_FIELD        0x20968: ldr w8, [sp]
-        52, 65, 0, 8, 5, 8,                           // OP_BINARY_IMM       0x2096c: subs w8, w8, #5
-        53, 10, 1,                                    // OP_BRANCH_IF_CC     0x20970: b.ge 0x209ac
-        17, 2,                                        // OP_BRANCH           0x20974: b 0x20978
-        11, 1, 31, 12, 9,                             // OP_GET_FIELD        0x20978: ldr w9, [sp, #0xc]
-        11, 1, 31, 4, 8,                              // OP_GET_FIELD        0x2097c: ldr w8, [sp, #4]
-        1, 4, 1, 8, 9, 8,                             // OP_BINARY           0x20980: add w8, w8, w9
-        13, 1, 31, 4, 8,                              // OP_SET_FIELD        0x20984: str w8, [sp, #4]
-        11, 1, 31, 8, 9,                              // OP_GET_FIELD        0x20988: ldr w9, [sp, #8]
-        11, 1, 31, 4, 8,                              // OP_GET_FIELD        0x2098c: ldr w8, [sp, #4]
-        1, 4, 1, 8, 9, 8,                             // OP_BINARY           0x20990: add w8, w8, w9
-        13, 1, 31, 4, 8,                              // OP_SET_FIELD        0x20994: str w8, [sp, #4]
-        17, 3,                                        // OP_BRANCH           0x20998: b 0x2099c
-        11, 1, 31, 0, 8,                              // OP_GET_FIELD        0x2099c: ldr w8, [sp]
-        52, 4, 0, 8, 1, 8,                            // OP_BINARY_IMM       0x209a0: add w8, w8, #1
-        13, 1, 31, 0, 8,                              // OP_SET_FIELD        0x209a4: str w8, [sp]
-        17, 0,                                        // OP_BRANCH           0x209a8: b 0x20968
-        11, 1, 31, 4, 0,                              // OP_GET_FIELD        0x209ac: ldr w0, [sp, #4]
-        52, 4, 0, 31, 16, 31,                         // OP_BINARY_IMM       0x209b0: add sp, sp, #0x10
-        16, 1, 0,                                     // OP_RETURN           0x209b4: ret
+        52, 1, 0, 31, 16, 31,                         // OP_BINARY_IMM       0x20d50: sub sp, sp, #0x10
+        13, 1, 31, 12, 0,                             // OP_SET_FIELD        0x20d54: str w0, [sp, #0xc]
+        13, 1, 31, 8, 1,                              // OP_SET_FIELD        0x20d58: str w1, [sp, #8]
+        13, 1, 31, 4, 4294967295,                     // OP_SET_FIELD        0x20d5c: str wzr, [sp, #4]
+        13, 1, 31, 0, 4294967295,                     // OP_SET_FIELD        0x20d60: str wzr, [sp]
+        17, 0,                                        // OP_BRANCH           0x20d64: b 0x20d68
+        11, 1, 31, 0, 8,                              // OP_GET_FIELD        0x20d68: ldr w8, [sp]
+        52, 65, 0, 8, 5, 8,                           // OP_BINARY_IMM       0x20d6c: subs w8, w8, #5
+        53, 10, 1,                                    // OP_BRANCH_IF_CC     0x20d70: b.ge 0x20dac
+        17, 2,                                        // OP_BRANCH           0x20d74: b 0x20d78
+        11, 1, 31, 12, 9,                             // OP_GET_FIELD        0x20d78: ldr w9, [sp, #0xc]
+        11, 1, 31, 4, 8,                              // OP_GET_FIELD        0x20d7c: ldr w8, [sp, #4]
+        1, 4, 1, 8, 9, 8,                             // OP_BINARY           0x20d80: add w8, w8, w9
+        13, 1, 31, 4, 8,                              // OP_SET_FIELD        0x20d84: str w8, [sp, #4]
+        11, 1, 31, 8, 9,                              // OP_GET_FIELD        0x20d88: ldr w9, [sp, #8]
+        11, 1, 31, 4, 8,                              // OP_GET_FIELD        0x20d8c: ldr w8, [sp, #4]
+        1, 4, 1, 8, 9, 8,                             // OP_BINARY           0x20d90: add w8, w8, w9
+        13, 1, 31, 4, 8,                              // OP_SET_FIELD        0x20d94: str w8, [sp, #4]
+        17, 3,                                        // OP_BRANCH           0x20d98: b 0x20d9c
+        11, 1, 31, 0, 8,                              // OP_GET_FIELD        0x20d9c: ldr w8, [sp]
+        52, 4, 0, 8, 1, 8,                            // OP_BINARY_IMM       0x20da0: add w8, w8, #1
+        13, 1, 31, 0, 8,                              // OP_SET_FIELD        0x20da4: str w8, [sp]
+        17, 0,                                        // OP_BRANCH           0x20da8: b 0x20d68
+        11, 1, 31, 4, 0,                              // OP_GET_FIELD        0x20dac: ldr w0, [sp, #4]
+        52, 4, 0, 31, 16, 31,                         // OP_BINARY_IMM       0x20db0: add sp, sp, #0x10
+        16, 1, 0,                                     // OP_RETURN           0x20db4: ret
 };

@@ -43,14 +43,6 @@ public:
     // 将 OP_BL 的局部索引重映射到全局 branch_addr_list，并替换缓存中的地址表。
     bool remapBlToSharedBranchAddrs(const std::vector<uint64_t>& shared_branch_addrs);
 
-    // 从未编码文本/二进制直接创建 zFunction。
-    static zFunction fromUnencodedTxt(const char* file_path, const std::string& function_name = "", Elf64_Addr function_offset = 0);
-    static zFunction fromUnencodedBin(const char* file_path, const std::string& function_name = "", Elf64_Addr function_offset = 0);
-
-    // 读取未编码文本/二进制到当前对象。
-    bool loadUnencodedTxt(const char* file_path);
-    bool loadUnencodedBin(const char* file_path);
-
 private:
     // 确保反汇编缓存与未编码缓存可用。
     void ensure_asm_ready() const;
@@ -78,6 +70,8 @@ private:
     mutable std::vector<zInst> asm_list_;
 
     mutable bool unencoded_ready_ = false;
+    mutable bool unencoded_translate_ok_ = true;
+    mutable std::string unencoded_translate_error_;
     mutable uint32_t register_count_cache_ = 0;
     mutable std::vector<uint32_t> register_ids_cache_;
     mutable uint32_t type_count_cache_ = 0;

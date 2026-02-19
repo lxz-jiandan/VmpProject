@@ -3,8 +3,10 @@
 #include <cctype>
 #include <cstdlib>
 #include <memory>
+#include <new>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -21,6 +23,9 @@ static std::string g_libdemo_expand_so_path;
 constexpr const char* kAssetBaseSo = "libdemo.so";
 constexpr const char* kAssetExpandSo = "libdemo_expand.so";
 constexpr const char* kAssetBranchAddrList = "branch_addr_list.txt";
+constexpr const char* kStringCaseFunctionName = "fun_cpp_make_string";
+constexpr const char* kStringCaseTxtAsset = "fun_cpp_make_string.txt";
+constexpr const char* kStringCaseBinAsset = "fun_cpp_make_string.bin";
 constexpr uint64_t kExpectedResult = 30;
 
 namespace {
@@ -47,7 +52,17 @@ const FunctionCaseConfig kFunctionCases[] = {
     {"fun_call_chain", "fun_call_chain.txt", "fun_call_chain.bin"},
     {"fun_branch_call", "fun_branch_call.txt", "fun_branch_call.bin"},
     {"fun_cpp_string_len", "fun_cpp_string_len.txt", "fun_cpp_string_len.bin"},
+    {"fun_cpp_vector_sum", "fun_cpp_vector_sum.txt", "fun_cpp_vector_sum.bin"},
     {"fun_cpp_virtual_mix", "fun_cpp_virtual_mix.txt", "fun_cpp_virtual_mix.bin"},
+    {"fun_global_data_mix", "fun_global_data_mix.txt", "fun_global_data_mix.bin"},
+    {"fun_static_local_table", "fun_static_local_table.txt", "fun_static_local_table.bin"},
+    {"fun_global_struct_acc", "fun_global_struct_acc.txt", "fun_global_struct_acc.bin"},
+    {"fun_class_static_member", "fun_class_static_member.txt", "fun_class_static_member.bin"},
+    {"fun_multi_branch_path", "fun_multi_branch_path.txt", "fun_multi_branch_path.bin"},
+    {"fun_switch_dispatch", "fun_switch_dispatch.txt", "fun_switch_dispatch.bin"},
+    {"fun_bitmask_branch", "fun_bitmask_branch.txt", "fun_bitmask_branch.bin"},
+    {"fun_global_table_rw", "fun_global_table_rw.txt", "fun_global_table_rw.bin"},
+    {"fun_global_mutable_state", "fun_global_mutable_state.txt", "fun_global_mutable_state.bin"},
 };
 
 std::string trimCopy(const std::string& value) {
@@ -136,6 +151,12 @@ zParams buildDefaultParams(const char* function_name) {
     return zParams(std::vector<uint64_t>{2, 4});
 }
 
+std::string buildExpectedStringCaseResult(const zParams& params) {
+    const int a = (params.values.size() > 0) ? static_cast<int>(params.values[0]) : 0;
+    const int b = (params.values.size() > 1) ? static_cast<int>(params.values[1]) : 0;
+    return std::string("A") + std::to_string(a) + ":" + std::to_string(b);
+}
+
 } // namespace
 
 bool prepareRouteLibrary(JNIEnv* env, zVmEngine& engine, const char* asset_so_name, std::string& out_path) {
@@ -177,6 +198,52 @@ bool executeCase(
          static_cast<unsigned long long>(result));
     if (out_result != nullptr) {
         *out_result = result;
+    }
+    return true;
+}
+
+bool executeStringCase(
+    zVmEngine& engine,
+    const char* so_name,
+    const char* route_tag,
+    const char* function_name,
+    uint64_t fun_addr
+) {
+    if (fun_addr == 0) {
+        LOGE("[%s][%s] invalid fun_addr=0", route_tag, function_name);
+        return false;
+    }
+    if (so_name == nullptr || so_name[0] == '\0') {
+        LOGE("[%s][%s] invalid so_name", route_tag, function_name);
+        return false;
+    }
+
+    zParams params = buildDefaultParams(function_name);
+    using StringStorage = typename std::aligned_storage<sizeof(std::string), alignof(std::string)>::type;
+    StringStorage storage{};
+    // 先默认构造一份对象，保证异常/失败路径下读取与析构安全。
+    std::string* out = new (&storage) std::string();
+    const uint64_t out_ptr = reinterpret_cast<uint64_t>(out);
+    const uint64_t ret = engine.execute(out, so_name, fun_addr, params);
+    const std::string expected = buildExpectedStringCaseResult(params);
+
+    const std::string actual = *out;
+    out->~basic_string();
+    LOGI("[%s][%s] execute by fun_addr=0x%llx ret_ptr=0x%llx out_ptr=0x%llx value=%s",
+         route_tag,
+         function_name,
+         static_cast<unsigned long long>(fun_addr),
+         static_cast<unsigned long long>(ret),
+         static_cast<unsigned long long>(out_ptr),
+         actual.c_str());
+
+    if (actual != expected) {
+        LOGE("[%s][%s] string mismatch: actual=%s expected=%s",
+             route_tag,
+             function_name,
+             actual.c_str(),
+             expected.c_str());
+        return false;
     }
     return true;
 }
@@ -244,6 +311,38 @@ bool test_loadUnencodedText(JNIEnv* env, zVmEngine& engine, std::vector<Function
         }
         out_cases.push_back(result_case);
     }
+
+    std::vector<uint8_t> string_case_txt_data;
+    if (!zAssetManager::loadAssetDataByFileName(env, kStringCaseTxtAsset, string_case_txt_data)) {
+        LOGE("[route_unencoded_text] loadAssetDataByFileName failed: %s", kStringCaseTxtAsset);
+        return false;
+    }
+    std::unique_ptr<zFunction> string_case_function = std::make_unique<zFunction>();
+    if (!string_case_function->loadUnencodedText(reinterpret_cast<const char*>(string_case_txt_data.data()),
+                                                 string_case_txt_data.size())) {
+        LOGE("[route_unencoded_text] loadUnencodedText failed: %s", kStringCaseTxtAsset);
+        return false;
+    }
+    const uint64_t string_case_fun_addr = string_case_function->functionAddress();
+    if (string_case_fun_addr == 0) {
+        LOGE("[route_unencoded_text] invalid fun_addr=0 for %s", kStringCaseFunctionName);
+        return false;
+    }
+    if (!engine.cacheFunction(std::move(string_case_function))) {
+        LOGE("[route_unencoded_text] cacheFunction failed: %s fun_addr=0x%llx",
+             kStringCaseFunctionName,
+             static_cast<unsigned long long>(string_case_fun_addr));
+        return false;
+    }
+    if (!executeStringCase(
+            engine,
+            kAssetBaseSo,
+            "route_unencoded_text",
+            kStringCaseFunctionName,
+            string_case_fun_addr)) {
+        return false;
+    }
+    out_cases.push_back(FunctionCaseResult{std::string(kStringCaseFunctionName), string_case_fun_addr, 0});
     return true;
 }
 
@@ -316,6 +415,37 @@ bool test_loadEncodedAssetBin(JNIEnv* env, zVmEngine& engine, const std::vector<
             return false;
         }
     }
+
+    auto string_case_it = case_map.find(kStringCaseFunctionName);
+    if (string_case_it == case_map.end()) {
+        LOGE("[route_encoded_asset_bin] missing reference case: %s", kStringCaseFunctionName);
+        return false;
+    }
+    std::vector<uint8_t> string_case_bin_data;
+    if (!zAssetManager::loadAssetDataByFileName(env, kStringCaseBinAsset, string_case_bin_data)) {
+        LOGE("[route_encoded_asset_bin] loadAssetDataByFileName failed: %s", kStringCaseBinAsset);
+        return false;
+    }
+    std::unique_ptr<zFunction> string_case_function = std::make_unique<zFunction>();
+    if (!string_case_function->loadEncodedData(string_case_bin_data.data(), string_case_bin_data.size())) {
+        LOGE("[route_encoded_asset_bin] loadEncodedData failed: %s", kStringCaseBinAsset);
+        return false;
+    }
+    string_case_function->setFunctionAddress(string_case_it->second.fun_addr);
+    if (!engine.cacheFunction(std::move(string_case_function))) {
+        LOGE("[route_encoded_asset_bin] cacheFunction failed: %s fun_addr=0x%llx",
+             kStringCaseFunctionName,
+             static_cast<unsigned long long>(string_case_it->second.fun_addr));
+        return false;
+    }
+    if (!executeStringCase(
+            engine,
+            kAssetBaseSo,
+            "route_encoded_asset_bin",
+            kStringCaseFunctionName,
+            string_case_it->second.fun_addr)) {
+        return false;
+    }
     return true;
 }
 
@@ -361,6 +491,9 @@ bool test_loadEncodedExpandedSo(JNIEnv* env, zVmEngine& engine, const std::vecto
     }
 
     for (const FunctionCaseResult& item : reference_cases) {
+        if (item.function_name == kStringCaseFunctionName) {
+            continue;
+        }
         if (loaded_fun_map.find(item.fun_addr) == loaded_fun_map.end()) {
             LOGE("[route_encoded_expand_so] missing function in expanded so: %s fun_addr=0x%llx",
                  item.function_name.c_str(),
@@ -385,6 +518,32 @@ bool test_loadEncodedExpandedSo(JNIEnv* env, zVmEngine& engine, const std::vecto
                  static_cast<unsigned long long>(item.expected_result));
             return false;
         }
+    }
+
+    uint64_t string_case_fun_addr = 0;
+    for (const FunctionCaseResult& item : reference_cases) {
+        if (item.function_name == kStringCaseFunctionName) {
+            string_case_fun_addr = item.fun_addr;
+            break;
+        }
+    }
+    if (string_case_fun_addr == 0) {
+        LOGE("[route_encoded_expand_so] missing reference case: %s", kStringCaseFunctionName);
+        return false;
+    }
+    if (loaded_fun_map.find(string_case_fun_addr) == loaded_fun_map.end()) {
+        LOGE("[route_encoded_expand_so] missing function in expanded so: %s fun_addr=0x%llx",
+             kStringCaseFunctionName,
+             static_cast<unsigned long long>(string_case_fun_addr));
+        return false;
+    }
+    if (!executeStringCase(
+            engine,
+            kAssetExpandSo,
+            "route_encoded_expand_so",
+            kStringCaseFunctionName,
+            string_case_fun_addr)) {
+        return false;
     }
     return true;
 }

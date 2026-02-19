@@ -220,116 +220,39 @@ uint64_t zVmEngine::execute(
 
     zFunction* function = it->second;
 
-    // 优先走“已解码运行态”缓存（包含 register_list/inst_list/type_list）。
-    if (function->register_count > 0 &&
-        function->inst_count > 0 &&
-        function->register_list != nullptr &&
-        function->inst_list != nullptr &&
-        function->type_list != nullptr) {
-        // 解码态执行：复制寄存器初值并覆写前 N 个实参。
-        RegManager* regMgr = allocRegManager(function->register_count);
-        VMRegSlot* registers = regMgr->slots;
-        memset(registers, 0, 24 * function->register_count);
-        memcpy(registers, function->register_list, 24 * function->register_count);
-
-        if (!params.values.empty()) {
-            const uint32_t paramSize = static_cast<uint32_t>(params.values.size());
-            const uint32_t paramCount = (paramSize < function->register_count) ? paramSize : function->register_count;
-            for (uint32_t i = 0; i < paramCount; ++i) {
-                registers[i].value = params.values[i];
-                registers[i].ownership = 0;
-            }
-        }
-
-        const uint64_t result = executeState(function, registers, retBuffer, soName);
-        freeRegManager(regMgr);
-        return result;
-    }
-
-    // 兼容文本函数（zFunction::loadUnencodedText 产生的缓存）。
-    const uint32_t registerCount = function->registerIdCount();
-    const uint32_t typeCount = function->typeTagCount();
-    const uint32_t branchCount = function->branchWordCount();
-    const uint32_t instCount = function->instWordCount();
-    if (registerCount == 0 || typeCount == 0 || instCount == 0) {
-        LOGE("execute by fun_addr failed: invalid function data, fun_addr=0x%llx",
+    if (function->register_count == 0 ||
+        function->inst_count == 0 ||
+        function->register_list == nullptr ||
+        function->inst_list == nullptr ||
+        function->type_list == nullptr) {
+        LOGE("execute by fun_addr failed: runtime state incomplete, fun_addr=0x%llx",
              static_cast<unsigned long long>(funAddr));
         return 0;
     }
 
-    // 文本态执行：按解析出的列表临时组装运行态结构。
-    std::vector<VMRegSlot> registerList(registerCount);
-    for (uint32_t i = 0; i < registerCount; ++i) {
-        registerList[i] = VMRegSlot{};
-        registerList[i].value = 0;
-        registerList[i].ownership = 0;
-    }
-    if (!params.values.empty()) {
-        const uint32_t paramSize = static_cast<uint32_t>(params.values.size());
-        const uint32_t paramCount = (paramSize < registerCount) ? paramSize : registerCount;
+    // 执行前复制寄存器初值并覆写前 N 个实参。
+    RegManager* regMgr = allocRegManager(function->register_count);
+    VMRegSlot* registers = regMgr->slots;
+    memset(registers, 0, 24 * function->register_count);
+    memcpy(registers, function->register_list, 24 * function->register_count);
+
+    const uint32_t paramSize = static_cast<uint32_t>(params.values.size());
+    const uint32_t paramCount = (paramSize < function->register_count) ? paramSize : function->register_count;
+    if (paramCount > 0) {
         for (uint32_t i = 0; i < paramCount; ++i) {
-            registerList[i].value = params.values[i];
-            registerList[i].ownership = 0;
+            registers[i].value = params.values[i];
+            registers[i].ownership = 0;
         }
     }
-
-    zTypeManager localTypeManager;
-    std::vector<zType*> typeList(typeCount, nullptr);
-    const std::vector<uint32_t>& typeTagList = function->typeTags();
-    if (typeTagList.size() < typeCount) {
-        LOGE("execute by fun_addr failed: type list too short, fun_addr=0x%llx",
-             static_cast<unsigned long long>(funAddr));
-        return 0;
-    }
-    for (uint32_t i = 0; i < typeCount; ++i) {
-        typeList[i] = localTypeManager.createFromCode(typeTagList[i]);
+    // 统一把调用方返回缓冲写入 x8：sret 函数可直接使用，普通函数会忽略该值。
+    if (retBuffer != nullptr && function->register_count > 8) {
+        registers[8].value = reinterpret_cast<uint64_t>(retBuffer);
+        registers[8].ownership = 0;
     }
 
-    std::vector<uint32_t> instList = function->instWords();
-    std::vector<uint32_t> branchWordList = function->branchWords();
-    std::vector<uint64_t> branchAddrList;
-    {
-        std::lock_guard<std::mutex> lock(shared_branch_mutex_);
-        auto it = shared_branch_addrs_map_.find(soName);
-        if (it != shared_branch_addrs_map_.end()) {
-            branchAddrList = it->second;
-        }
-    }
-    if (branchAddrList.empty()) {
-        branchAddrList = function->branchAddrs();
-    }
-    if (instList.size() < instCount || branchWordList.size() < branchCount) {
-        LOGE("execute by fun_addr failed: instruction or branch list too short, fun_addr=0x%llx",
-             static_cast<unsigned long long>(funAddr));
-        return 0;
-    }
-    // 分支地址按模块基址重定位，和 encoded 路径保持一致。
-    soinfo* soInfo = GetSoinfo(soName);
-    if (soInfo == nullptr) {
-        LOGE("execute by fun_addr failed: soinfo not found for %s, fun_addr=0x%llx",
-             soName, static_cast<unsigned long long>(funAddr));
-        return 0;
-    }
-    setVmModuleBase(soInfo->base);
-    for (size_t i = 0; i < branchAddrList.size(); ++i) {
-        branchAddrList[i] += soInfo->base;
-    }
-
-    uint32_t* branchWordsPtr = branchWordList.empty() ? nullptr : branchWordList.data();
-    uint64_t* branchAddrsPtr = branchAddrList.empty() ? nullptr : branchAddrList.data();
-    return execute(
-        retBuffer,
-        registerCount,
-        registerList.data(),
-        typeCount,
-        typeList.data(),
-        instCount,
-        instList.data(),
-        branchCount,
-        branchWordsPtr,
-        branchAddrList.empty() ? branchCount : static_cast<uint32_t>(branchAddrList.size()),
-        branchAddrsPtr
-    );
+    const uint64_t result = executeState(function, registers, retBuffer, soName);
+    freeRegManager(regMgr);
+    return result;
 }
 
 // 执行已准备好的运行时上下文，驱动解释循环直到结束。

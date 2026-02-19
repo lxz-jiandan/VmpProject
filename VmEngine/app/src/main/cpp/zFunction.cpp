@@ -117,6 +117,7 @@ void resetDecodedRuntimeState(zFunction& function) {
 
 // 从输入流执行完整解析流程。
 bool zFunction::parseFromStream(std::istream& in) {
+    resetDecodedRuntimeState(*this);
     fun_addr_ = 0;
     register_ids_.clear();
     type_tags_.clear();
@@ -249,6 +250,39 @@ bool zFunction::parseFromStream(std::istream& in) {
     zFunctionData::branch_addrs = branch_addrs_;
     function_offset = fun_addr_;
 
+    // 直接构建运行态数组，保证文本/编码两条加载路径走同一执行入口。
+    if (register_count > 0) {
+        register_list = new VMRegSlot[register_count];
+        std::memset(register_list, 0, sizeof(VMRegSlot) * register_count);
+    }
+
+    std::unique_ptr<zTypeManager> typePool = std::make_unique<zTypeManager>();
+    zType** typeList = nullptr;
+    if (type_count > 0) {
+        typeList = new zType*[type_count]();
+        for (uint32_t i = 0; i < type_count; i++) {
+            typeList[i] = typePool->createFromCode(type_tags[i]);
+        }
+    }
+
+    if (type_count > 0 && typeList && typeList[0] && typeList[0]->kind == TYPE_KIND_STRUCT) {
+        function_sig_type = reinterpret_cast<FunctionStructType*>(typeList[0]);
+    } else {
+        function_sig_type = nullptr;
+    }
+
+    if (inst_count > 0) {
+        inst_list = new uint32_t[inst_count];
+        std::memcpy(inst_list, inst_words.data(), sizeof(uint32_t) * inst_count);
+    }
+    if (branch_count > 0) {
+        branch_words_ptr = new uint32_t[branch_count];
+        std::memcpy(branch_words_ptr, branch_words.data(), sizeof(uint32_t) * branch_count);
+    }
+    type_list = typeList;
+    setTypePool(std::move(typePool));
+    ext_list = !branch_addrs_.empty() ? branch_addrs_.data() : nullptr;
+
     return true;
 }
 
@@ -348,7 +382,7 @@ bool zFunction::loadEncodedData(const uint8_t* data, uint64_t len, uint64_t* ext
     // 6) 恢复函数地址（fun_addr）。
     setFunctionAddress(function_offset);
 
-    // 7) 从 type_list 推导 function_sig_type（当前按首元素做兼容处理）。
+    // 7) 从 type_list 按约定推导 function_sig_type（首元素为函数签名结构体类型）。
     FunctionStructType* functionList = nullptr;
     if (type_count > 0 && typeList && typeList[0]) {
         if (typeList[0]->kind == TYPE_KIND_STRUCT) {
@@ -390,64 +424,6 @@ bool zFunction::empty() const {
         return false;
     }
     return inst_words_.empty();
-}
-
-// 返回寄存器 ID 列表长度。
-uint32_t zFunction::registerIdCount() const {
-    return static_cast<uint32_t>(register_ids_.size());
-}
-
-// 返回类型 ID 列表长度。
-uint32_t zFunction::typeTagCount() const {
-    if (!type_tags_.empty()) {
-        return static_cast<uint32_t>(type_tags_.size());
-    }
-    return type_count;
-}
-
-// 返回分支 ID 列表长度。
-uint32_t zFunction::branchWordCount() const {
-    if (!branch_words_.empty()) {
-        return static_cast<uint32_t>(branch_words_.size());
-    }
-    return branch_count;
-}
-
-// 返回指令 ID 列表长度。
-uint32_t zFunction::instWordCount() const {
-    if (!inst_words_.empty()) {
-        return static_cast<uint32_t>(inst_words_.size());
-    }
-    return inst_count;
-}
-
-// 只读访问寄存器 ID 列表。
-const std::vector<uint32_t>& zFunction::registerIds() const {
-    return register_ids_;
-}
-
-// 只读访问类型 ID 列表。
-const std::vector<uint32_t>& zFunction::typeTags() const {
-    if (!type_tags_.empty()) {
-        return type_tags_;
-    }
-    return zFunctionData::type_tags;
-}
-
-// 只读访问分支 ID 列表。
-const std::vector<uint32_t>& zFunction::branchWords() const {
-    if (!branch_words_.empty()) {
-        return branch_words_;
-    }
-    return zFunctionData::branch_words;
-}
-
-// 只读访问指令 ID 列表。
-const std::vector<uint32_t>& zFunction::instWords() const {
-    if (!inst_words_.empty()) {
-        return inst_words_;
-    }
-    return zFunctionData::inst_words;
 }
 
 // 只读访问分支地址列表。

@@ -104,6 +104,15 @@ int main(int argc, char* argv[]) {
             "fun_cpp_string_len",
             "fun_cpp_vector_sum",
             "fun_cpp_virtual_mix",
+            "fun_global_data_mix",
+            "fun_static_local_table",
+            "fun_global_struct_acc",
+            "fun_class_static_member",
+            "fun_multi_branch_path",
+            "fun_switch_dispatch",
+            "fun_bitmask_branch",
+            "fun_global_table_rw",
+            "fun_global_mutable_state",
         };
     }
 

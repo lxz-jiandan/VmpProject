@@ -1169,11 +1169,9 @@ void op_return(VMContext* ctx) {
                       (unsigned)valueReg,
                       (unsigned long long)ctx->ret_value,
                       (unsigned long long)log_x0_deref(ctx));
-        if (ctx->ret_buffer) {
-            *static_cast<uint64_t*>(ctx->ret_buffer) = ctx->ret_value;
-            // 返回值写回后不应改变槽位释放语义，避免将普通整数当作指针 free。
-            GET_REG(valueReg).ownership = 0;
-        }
+        // 返回值由 ret_value 统一承载，不再把 8 字节标量强制写回 ret_buffer，
+        // 以免覆盖对象返回（如 std::string）的构造结果。
+        GET_REG(valueReg).ownership = 0;
     }
     ctx->running = false;
 }
@@ -1200,19 +1198,26 @@ void op_branch(VMContext* ctx) {
 
 // OP_BRANCH_IF：按条件寄存器值决定是否跳转。
 void op_branch_if(VMContext* ctx) {
-    // 参数槽位：[pc+1]=cond_reg, [pc+2]=true_target, [pc+3]=false_target；true/false_target 为 branch_list 下标时用 branch_id_list[] 解析，否则视为直接 targetPc（兼容手写测试）
+    // 参数槽位：[pc+1]=cond_reg, [pc+2]=true_target, [pc+3]=false_target；
+    // true_target/false_target 均按 branch_id_list 下标解析。
     uint32_t condReg = GET_INST(1);
     uint32_t trueTarget = GET_INST(2);
     uint32_t falseTarget = GET_INST(3);
 
     uint64_t cond = GET_REG(condReg).value;
     uint32_t idx = cond ? trueTarget : falseTarget;
-    uint32_t target = (ctx->branch_id_list && idx < ctx->branch_count) ? ctx->branch_id_list[idx] : idx;
+    if (ctx->branch_id_list == nullptr || idx >= ctx->branch_count) {
+        LOGE("op_branch_if invalid branch index: idx=%u branch_count=%u", idx, ctx->branch_count);
+        ctx->running = false;
+        return;
+    }
+    uint32_t target = ctx->branch_id_list[idx];
 
     if (target < ctx->inst_count) {
         ctx->pc = target;
     } else {
-        ctx->pc += 4;
+        LOGE("op_branch_if target out of range: target=%u inst_count=%u", target, ctx->inst_count);
+        ctx->running = false;
     }
 }
 

@@ -12,7 +12,7 @@ set "TARGET=VmProtect"
 set "ASSET_DIR=%ROOT_DIR%\..\VmEngine\app\src\main\assets"
 
 set "RUN_ARGS=%*"
-if "%RUN_ARGS%"=="" set "RUN_ARGS=fun_for fun_add fun_for_add fun_if_sub fun_countdown_muladd fun_loop_call_mix fun_call_chain fun_branch_call fun_cpp_make_string fun_cpp_string_len fun_cpp_vector_sum fun_cpp_virtual_mix"
+if "%RUN_ARGS%"=="" set "RUN_ARGS=fun_for fun_add fun_for_add fun_if_sub fun_countdown_muladd fun_loop_call_mix fun_call_chain fun_branch_call fun_cpp_make_string fun_cpp_string_len fun_cpp_vector_sum fun_cpp_virtual_mix fun_global_data_mix fun_static_local_table fun_global_struct_acc fun_class_static_member fun_multi_branch_path fun_switch_dispatch fun_bitmask_branch fun_global_table_rw fun_global_mutable_state"
 
 set "PATH=D:\Clion2022\bin\mingw\bin;%PATH%"
 
