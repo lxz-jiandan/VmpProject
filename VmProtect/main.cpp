@@ -11,6 +11,7 @@
 
 namespace {
 
+// 读取二进制文件到内存，供后续组装 payload 写入 expand so。
 bool readFileBytes(const char* path, std::vector<uint8_t>& out) {
     out.clear();
     if (!path || path[0] == '\0') {
@@ -35,6 +36,7 @@ bool readFileBytes(const char* path, std::vector<uint8_t>& out) {
     return static_cast<bool>(in);
 }
 
+// 导出统一的共享 branch_addr_list.txt，供三条回归路线复用。
 bool writeSharedBranchAddrList(const char* file_path, const std::vector<uint64_t>& branch_addrs) {
     if (file_path == nullptr || file_path[0] == '\0') {
         return false;
@@ -62,6 +64,7 @@ bool writeSharedBranchAddrList(const char* file_path, const std::vector<uint64_t
     return static_cast<bool>(out);
 }
 
+// 把函数局部 branch 地址并入全局表，并保持“首次出现顺序”稳定。
 void appendUniqueBranchAddrs(
     const std::vector<uint64_t>& local_addrs,
     std::unordered_set<uint64_t>& seen_addrs,
@@ -77,13 +80,14 @@ void appendUniqueBranchAddrs(
 } // namespace
 
 int main(int argc, char* argv[]) {
+    // 输入 so 与输出产物路径（本地调试约定）。
     const char* so_path = "D:\\work\\2026\\0217_vmp_project\\VmpProject\\VmProtect\\libdemo.so";
     const char* expanded_so_path = "libdemo_expand.so";
     const char* shared_branch_file = "branch_addr_list.txt";
 
     zElf elf(so_path);
 
-    // 支持多函数导出；默认覆盖三条回归函数。
+    // 支持命令行自定义函数列表；未传参时导出当前完整回归集。
     std::vector<std::string> function_names;
     for (int i = 1; i < argc; ++i) {
         if (argv[i] && argv[i][0] != '\0') {

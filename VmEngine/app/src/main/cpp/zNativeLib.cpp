@@ -31,18 +31,21 @@ constexpr uint64_t kExpectedResult = 30;
 namespace {
 
 struct FunctionCaseConfig {
+    // 三条路线共用的回归项：函数名 + 文本资产 + 编码资产。
     const char* function_name;
     const char* txt_asset;
     const char* bin_asset;
 };
 
 struct FunctionCaseResult {
+    // 以未编码路线为基准记录地址和期望结果，后两条路线做一致性比对。
     std::string function_name;
     uint64_t fun_addr = 0;
     uint64_t expected_result = 0;
 };
 
 const FunctionCaseConfig kFunctionCases[] = {
+    // 固定顺序用于三条路线逐项对齐；带全局写入副作用的用例放在列表末尾。
     {"fun_for", "fun_for.txt", "fun_for.bin"},
     {"fun_add", "fun_add.txt", "fun_add.bin"},
     {"fun_for_add", "fun_for_add.txt", "fun_for_add.bin"},

@@ -231,10 +231,12 @@ static bool is_arm64_gp_reg(unsigned int reg) {
            (reg >= ARM64_REG_X0 && reg <= ARM64_REG_X28);
 }
 
+// 统一判断 ARM64 的零寄存器（wzr/xzr）。
 static bool is_arm64_zero_reg(unsigned int reg) {
     return reg == ARM64_REG_WZR || reg == ARM64_REG_XZR;
 }
 
+// 根据立即数宽度生成 OP_LOAD_IMM / OP_LOAD_CONST64。
 static void emitLoadImm(std::vector<uint32_t>& opcode_list, uint32_t dst_idx, uint64_t imm) {
     if (imm <= 0xFFFFFFFFull) {
         opcode_list = { OP_LOAD_IMM, dst_idx, static_cast<uint32_t>(imm) };
@@ -282,6 +284,7 @@ static bool tryEmitMovLike(
     return false;
 }
 
+// 追加“dst = src”语义，兼容 src 为 wzr/xzr 的零值写入。
 static bool appendAssignRegOrZero(
     std::vector<uint32_t>& opcode_list,
     std::vector<uint32_t>& reg_id_list,
@@ -392,7 +395,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
 
     // 本地跳转目标表：仅供 OP_BRANCH/OP_BRANCH_IF_CC 使用。
     std::vector<uint64_t> branch_id_list;
-    // 调用目标表：仅供 OP_BL 使用，后续可做全局共享重映射。
+    // 调用目标表：仅供 OP_BL 使用，导出阶段会统一 remap 到共享 branch_addr_list。
     std::vector<uint64_t> call_target_list;
     bool translation_aborted = false;
 
@@ -722,6 +725,8 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                     ops[0].type == ARM64_OP_REG &&
                     ops[1].type == ARM64_OP_REG &&
                     ops[2].type == ARM64_OP_REG) {
+                    // CSEL 语义：dst = cond ? src_true : src_false
+                    // 这里展开成：dst=src_true; if(cond) goto next; dst=src_false;
                     arm64_cc cc = detail->aarch64.cc;
                     const uint64_t next_addr = addr + (insn[j].size == 0 ? 4 : static_cast<uint64_t>(insn[j].size));
                     std::vector<uint32_t> csel_ops;
@@ -1015,6 +1020,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             ops[0].type == ARM64_OP_REG &&
             ops[1].type == ARM64_OP_REG &&
             ops[2].type == ARM64_OP_REG) {
+            // 兼容某些 Capstone 版本把 csel 归到其它 instruction id 的情况。
             arm64_cc cc = detail->aarch64.cc;
             const uint64_t next_addr = addr + (insn[j].size == 0 ? 4 : static_cast<uint64_t>(insn[j].size));
             std::vector<uint32_t> csel_ops;
