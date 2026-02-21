@@ -1,8 +1,8 @@
 #ifndef Z_TYPE_SYSTEM_H
 #define Z_TYPE_SYSTEM_H
 
-#include <cstdint>
-#include <vector>
+#include <cstdint> // 固定宽度整数类型。
+#include <vector>  // 类型对象托管容器。
 
 
 // ============================================================================
@@ -59,6 +59,7 @@ enum TypeTag : uint32_t {
 // ============================================================================
 class zType {
 public:
+    // 虚析构保证派生类型通过基类指针删除时资源正确释放。
     virtual ~zType() = default;
 
     uint32_t kind = 0;            // 类型种类
@@ -69,13 +70,13 @@ public:
     bool     is_float = false;    // 是否浮点
     uint8_t  padding[2] = {0, 0}; // 对齐填充
 
-    // 获取类型大小
+    // 获取类型大小（默认返回 size 字段）。
     virtual uint32_t getSize() const { return size; }
 
-    // 获取类型种类
+    // 获取类型种类（默认返回 kind 字段）。
     virtual uint32_t getKind() const { return kind; }
 
-    // 获取类型对齐
+    // 获取类型对齐（alignment=0 时回退到 size）。
     virtual uint32_t getAlignment() const { return alignment > 0 ? alignment : getSize(); }
 };
 
@@ -94,8 +95,11 @@ public:
     char* name;               // 偏移 40/48: 名称
 
     ~FunctionStructType() override {
+        // 参数类型数组由本对象拥有。
         delete[] param_list;
+        // 参数偏移数组由本对象拥有。
         delete[] param_offsets;
+        // 名称字符串由本对象拥有。
         delete[] name;
     }
 
@@ -124,7 +128,9 @@ public:
     zType* element_type; // 偏移 16: 元素类型
 
     uint32_t getKind() const override { return kind; }
+    // 数组大小 = 元素数 * 元素大小（元素为空时为 0）。
     uint32_t getSize() const override { return element_type ? element_count * element_type->getSize() : 0; }
+    // 数组对齐沿用元素对齐（元素为空时回退 1）。
     uint32_t getAlignment() const override { return element_type ? element_type->getAlignment() : 1; }
 };
 
@@ -140,6 +146,7 @@ public:
     zType** param_list;  // 偏移 32: 参数类型列表
 
     ~CallType() override {
+        // 参数类型数组由本对象拥有。
         delete[] param_list;
     }
 
@@ -168,7 +175,7 @@ public:
     // 析构类型系统并释放内部托管的类型对象。
     ~zTypeManager();
 
-    // 创建预定义类型
+    // 创建预定义类型（基础标量类型）。
     // 创建 8 位整数类型（有符号/无符号）。
     zType* createInt8(bool isSigned = true);
     // 创建 16 位整数类型（有符号/无符号）。
@@ -184,7 +191,7 @@ public:
     // 创建通用指针基础类型。
     zType* createPointer();
     
-    // 创建复杂类型
+    // 创建复杂类型（组合类型）。
     // 创建带自定义位宽的整数类型。
     zType* createIntegerWidth(uint32_t bitWidth);
     // 创建函数/结构体描述类型并预分配参数槽。
@@ -196,21 +203,21 @@ public:
     // 创建调用签名类型（返回值与参数列表）。
     CallType* createCallType(bool hasReturn, zType* returnType, uint32_t paramCount);
 
-    // 从类型编码创建类型
+    // 从类型编码创建类型（供字节码解码路径使用）。
     // 根据外部编码值快速创建对应基础类型。
     zType* createFromCode(uint32_t code);
 
-    // 释放类型
+    // 释放类型（释放对象或数组容器）。
     // 释放单个类型对象及其内部附属内存。
     void freeType(zType* type);
     // 释放类型数组容器（不重复释放由类型系统托管的对象）。
     void freeTypeList(zType** types, uint32_t count);
 
-    // 获取类型大小
+    // 获取类型大小。
     // 获取类型的字节大小（null 时给出默认宽度）。
     static uint32_t getTypeSize(zType* type);
 
-    // 获取类型对齐
+    // 获取类型对齐。
     // 获取类型对齐值（优先使用类型自身多态实现，缺省回退到大小）。
     static uint32_t getTypeAlignment(zType* type);
     
@@ -230,6 +237,7 @@ private:
     // 分配调用类型对象并纳入托管列表。
     CallType* allocCallType();
     
+    // 托管所有已分配类型对象，析构时统一释放。
     std::vector<zType*> allocatedTypes_;
 };
 

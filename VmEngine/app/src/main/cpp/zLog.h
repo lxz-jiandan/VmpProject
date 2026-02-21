@@ -1,15 +1,18 @@
 #ifndef Z_LOG_H
 #define Z_LOG_H
 
-#include <android/log.h>
+#include <android/log.h>  // Android logcat 输出接口。
 
 
 // 日志总开关：1=启用日志，0=关闭日志。
+// 注意：关闭后 LOGV/LOGD/LOGI/LOGW/LOGE 都会被展开为空。
 #define ZLOG_ENABLE_LOGGING 1
 
 // 若存在全局配置宏，优先使用全局配置覆盖本地开关。
 #if ZCONFIG_ENABLE
+// 先取消本地默认值。
 #undef ZLOG_ENABLE_LOGGING
+// 继承全局配置结果。
 #define ZLOG_ENABLE_LOGGING ZCONFIG_ENABLE_LOGGING
 #endif
 
@@ -47,15 +50,22 @@
 #endif
 
 // 日志宏封装：统一补充文件名、函数名和行号。
+// 这样排查问题时可以直接定位到源码位置。
 #if ZLOG_ENABLE_LOGGING
 
+    // 详细跟踪日志。
     #define LOGV(...) zLogPrint(LOG_LEVEL_VERBOSE, LOG_TAG, __FILE_NAME__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+    // 调试日志。
     #define LOGD(...) zLogPrint(LOG_LEVEL_DEBUG, LOG_TAG, __FILE_NAME__, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+    // 信息日志。
     #define LOGI(...) zLogPrint(LOG_LEVEL_INFO, LOG_TAG, __FILE_NAME__, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+    // 警告日志。
     #define LOGW(...) zLogPrint(LOG_LEVEL_WARN, LOG_TAG, __FILE_NAME__, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+    // 错误日志。
     #define LOGE(...) zLogPrint(LOG_LEVEL_ERROR, LOG_TAG, __FILE_NAME__, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #else
+    // 关闭日志时，所有宏都折叠为空语句。
     #define LOGV(...)
     #define LOGD(...)
     #define LOGI(...)

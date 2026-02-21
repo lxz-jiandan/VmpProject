@@ -519,10 +519,7 @@ uint64_t execTypeConvert(uint32_t op, uint64_t src, zType* srcType, zType* dstTy
     }
 }
 
-// 根据 IDA 反编译的 vm_copy_value_1 (0x13ffc8)
-// 如果 type_kind == 14 (ARRAY_ELEM)，使用 memcpy
-// 否则根据类型大小 (1/2/4/8 字节) 拷贝值
-// 复制寄存器槽值；当类型需要时处理内存拷贝与 ownership 标记。
+// 复制寄存器槽值；ARRAY_ELEM 走内存块拷贝，其它类型按宽度截断/复制。
 void copyValue(VMRegSlot* src, zType* type, VMRegSlot* dst) {
     if (!type) {
         dst->value = src->value;
@@ -555,11 +552,7 @@ void copyValue(VMRegSlot* src, zType* type, VMRegSlot* dst) {
     }
 }
 
-// 根据 IDA 反编译的 vm_read_value_1 (0x13ff24)
-// 如果 type_kind == 14 (ARRAY_ELEM)，存储指针本身（不解引用）
-// 并设置 ownership = 0 (偏移 16)
-// 否则根据类型大小读取 1/2/4/8 字节
-// 按类型宽度从地址读取值并写入目标槽位。
+// 按类型宽度从地址读取值并写入目标槽位；ARRAY_ELEM 返回地址本身。
 void readValue(VMRegSlot* addrSlot, zType* type, VMRegSlot* dst) {
     void* addr = reinterpret_cast<void*>(addrSlot->value);
     if (!addr) {
@@ -609,8 +602,7 @@ void readValue(VMRegSlot* addrSlot, zType* type, VMRegSlot* dst) {
     }
 }
 
-// 根据 IDA 反编译的 vm_write_value (类似 vm_copy_value_1 的逻辑)
-// 按类型宽度将槽位值写入目标地址。
+// 按类型宽度将槽位值写入目标地址；ARRAY_ELEM 走内存块写入。
 void writeValue(VMRegSlot* addrSlot, zType* type, VMRegSlot* valueSlot) {
     void* addr = reinterpret_cast<void*>(addrSlot->value);
     if (!addr) return;
@@ -879,6 +871,7 @@ void op_get_element(VMContext* ctx) {
 // OP_ALLOC_RETURN：初始化返回缓冲相关寄存器语义。
 void op_alloc_return(VMContext* ctx) {
     // 布局: [opcode][result_type][size_type][size_reg][dst_reg]
+    // 当前实现仅使用 dst_reg 槽位用于调试输出，其余字段保留协议兼容。
     uint32_t dstReg = GET_INST(4);
     // 避免每次执行都分配临时堆内存；优先复用调用方传入的返回缓冲。
     ctx->ret_value = (ctx->ret_buffer != nullptr)
@@ -893,8 +886,8 @@ void op_alloc_return(VMContext* ctx) {
 
 // OP_ALLOC_VSP：为虚拟栈分配空间并更新 SP/VSP 相关寄存器。
 void op_alloc_vsp(VMContext* ctx) {
-    // 布局同 OP_ALLOC_RETURN: [0]=opcode(51), [1]=resultTypeIdx, [2]=sizeTypeIdx, [3]=sizeReg, [4]=dstReg
-    // 动态申请一块堆内存作为虚拟栈；将 块起始地址+大小 写入 dstReg（VSP），并标记 ownership=1；大小暂时固定 1024
+    // 布局: [opcode][result_type][size_type][size_reg][fp_reg][sp_reg]
+    // 申请一块固定大小虚拟栈，把“栈顶地址”写入 fp/sp；仅 fp 槽携带 base 指针 ownership 负责释放。
     uint32_t fpReg = GET_INST(4);
     uint32_t spReg = GET_INST(5);
     size_t kVspSize = 1024;
@@ -1259,7 +1252,8 @@ void op_set_return_pc(VMContext* ctx) {
     ctx->pc += 3;
 }
 
-// 以 AArch64 ABI 调用原生地址：显式传入 x0..x7 和 x8（用于 sret 等隐藏参数）。
+// 以 AArch64 ABI 调用原生地址：显式传入 x0..x7 与 x8（sret 等隐藏参数）。
+// 非 AArch64 平台退化为普通函数指针调用，用于主机侧调试。
 static uint64_t call_native_with_x8(uint64_t target_addr, const uint64_t args[8], uint64_t x8_value) {
 #if defined(__aarch64__)
     register uint64_t x0 asm("x0") = args[0];
@@ -1291,7 +1285,7 @@ static uint64_t call_native_with_x8(uint64_t target_addr, const uint64_t args[8]
 
 // OP_BL：带链接跳转，保存返回位点并跳转到目标。
 void op_bl(VMContext* ctx) {
-    // [0]=OP_BL, [1]=branchId；语义由你实现：通常设 LR=返回地址、跳转到 branch_id_list[branchId]
+    // [0]=OP_BL, [1]=branchId；按 branch_addr_list[branchId] 走原生 blr 调用，并把返回值写回 x0。
 #if VM_DEBUG_HOOK
     if (ctx->pc == 136) {
         static const char* str = "zLog";

@@ -37,6 +37,12 @@ android {
     buildFeatures {
         viewBinding true
     }
+    packagingOptions {
+        jniLibs {
+            // route4 需要保留 libvmengine.so 尾部附加 payload，禁止打包阶段 strip 该库。
+            keepDebugSymbols += ['**/libvmengine.so']
+        }
+    }
 }
 
 dependencies {

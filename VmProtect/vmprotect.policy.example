@@ -1,0 +1,22 @@
+# VmProtect policy example
+#
+# All relative paths are resolved from this policy file directory.
+
+input_so = libdemo.so
+output_dir = cmake-build-debug
+
+# Output file names under output_dir (or absolute paths).
+expanded_so = libdemo_expand.so
+shared_branch_file = branch_addr_list.txt
+coverage_report = coverage_report.md
+
+# true: only generate coverage board, skip export.
+coverage_only = false
+
+# true: analyze all extracted functions from target so.
+# false: use default function list unless "functions" is explicitly set.
+analyze_all_functions = false
+
+# Optional function list.
+# You can keep this key empty and use default list.
+functions = fun_for, fun_add, fun_for_add, fun_if_sub

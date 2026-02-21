@@ -24,6 +24,7 @@ namespace {
 constexpr size_t kPageSize = 4096;
 constexpr ElfW(Addr) kPageMask = static_cast<ElfW(Addr)>(~(kPageSize - 1));
 
+// AArch64 当前回归路径中实际会用到的 RELA 类型。
 constexpr ElfW(Word) kRelAarch64None = 0;
 constexpr ElfW(Word) kRelAarch64Abs64 = 257;
 constexpr ElfW(Word) kRelAarch64GlobDat = 1025;
@@ -31,6 +32,7 @@ constexpr ElfW(Word) kRelAarch64JumpSlot = 1026;
 constexpr ElfW(Word) kRelAarch64Relative = 1027;
 constexpr ElfW(Word) kRelAarch64IRelative = 1032;
 
+// 页对齐辅助：用于 mprotect / 段拷贝边界计算。
 inline ElfW(Addr) PageStart(ElfW(Addr) addr) {
     return addr & kPageMask;
 }

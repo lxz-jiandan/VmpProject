@@ -1,10 +1,10 @@
 #ifndef Z_ASSEST_MANAGER_H
 #define Z_ASSEST_MANAGER_H
 
-#include <jni.h>
-#include <string>
-#include <vector>
-#include <android/asset_manager.h>
+#include <jni.h>                  // JNI 基础类型。
+#include <string>                 // std::string。
+#include <vector>                 // std::vector<uint8_t>。
+#include <android/asset_manager.h> // AAssetManager 声明。
 
 class zAssetManager {
 public:
@@ -24,6 +24,9 @@ public:
 
     // 将 assets 文件落盘到应用私有 files 目录（调用方显式提供 context）。
     static bool extractAssetToFile(JNIEnv* env, jobject context, const char* assetFileName, std::string& outPath);
+
+    // 读取当前 Application 的 files 目录绝对路径。
+    static bool getCurrentFilesDirPath(JNIEnv* env, std::string& outPath);
 
 private:
     // jstring -> std::string 便捷转换，内部负责 UTFChars 生命周期。

@@ -1,0 +1,7 @@
+{
+  "symbols": [
+    { "id": 0, "name": "fun_add" },
+    { "id": 1, "name": "fun_for" },
+    { "id": 2, "name": "fun_if_sub" }
+  ]
+}

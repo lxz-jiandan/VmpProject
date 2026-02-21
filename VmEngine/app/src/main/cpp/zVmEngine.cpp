@@ -54,7 +54,7 @@ zVmEngine& zVmEngine::getInstance() {
     return instance;
 }
 
-// 构造引擎并初始化执行上下文与 opcode 分发表。
+// 构造引擎：初始化 opcode 分发表，并预留函数缓存容量。
 zVmEngine::zVmEngine() {
     // 初始化 opcode 跳转表
     initOpcodeTable();
@@ -103,6 +103,7 @@ bool zVmEngine::cacheFunction(std::unique_ptr<zFunction> function) {
 }
 
 bool zVmEngine::LoadLibrary(const char* path) {
+    // 链接器实例延迟初始化；调用方可重复加载不同 so。
     std::lock_guard<std::mutex> lock(linker_mutex_);
     if (!linker_) {
         linker_ = std::make_unique<zLinker>();
@@ -111,6 +112,7 @@ bool zVmEngine::LoadLibrary(const char* path) {
 }
 
 soinfo* zVmEngine::GetSoinfo(const char* name) {
+    // 统一经由 linker 查询，避免外层直接持有 linker 生命周期。
     std::lock_guard<std::mutex> lock(linker_mutex_);
     if (!linker_) {
         return nullptr;
@@ -119,6 +121,7 @@ soinfo* zVmEngine::GetSoinfo(const char* name) {
 }
 
 void zVmEngine::setSharedBranchAddrs(const char* soName, std::vector<uint64_t> branchAddrs) {
+    // 以 so 名为 key 保存共享 branch_addr_list（全局 ID 语义）。
     if (soName == nullptr || soName[0] == '\0') {
         return;
     }
@@ -127,6 +130,7 @@ void zVmEngine::setSharedBranchAddrs(const char* soName, std::vector<uint64_t> b
 }
 
 void zVmEngine::clearSharedBranchAddrs(const char* soName) {
+    // 清理单个 so 的共享 branch_addr_list 映射。
     if (soName == nullptr || soName[0] == '\0') {
         return;
     }
@@ -134,7 +138,7 @@ void zVmEngine::clearSharedBranchAddrs(const char* soName) {
     shared_branch_addrs_map_.erase(soName);
 }
 
-// 清空缓存：释放所有 VmState 及其附属动态内存。
+// 清空缓存：释放所有 zFunction 及其动态字段。
 void zVmEngine::clearCache() {
     std::unique_lock<std::shared_timed_mutex> lock(cache_mutex_);
     for (auto& pair : cache_) {
@@ -143,7 +147,7 @@ void zVmEngine::clearCache() {
     cache_.clear();
 }
 
-// 执行已解码状态对象，包装为 execute(...) 参数调用。
+// 执行缓存函数：补齐 branch 地址与模块基址后转交解释器主循环。
 uint64_t zVmEngine::executeState(
     zFunction* function,
     VMRegSlot* registers,
@@ -167,6 +171,7 @@ uint64_t zVmEngine::executeState(
             branchAddrsList = it->second;
         }
     }
+    // 优先使用 setSharedBranchAddrs 写入的共享列表；缺失时回退函数私有列表。
     if (branchAddrsList.empty()) {
         branchAddrsList = function->branchAddrs();
     }
@@ -204,6 +209,7 @@ uint64_t zVmEngine::execute(
     uint64_t funAddr,
     const zParams& params
 ) {
+    // 外部调用入口：按 so + fun_addr 在缓存中定位函数并执行。
     if (soName == nullptr || soName[0] == '\0') {
         LOGE("execute by fun_addr failed: soName is empty, fun_addr=0x%llx",
              static_cast<unsigned long long>(funAddr));
@@ -271,6 +277,7 @@ uint64_t zVmEngine::execute(
 ) {
     if (instCount == 0 || instructions == nullptr) return 0;
 
+    // 解释器约定：首条必须是 OP_ALLOC_RETURN，用于初始化返回语义。
     if (instructions[0] != OP_ALLOC_RETURN) {
         return 0;
     }
@@ -317,6 +324,7 @@ void zVmEngine::dispatch(VMContext* ctx) {
     uint32_t opcode = ctx->instructions[ctx->pc];
     uint32_t pc_before = ctx->pc;
 
+    // opcode 命中分发表则执行对应处理函数，否则进入未知指令陷阱。
     if (opcode < OP_MAX && g_opcode_table[opcode]) {
         g_opcode_table[opcode](ctx);
     } else {

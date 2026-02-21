@@ -199,11 +199,11 @@ static std::string formatInstructionLine(
 }
 
 static uint32_t arm64_capstone_to_arch_index(unsigned int reg) {
-    if (reg == ARM64_REG_SP || reg == ARM64_REG_WSP) return 31;
-    if (reg == ARM64_REG_FP || reg == ARM64_REG_X29) return 29;
-    if (reg == ARM64_REG_LR || reg == ARM64_REG_X30) return 30;
-    if (reg >= ARM64_REG_W0 && reg <= ARM64_REG_W30) return static_cast<uint32_t>(reg - ARM64_REG_W0);
-    if (reg >= ARM64_REG_X0 && reg <= ARM64_REG_X28) return static_cast<uint32_t>(reg - ARM64_REG_X0);
+    if (reg == AARCH64_REG_SP || reg == AARCH64_REG_WSP) return 31;
+    if (reg == AARCH64_REG_FP || reg == AARCH64_REG_X29) return 29;
+    if (reg == AARCH64_REG_LR || reg == AARCH64_REG_X30) return 30;
+    if (reg >= AARCH64_REG_W0 && reg <= AARCH64_REG_W30) return static_cast<uint32_t>(reg - AARCH64_REG_W0);
+    if (reg >= AARCH64_REG_X0 && reg <= AARCH64_REG_X28) return static_cast<uint32_t>(reg - AARCH64_REG_X0);
     return 0;
 }
 
@@ -216,24 +216,24 @@ static uint32_t getOrAddReg(std::vector<uint32_t>& reg_id_list, uint32_t reg) {
 }
 
 static bool is_arm64_w_reg(unsigned int reg) {
-    return (reg >= ARM64_REG_W0 && reg <= ARM64_REG_W30) ||
-           reg == ARM64_REG_WSP || reg == ARM64_REG_WZR;
+    return (reg >= AARCH64_REG_W0 && reg <= AARCH64_REG_W30) ||
+           reg == AARCH64_REG_WSP || reg == AARCH64_REG_WZR;
 }
 
 static bool is_arm64_gp_reg(unsigned int reg) {
-    if (reg == ARM64_REG_SP || reg == ARM64_REG_WSP ||
-        reg == ARM64_REG_FP || reg == ARM64_REG_X29 ||
-        reg == ARM64_REG_LR || reg == ARM64_REG_X30 ||
-        reg == ARM64_REG_WZR || reg == ARM64_REG_XZR) {
+    if (reg == AARCH64_REG_SP || reg == AARCH64_REG_WSP ||
+        reg == AARCH64_REG_FP || reg == AARCH64_REG_X29 ||
+        reg == AARCH64_REG_LR || reg == AARCH64_REG_X30 ||
+        reg == AARCH64_REG_WZR || reg == AARCH64_REG_XZR) {
         return true;
     }
-    return (reg >= ARM64_REG_W0 && reg <= ARM64_REG_W30) ||
-           (reg >= ARM64_REG_X0 && reg <= ARM64_REG_X28);
+    return (reg >= AARCH64_REG_W0 && reg <= AARCH64_REG_W30) ||
+           (reg >= AARCH64_REG_X0 && reg <= AARCH64_REG_X28);
 }
 
 // 统一判断 ARM64 的零寄存器（wzr/xzr）。
 static bool is_arm64_zero_reg(unsigned int reg) {
-    return reg == ARM64_REG_WZR || reg == ARM64_REG_XZR;
+    return reg == AARCH64_REG_WZR || reg == AARCH64_REG_XZR;
 }
 
 // 根据立即数宽度生成 OP_LOAD_IMM / OP_LOAD_CONST64。
@@ -253,16 +253,16 @@ static bool tryEmitMovLike(
     unsigned int dst_reg,
     const cs_arm64_op& src_op
 ) {
-    if (!is_arm64_gp_reg(dst_reg) || dst_reg == ARM64_REG_WZR || dst_reg == ARM64_REG_XZR) {
+    if (!is_arm64_gp_reg(dst_reg) || dst_reg == AARCH64_REG_WZR || dst_reg == AARCH64_REG_XZR) {
         return false;
     }
 
     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(dst_reg));
-    if (src_op.type == ARM64_OP_REG) {
+    if (src_op.type == AARCH64_OP_REG) {
         if (!is_arm64_gp_reg(src_op.reg)) {
             return false;
         }
-        if (src_op.reg == ARM64_REG_WZR || src_op.reg == ARM64_REG_XZR) {
+        if (src_op.reg == AARCH64_REG_WZR || src_op.reg == AARCH64_REG_XZR) {
             opcode_list = { OP_LOAD_IMM, dst_idx, 0 };
             return true;
         }
@@ -270,9 +270,9 @@ static bool tryEmitMovLike(
         opcode_list = { OP_MOV, src_idx, dst_idx };
         return true;
     }
-    if (src_op.type == ARM64_OP_IMM) {
+    if (src_op.type == AARCH64_OP_IMM) {
         uint64_t imm = static_cast<uint64_t>(src_op.imm);
-        if (src_op.shift.type == ARM64_SFT_LSL && src_op.shift.value != 0) {
+        if (src_op.shift.type == AARCH64_SFT_LSL && src_op.shift.value != 0) {
             imm <<= src_op.shift.value;
         }
         if (is_arm64_w_reg(dst_reg)) {
@@ -411,13 +411,13 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
 
         switch (id) {
             case ARM64_INS_SUB: {
-                if (op_count >= 3 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_REG) {
+                if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
-                    if (ops[2].type == ARM64_OP_IMM) {
+                    if (ops[2].type == AARCH64_OP_IMM) {
                         uint32_t imm = static_cast<uint32_t>(ops[2].imm);
                         opcode_list = { OP_BINARY_IMM, BIN_SUB, getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED), lhs_idx, imm, dst_idx };
-                    } else if (ops[2].type == ARM64_OP_REG) {
+                    } else if (ops[2].type == AARCH64_OP_REG) {
                         uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
                         opcode_list = { OP_BINARY, BIN_SUB, getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED), lhs_idx, rhs_idx, dst_idx };
                     }
@@ -425,9 +425,9 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_STR: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
-                    uint32_t value_reg_idx = (ops[0].reg == ARM64_REG_WZR || ops[0].reg == ARM64_REG_XZR)
+                    uint32_t value_reg_idx = (ops[0].reg == AARCH64_REG_WZR || ops[0].reg == AARCH64_REG_XZR)
                                              ? static_cast<uint32_t>(-1)
                                              : getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     opcode_list = {
@@ -441,9 +441,9 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_STRB: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
-                    uint32_t value_reg_idx = (ops[0].reg == ARM64_REG_WZR || ops[0].reg == ARM64_REG_XZR)
+                    uint32_t value_reg_idx = (ops[0].reg == AARCH64_REG_WZR || ops[0].reg == AARCH64_REG_XZR)
                                              ? static_cast<uint32_t>(-1)
                                              : getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     opcode_list = {
@@ -457,7 +457,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_LDR: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
                     opcode_list = {
                         OP_GET_FIELD,
@@ -470,7 +470,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_LDRB: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
                     opcode_list = {
                         OP_GET_FIELD,
@@ -483,13 +483,13 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_ADD: {
-                if (op_count >= 3 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_REG) {
+                if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
-                    if (ops[2].type == ARM64_OP_IMM) {
+                    if (ops[2].type == AARCH64_OP_IMM) {
                         uint32_t imm = static_cast<uint32_t>(ops[2].imm);
                         opcode_list = { OP_BINARY_IMM, BIN_ADD, getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED), lhs_idx, imm, dst_idx };
-                    } else if (ops[2].type == ARM64_OP_REG) {
+                    } else if (ops[2].type == AARCH64_OP_REG) {
                         uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
                         opcode_list = { OP_BINARY, BIN_ADD, getOrAddTypeTag(type_id_list, TYPE_TAG_INT32_SIGNED_2), lhs_idx, rhs_idx, dst_idx };
                     }
@@ -499,12 +499,12 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             case ARM64_INS_LSL:
             case ARM64_INS_LSLR:
             case ARM64_INS_ALIAS_LSL: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_REG) {
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
                     uint32_t type_idx = getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED);
                     if (op_count >= 3) {
-                        if (ops[2].type == ARM64_OP_IMM) {
+                        if (ops[2].type == AARCH64_OP_IMM) {
                             opcode_list = {
                                 OP_BINARY_IMM,
                                 BIN_SHL,
@@ -513,11 +513,11 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                                 static_cast<uint32_t>(ops[2].imm),
                                 dst_idx
                             };
-                        } else if (ops[2].type == ARM64_OP_REG) {
+                        } else if (ops[2].type == AARCH64_OP_REG) {
                             uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
                             opcode_list = { OP_BINARY, BIN_SHL, type_idx, lhs_idx, rhs_idx, dst_idx };
                         }
-                    } else if (ops[1].shift.type == ARM64_SFT_LSL) {
+                    } else if (ops[1].shift.type == AARCH64_SFT_LSL) {
                         opcode_list = {
                             OP_BINARY_IMM,
                             BIN_SHL,
@@ -531,17 +531,19 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_MOV: {
-                if (op_count >= 2 && ops && ops[0].type == ARM64_OP_REG) {
+                // mov（含别名形态）统一交给 tryEmitMovLike 处理。
+                if (op_count >= 2 && ops && ops[0].type == AARCH64_OP_REG) {
                     (void)tryEmitMovLike(opcode_list, reg_id_list, ops[0].reg, ops[1]);
                 }
                 break;
             }
             case ARM64_INS_MOVZ:
             case ARM64_INS_MOVN: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_IMM) {
+                // MOVZ/MOVN：构造立即数并写入目标寄存器。
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_IMM) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint64_t imm = static_cast<uint64_t>(ops[1].imm) & 0xFFFFull;
-                    uint32_t shift = (ops[1].shift.type == ARM64_SFT_LSL) ? ops[1].shift.value : 0u;
+                    uint32_t shift = (ops[1].shift.type == AARCH64_SFT_LSL) ? ops[1].shift.value : 0u;
                     uint64_t value = imm << shift;
                     if (id == ARM64_INS_MOVN) {
                         value = ~value;
@@ -554,10 +556,11 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_MOVK: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_IMM) {
+                // MOVK：保留原值其它位，仅覆盖 16bit 片段。
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_IMM) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint64_t imm = static_cast<uint64_t>(ops[1].imm) & 0xFFFFull;
-                    uint32_t shift = (ops[1].shift.type == ARM64_SFT_LSL) ? ops[1].shift.value : 0u;
+                    uint32_t shift = (ops[1].shift.type == AARCH64_SFT_LSL) ? ops[1].shift.value : 0u;
                     uint64_t imm_val = imm << shift;
                     uint64_t mask = ~(0xFFFFull << shift);
                     if (is_arm64_w_reg(ops[0].reg)) {
@@ -565,8 +568,9 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                         mask &= 0xFFFFFFFFull;
                     }
 
-                    uint32_t tmp1 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X16));
-                    uint32_t tmp2 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X17));
+                    // 使用 x16/x17 作为临时寄存器拼接“mask + 新片段”。
+                    uint32_t tmp1 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X16));
+                    uint32_t tmp2 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X17));
                     uint32_t type_idx = getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED);
 
                     std::vector<uint32_t> temp;
@@ -592,10 +596,11 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_MUL: {
+                // 纯寄存器三操作数乘法。
                 if (op_count >= 3 &&
-                    ops[0].type == ARM64_OP_REG &&
-                    ops[1].type == ARM64_OP_REG &&
-                    ops[2].type == ARM64_OP_REG) {
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG &&
+                    ops[2].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
                     uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
@@ -606,18 +611,19 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             }
             case ARM64_INS_AND:
             case ARM64_INS_ANDS: {
+                // ANDS 需要更新条件标志，这里通过扩展位 BIN_UPDATE_FLAGS 标记。
                 static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
                 if (op_count >= 3 &&
-                    ops[0].type == ARM64_OP_REG &&
-                    ops[1].type == ARM64_OP_REG) {
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
                     uint32_t op_code = BIN_AND | ((id == ARM64_INS_ANDS) ? BIN_UPDATE_FLAGS : 0u);
                     uint32_t type_idx = getOrAddTypeTagForRegWidth(type_id_list, ops[0].reg);
-                    if (ops[2].type == ARM64_OP_REG) {
+                    if (ops[2].type == AARCH64_OP_REG) {
                         uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
                         opcode_list = { OP_BINARY, op_code, type_idx, lhs_idx, rhs_idx, dst_idx };
-                    } else if (ops[2].type == ARM64_OP_IMM) {
+                    } else if (ops[2].type == AARCH64_OP_IMM) {
                         uint32_t imm = static_cast<uint32_t>(ops[2].imm);
                         opcode_list = { OP_BINARY_IMM, op_code, type_idx, lhs_idx, imm, dst_idx };
                     }
@@ -625,19 +631,20 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_ORR: {
-                if (op_count >= 3 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_REG) {
+                // ORR 既可能是真正位或，也可能是 mov alias（含零寄存器）。
+                if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
-                    if (ops[2].type == ARM64_OP_REG) {
+                    if (ops[2].type == AARCH64_OP_REG) {
                         uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
-                        if (ops[1].reg == ARM64_REG_WZR || ops[1].reg == ARM64_REG_XZR) {
+                        if (ops[1].reg == AARCH64_REG_WZR || ops[1].reg == AARCH64_REG_XZR) {
                             opcode_list = { OP_MOV, rhs_idx, dst_idx };
-                        } else if (ops[2].reg == ARM64_REG_WZR || ops[2].reg == ARM64_REG_XZR) {
+                        } else if (ops[2].reg == AARCH64_REG_WZR || ops[2].reg == AARCH64_REG_XZR) {
                             opcode_list = { OP_MOV, lhs_idx, dst_idx };
                         } else {
                             opcode_list = { OP_BINARY, BIN_OR, getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED), lhs_idx, rhs_idx, dst_idx };
                         }
-                    } else if (ops[2].type == ARM64_OP_IMM) {
+                    } else if (ops[2].type == AARCH64_OP_IMM) {
                         uint32_t imm = static_cast<uint32_t>(ops[2].imm);
                         opcode_list = { OP_BINARY_IMM, BIN_OR, getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED), lhs_idx, imm, dst_idx };
                     }
@@ -645,7 +652,8 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_ADRP: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_IMM) {
+                // ADRP：提取页对齐基址，拆成高低 32bit 存入 OP_ADRP。
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_IMM) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint64_t imm = static_cast<uint64_t>(ops[1].imm);
                     imm &= ~0xFFFULL;
@@ -656,35 +664,40 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_MRS: {
-                if (op_count >= 1 && ops[0].type == ARM64_OP_REG) {
+                // MRS 暂不模拟系统寄存器语义，先降级为目标寄存器写 0。
+                if (op_count >= 1 && ops[0].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     opcode_list = { OP_LOAD_IMM, dst_idx, 0 };
                 }
                 break;
             }
             case ARM64_INS_RET:
-                opcode_list = { OP_RETURN, 1, getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X0)) };
+                // 约定 ret 返回 x0。
+                opcode_list = { OP_RETURN, 1, getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X0)) };
                 break;
             case ARM64_INS_BR:
-                if (op_count >= 1 && ops[0].type == ARM64_OP_REG && (ops[0].reg == ARM64_REG_LR || ops[0].reg == ARM64_REG_X30)) {
-                    opcode_list = { OP_RETURN, 1, getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X0)) };
+                // br lr 视为 ret，同样返回 x0。
+                if (op_count >= 1 && ops[0].type == AARCH64_OP_REG && (ops[0].reg == AARCH64_REG_LR || ops[0].reg == AARCH64_REG_X30)) {
+                    opcode_list = { OP_RETURN, 1, getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X0)) };
                 }
                 break;
             case ARM64_INS_BLR: {
-                if (op_count >= 1 && ops[0].type == ARM64_OP_REG) {
+                // BLR：间接调用，按当前约定打包 x0-x5 六个参数寄存器。
+                if (op_count >= 1 && ops[0].type == AARCH64_OP_REG) {
                     uint32_t func_reg = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
-                    uint32_t x0 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X0));
-                    uint32_t x1 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X1));
-                    uint32_t x2 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X2));
-                    uint32_t x3 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X3));
-                    uint32_t x4 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X4));
-                    uint32_t x5 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X5));
+                    uint32_t x0 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X0));
+                    uint32_t x1 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X1));
+                    uint32_t x2 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X2));
+                    uint32_t x3 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X3));
+                    uint32_t x4 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X4));
+                    uint32_t x5 = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X5));
                     opcode_list = { OP_CALL, 0, 6, 1, x0, func_reg, x0, x1, x2, x3, x4, x5 };
                 }
                 break;
             }
             case ARM64_INS_B: {
-                if (op_count >= 1 && ops[0].type == ARM64_OP_IMM && detail) {
+                // B / B.cond：按条件码分派到 OP_BRANCH 或 OP_BRANCH_IF_CC。
+                if (op_count >= 1 && ops[0].type == AARCH64_OP_IMM && detail) {
                     arm64_cc cc = detail->aarch64.cc;
                     switch (cc) {
                         case ARM64_CC_EQ:
@@ -701,6 +714,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                         case ARM64_CC_LT:
                         case ARM64_CC_GT:
                         case ARM64_CC_LE: {
+                            // 条件跳转：记录目标地址并输出条件分支。
                             uint64_t target_addr = static_cast<uint64_t>(ops[0].imm);
                             uint32_t branch_id = getOrAddBranch(branch_id_list, target_addr);
                             opcode_list = { OP_BRANCH_IF_CC, static_cast<uint32_t>(cc), branch_id };
@@ -708,6 +722,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                         }
                         case ARM64_CC_AL:
                         case ARM64_CC_INVALID: {
+                            // 无条件跳转：直接输出 OP_BRANCH。
                             uint64_t target_addr = static_cast<uint64_t>(ops[0].imm);
                             uint32_t branch_id = getOrAddBranch(branch_id_list, target_addr);
                             opcode_list = { OP_BRANCH, branch_id };
@@ -722,10 +737,10 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             case ARM64_INS_CSEL: {
                 if (detail &&
                     op_count >= 3 &&
-                    ops[0].type == ARM64_OP_REG &&
-                    ops[1].type == ARM64_OP_REG &&
-                    ops[2].type == ARM64_OP_REG) {
-                    // CSEL 语义：dst = cond ? src_true : src_false
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG &&
+                    ops[2].type == AARCH64_OP_REG) {
+                    // CSEL 语义：条件成立时 dst 取 src_true，否则取 src_false。
                     // 这里展开成：dst=src_true; if(cond) goto next; dst=src_false;
                     arm64_cc cc = detail->aarch64.cc;
                     const uint64_t next_addr = addr + (insn[j].size == 0 ? 4 : static_cast<uint64_t>(insn[j].size));
@@ -772,13 +787,14 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             }
             case ARM64_INS_TBZ:
             case ARM64_INS_TBNZ: {
+                // TBZ/TBNZ：拆成“右移取位 + 与 1 + 条件分支”三段 VM 指令。
                 static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
                 if (op_count >= 3 &&
-                    ops[0].type == ARM64_OP_REG &&
-                    ops[1].type == ARM64_OP_IMM &&
-                    ops[2].type == ARM64_OP_IMM) {
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_IMM &&
+                    ops[2].type == AARCH64_OP_IMM) {
                     uint32_t src_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
-                    uint32_t tmp_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ARM64_REG_X16));
+                    uint32_t tmp_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(AARCH64_REG_X16));
                     uint32_t type_idx = getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED);
                     uint32_t bit = static_cast<uint32_t>(ops[1].imm) & 63u;
                     uint64_t target_addr = static_cast<uint64_t>(ops[2].imm);
@@ -795,14 +811,15 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_SUBS: {
+                // SUBS：与 SUB 类似，但需要更新条件标志。
                 static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
-                if (op_count >= 3 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_REG) {
+                if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
-                    if (ops[2].type == ARM64_OP_IMM) {
+                    if (ops[2].type == AARCH64_OP_IMM) {
                         uint32_t imm = static_cast<uint32_t>(ops[2].imm);
                         opcode_list = { OP_BINARY_IMM, BIN_SUB | BIN_UPDATE_FLAGS, getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED), lhs_idx, imm, dst_idx };
-                    } else if (ops[2].type == ARM64_OP_REG) {
+                    } else if (ops[2].type == AARCH64_OP_REG) {
                         uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
                         opcode_list = { OP_BINARY, BIN_SUB | BIN_UPDATE_FLAGS, getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED), lhs_idx, rhs_idx, dst_idx };
                     }
@@ -810,17 +827,18 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_STP: {
-                if (op_count >= 3 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_REG && ops[2].type == ARM64_OP_MEM) {
+                // STP：拆成两个连续 OP_SET_FIELD。
+                if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG && ops[2].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[2].mem.disp);
                     uint32_t base_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].mem.base));
-                    uint32_t pair_size = (ops[0].reg >= ARM64_REG_W0 && ops[0].reg <= ARM64_REG_W30) ? 4u : 8u;
+                    uint32_t pair_size = (ops[0].reg >= AARCH64_REG_W0 && ops[0].reg <= AARCH64_REG_W30) ? 4u : 8u;
                     uint32_t type_tag = (pair_size == 4)
                                         ? getOrAddTypeTag(type_id_list, TYPE_TAG_INT32_SIGNED_2)
                                         : getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED);
-                    uint32_t val1 = (ops[0].reg == ARM64_REG_WZR || ops[0].reg == ARM64_REG_XZR)
+                    uint32_t val1 = (ops[0].reg == AARCH64_REG_WZR || ops[0].reg == AARCH64_REG_XZR)
                                     ? static_cast<uint32_t>(-1)
                                     : getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
-                    uint32_t val2 = (ops[1].reg == ARM64_REG_WZR || ops[1].reg == ARM64_REG_XZR)
+                    uint32_t val2 = (ops[1].reg == AARCH64_REG_WZR || ops[1].reg == AARCH64_REG_XZR)
                                     ? static_cast<uint32_t>(-1)
                                     : getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
                     opcode_list = {
@@ -831,9 +849,10 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_STUR: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
+                // STUR：非扩展寻址的 store，映射为 OP_SET_FIELD。
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
-                    uint32_t value_reg_idx = (ops[0].reg == ARM64_REG_WZR || ops[0].reg == ARM64_REG_XZR)
+                    uint32_t value_reg_idx = (ops[0].reg == AARCH64_REG_WZR || ops[0].reg == AARCH64_REG_XZR)
                                              ? static_cast<uint32_t>(-1)
                                              : getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     opcode_list = {
@@ -847,7 +866,8 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_LDUR: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
+                // LDUR：非扩展寻址的 load，映射为 OP_GET_FIELD。
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
                     opcode_list = {
                         OP_GET_FIELD,
@@ -860,7 +880,8 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_LDURB: {
-                if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_MEM) {
+                // LDURB：按 8bit 无符号类型读取。
+                if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
                     opcode_list = {
                         OP_GET_FIELD,
@@ -873,7 +894,8 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_BL: {
-                if (op_count >= 1 && ops[0].type == ARM64_OP_IMM) {
+                // BL：本地只记录目标地址索引，稍后可 remap 到全局 branch_addr_list。
+                if (op_count >= 1 && ops[0].type == AARCH64_OP_IMM) {
                     uint64_t target_addr = static_cast<uint64_t>(ops[0].imm);
                     uint32_t branch_id = getOrAddBranch(call_target_list, target_addr);
                     opcode_list = { OP_BL, branch_id };
@@ -881,10 +903,11 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_LDP: {
-                if (op_count >= 3 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_REG && ops[2].type == ARM64_OP_MEM) {
+                // LDP：拆成两个连续 OP_GET_FIELD。
+                if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG && ops[2].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[2].mem.disp);
                     uint32_t base_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].mem.base));
-                    uint32_t pair_size = (ops[0].reg >= ARM64_REG_W0 && ops[0].reg <= ARM64_REG_W30) ? 4u : 8u;
+                    uint32_t pair_size = (ops[0].reg >= AARCH64_REG_W0 && ops[0].reg <= AARCH64_REG_W30) ? 4u : 8u;
                     uint32_t type_tag = (pair_size == 4)
                                         ? getOrAddTypeTag(type_id_list, TYPE_TAG_INT32_SIGNED_2)
                                         : getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED);
@@ -901,12 +924,12 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 instruction_id_handled = false;
                 // 某些 capstone 版本会把 LSL 记为不同 ID，但 mnemonic 仍是 lsl。
                 if (insn[j].mnemonic && std::strcmp(insn[j].mnemonic, "lsl") == 0) {
-                    if (op_count >= 2 && ops[0].type == ARM64_OP_REG && ops[1].type == ARM64_OP_REG) {
+                    if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                         uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                         uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
                         uint32_t type_idx = getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_SIGNED);
                         if (op_count >= 3) {
-                            if (ops[2].type == ARM64_OP_IMM) {
+                            if (ops[2].type == AARCH64_OP_IMM) {
                                 opcode_list = {
                                     OP_BINARY_IMM,
                                     BIN_SHL,
@@ -915,11 +938,11 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                                     static_cast<uint32_t>(ops[2].imm),
                                     dst_idx
                                 };
-                            } else if (ops[2].type == ARM64_OP_REG) {
+                            } else if (ops[2].type == AARCH64_OP_REG) {
                                 uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
                                 opcode_list = { OP_BINARY, BIN_SHL, type_idx, lhs_idx, rhs_idx, dst_idx };
                             }
-                        } else if (ops[1].shift.type == ARM64_SFT_LSL) {
+                        } else if (ops[1].shift.type == AARCH64_SFT_LSL) {
                             opcode_list = {
                                 OP_BINARY_IMM,
                                 BIN_SHL,
@@ -929,6 +952,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                                 dst_idx
                             };
                         }
+                        // 只要成功翻译出 opcode，即视为已处理。
                         if (!opcode_list.empty()) {
                             instruction_id_handled = true;
                             break;
@@ -943,7 +967,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             op_count >= 2 && ops &&
             insn[j].mnemonic &&
             std::strcmp(insn[j].mnemonic, "mov") == 0 &&
-            ops[0].type == ARM64_OP_REG) {
+            ops[0].type == AARCH64_OP_REG) {
             (void)tryEmitMovLike(opcode_list, reg_id_list, ops[0].reg, ops[1]);
         }
 
@@ -952,9 +976,9 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             op_count >= 3 && ops &&
             insn[j].mnemonic &&
             std::strcmp(insn[j].mnemonic, "mul") == 0 &&
-            ops[0].type == ARM64_OP_REG &&
-            ops[1].type == ARM64_OP_REG &&
-            ops[2].type == ARM64_OP_REG) {
+            ops[0].type == AARCH64_OP_REG &&
+            ops[1].type == AARCH64_OP_REG &&
+            ops[2].type == AARCH64_OP_REG) {
             uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
             uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
             uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
@@ -966,15 +990,15 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             op_count >= 3 && ops &&
             insn[j].mnemonic &&
             std::strcmp(insn[j].mnemonic, "and") == 0 &&
-            ops[0].type == ARM64_OP_REG &&
-            ops[1].type == ARM64_OP_REG) {
+            ops[0].type == AARCH64_OP_REG &&
+            ops[1].type == AARCH64_OP_REG) {
             uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
             uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
             uint32_t type_idx = getOrAddTypeTagForRegWidth(type_id_list, ops[0].reg);
-            if (ops[2].type == ARM64_OP_REG) {
+            if (ops[2].type == AARCH64_OP_REG) {
                 uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[2].reg));
                 opcode_list = { OP_BINARY, BIN_AND, type_idx, lhs_idx, rhs_idx, dst_idx };
-            } else if (ops[2].type == ARM64_OP_IMM) {
+            } else if (ops[2].type == AARCH64_OP_IMM) {
                 uint32_t imm = static_cast<uint32_t>(ops[2].imm);
                 opcode_list = { OP_BINARY_IMM, BIN_AND, type_idx, lhs_idx, imm, dst_idx };
             }
@@ -984,8 +1008,8 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             op_count >= 2 && ops &&
             insn[j].mnemonic &&
             std::strcmp(insn[j].mnemonic, "ldrsw") == 0 &&
-            ops[0].type == ARM64_OP_REG &&
-            ops[1].type == ARM64_OP_MEM) {
+            ops[0].type == AARCH64_OP_REG &&
+            ops[1].type == AARCH64_OP_MEM) {
             int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
             opcode_list = {
                 OP_GET_FIELD,
@@ -1000,8 +1024,8 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             op_count >= 2 && ops &&
             insn[j].mnemonic &&
             std::strcmp(insn[j].mnemonic, "ldursw") == 0 &&
-            ops[0].type == ARM64_OP_REG &&
-            ops[1].type == ARM64_OP_MEM) {
+            ops[0].type == AARCH64_OP_REG &&
+            ops[1].type == AARCH64_OP_MEM) {
             int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
             opcode_list = {
                 OP_GET_FIELD,
@@ -1017,9 +1041,9 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             op_count >= 3 && ops &&
             insn[j].mnemonic &&
             std::strcmp(insn[j].mnemonic, "csel") == 0 &&
-            ops[0].type == ARM64_OP_REG &&
-            ops[1].type == ARM64_OP_REG &&
-            ops[2].type == ARM64_OP_REG) {
+            ops[0].type == AARCH64_OP_REG &&
+            ops[1].type == AARCH64_OP_REG &&
+            ops[2].type == AARCH64_OP_REG) {
             // 兼容某些 Capstone 版本把 csel 归到其它 instruction id 的情况。
             arm64_cc cc = detail->aarch64.cc;
             const uint64_t next_addr = addr + (insn[j].size == 0 ? 4 : static_cast<uint64_t>(insn[j].size));
@@ -1063,6 +1087,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
         }
 
         if (opcode_list.empty()) {
+            // 空 opcode 代表本条指令无法翻译，立即失败并记录现场信息。
             const char* reason = instruction_id_handled
                                  ? "recognized instruction but operand pattern is not translated"
                                  : "unsupported instruction id";
@@ -1080,7 +1105,9 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
             break;
         }
 
+        // 保存翻译结果。
         unencoded.instByAddress[addr] = std::move(opcode_list);
+        // 同步保存可读反汇编文本，便于后续 dump/诊断。
         std::string asm_line(insn[j].mnemonic ? insn[j].mnemonic : "");
         if (insn[j].op_str && insn[j].op_str[0] != '\0') {
             asm_line += ' ';
@@ -1096,13 +1123,16 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
 
     std::map<uint64_t, uint32_t> addr_to_pc;
     uint32_t pc = 0;
+    // 把“地址 -> 扁平 PC(word 下标)”预先建表。
     for (const auto& kv : unencoded.instByAddress) {
         addr_to_pc[kv.first] = pc;
         pc += static_cast<uint32_t>(kv.second.size());
     }
 
+    // BL 目标地址列表直接落入 branchAddrWords（后续可 remap 为全局表）。
     unencoded.branchAddrWords = call_target_list;
     unencoded.branchWords.clear();
+    // 本地 branch 目标地址转换为 VM PC。
     for (uint64_t arm_addr : branch_id_list) {
         auto it = addr_to_pc.find(arm_addr);
         unencoded.branchWords.push_back(it != addr_to_pc.end() ? it->second : 0u);
@@ -1178,15 +1208,25 @@ static bool read_string_bin(const std::vector<uint8_t>& data, size_t& cursor, st
 static bool writeUnencodedToBinaryStream(std::ostream& out, const zUnencodedBytecode& unencoded) {
     // 先写 header，再写各区段，读取端按同顺序恢复。
     zUnencodedBinHeader header;
+    // 魔数用于快速识别文件类型，避免把其它二进制误当作 unencoded bin 读取。
     header.magic = Z_UNENCODED_BIN_MAGIC;
+    // 版本号用于协议演进，读取端可按版本做兼容或拒绝。
     header.version = Z_UNENCODED_BIN_VERSION;
+    // registerCount 是 VM 执行时需要的寄存器槽总量。
     header.registerCount = unencoded.registerCount;
+    // regCount 是 reg_id_list 的长度，二者语义不同，需分开保存。
     header.regCount = static_cast<uint32_t>(unencoded.regList.size());
+    // 类型表相关计数。
     header.typeCount = unencoded.typeCount;
+    // init_value 当前协议中通常为 0，但仍保留字段保持协议完整。
     header.initValueCount = unencoded.initValueCount;
+    // instLineCount 是“按地址分行”的条数，不是总 word 数。
     header.instLineCount = static_cast<uint32_t>(unencoded.instByAddress.size());
+    // instCount 是扁平后的总 word 数。
     header.instCount = unencoded.instCount;
+    // 本地分支表数量。
     header.branchCount = unencoded.branchCount;
+    // 全局 call 目标地址表数量。
     header.branchAddrCount = static_cast<uint32_t>(unencoded.branchAddrWords.size());
 
     write_u32_bin(out, header.magic);
@@ -1200,25 +1240,34 @@ static bool writeUnencodedToBinaryStream(std::ostream& out, const zUnencodedByte
     write_u32_bin(out, header.branchCount);
     write_u32_bin(out, header.branchAddrCount);
 
+    // 段 1：reg_id_list。
     for (uint32_t value : unencoded.regList) {
         write_u32_bin(out, value);
     }
+    // 段 2：type_id_list。
     for (uint32_t value : unencoded.typeTags) {
         write_u32_bin(out, value);
     }
+    // 段 3：branch_id_list（本地分支目标 PC）。
     for (uint32_t value : unencoded.branchWords) {
         write_u32_bin(out, value);
     }
+    // 段 4：branch_addr_list（全局 BL 目标地址）。
     for (uint64_t value : unencoded.branchAddrWords) {
         write_u64_bin(out, value);
     }
 
+    // 段 5：逐地址写入指令词和可选反汇编文本。
     for (const auto& kv : unencoded.instByAddress) {
+        // 先写地址，读取端据此重建 map 键。
         write_u64_bin(out, kv.first);
+        // 再写该地址对应的 word 数。
         write_u32_bin(out, static_cast<uint32_t>(kv.second.size()));
+        // 写入该地址整行 opcode words。
         for (uint32_t word : kv.second) {
             write_u32_bin(out, word);
         }
+        // asm 文本可能不存在，缺省写空串。
         auto asm_it = unencoded.asmByAddress.find(kv.first);
         const std::string asm_text = (asm_it != unencoded.asmByAddress.end()) ? asm_it->second : std::string();
         write_string_bin(out, asm_text);
@@ -1230,6 +1279,7 @@ static bool writeUnencodedToBinaryStream(std::ostream& out, const zUnencodedByte
 static bool readUnencodedFromBinaryBytes(const std::vector<uint8_t>& data, zUnencodedBytecode& out) {
     size_t cursor = 0;
     zUnencodedBinHeader header;
+    // 读取 header 各字段，任何一步越界都立刻失败。
     if (!read_u32_bin(data, cursor, header.magic)) return false;
     if (!read_u32_bin(data, cursor, header.version)) return false;
     if (!read_u32_bin(data, cursor, header.registerCount)) return false;
@@ -1242,6 +1292,7 @@ static bool readUnencodedFromBinaryBytes(const std::vector<uint8_t>& data, zUnen
 
     if (!read_u32_bin(data, cursor, header.branchAddrCount)) return false;
 
+    // 先做格式合法性检查，再继续读取正文。
     if (header.magic != Z_UNENCODED_BIN_MAGIC || header.version != Z_UNENCODED_BIN_VERSION) {
         return false;
     }
@@ -1254,26 +1305,31 @@ static bool readUnencodedFromBinaryBytes(const std::vector<uint8_t>& data, zUnen
     out.instCount = header.instCount;
     out.branchCount = header.branchCount;
 
+    // 读取 reg_id_list。
     out.regList.resize(header.regCount);
     for (uint32_t i = 0; i < header.regCount; i++) {
         if (!read_u32_bin(data, cursor, out.regList[i])) return false;
     }
 
+    // 读取 type_id_list。
     out.typeTags.resize(header.typeCount);
     for (uint32_t i = 0; i < header.typeCount; i++) {
         if (!read_u32_bin(data, cursor, out.typeTags[i])) return false;
     }
 
+    // 读取 branch_id_list。
     out.branchWords.resize(header.branchCount);
     for (uint32_t i = 0; i < header.branchCount; i++) {
         if (!read_u32_bin(data, cursor, out.branchWords[i])) return false;
     }
 
+    // 读取 branch_addr_list。
     out.branchAddrWords.resize(header.branchAddrCount);
     for (uint32_t i = 0; i < header.branchAddrCount; i++) {
         if (!read_u64_bin(data, cursor, out.branchAddrWords[i])) return false;
     }
 
+    // 逐地址读取 inst words + asm 文本。
     for (uint32_t i = 0; i < header.instLineCount; i++) {
         uint64_t addr = 0;
         uint32_t words_count = 0;
@@ -1288,12 +1344,15 @@ static bool readUnencodedFromBinaryBytes(const std::vector<uint8_t>& data, zUnen
         std::string asm_text;
         if (!read_string_bin(data, cursor, asm_text)) return false;
 
+        // 保留地址顺序信息到 map。
         out.instByAddress.emplace(addr, std::move(words));
         if (!asm_text.empty()) {
+            // 仅在文本非空时保存，避免无意义空字符串条目。
             out.asmByAddress.emplace(addr, std::move(asm_text));
         }
     }
 
+    // 要求完整消费输入，避免尾部脏数据被静默忽略。
     if (cursor != data.size()) {
         return false;
     }
@@ -1303,13 +1362,16 @@ static bool readUnencodedFromBinaryBytes(const std::vector<uint8_t>& data, zUnen
 
 static std::string trim_copy(std::string value) {
     auto is_space = [](unsigned char c) { return std::isspace(c) != 0; };
+    // 去掉左侧空白。
     auto begin_it = std::find_if_not(value.begin(), value.end(), is_space);
+    // 去掉右侧空白。
     auto end_it = std::find_if_not(value.rbegin(), value.rend(), is_space).base();
     if (begin_it >= end_it) return std::string();
     return std::string(begin_it, end_it);
 }
 
 static bool parseArrayValuesFromLine(const std::string& line, std::vector<uint32_t>& values) {
+    // 仅解析 {...} 内部内容。
     size_t l = line.find('{');
     size_t r = line.find('}');
     if (l == std::string::npos || r == std::string::npos || r <= l) return false;
@@ -1320,6 +1382,7 @@ static bool parseArrayValuesFromLine(const std::string& line, std::vector<uint32
     while (std::getline(ss, token, ',')) {
         std::string trimmed = trim_copy(token);
         if (trimmed.empty()) continue;
+        // 支持 0x 前缀与十进制，统一走 strtoull(..., base=0)。
         unsigned long long value = std::strtoull(trimmed.c_str(), nullptr, 0);
         values.push_back(static_cast<uint32_t>(value));
     }
@@ -1327,6 +1390,7 @@ static bool parseArrayValuesFromLine(const std::string& line, std::vector<uint32
 }
 
 static bool parseArrayValuesFromLine64(const std::string& line, std::vector<uint64_t>& values) {
+    // 64 位版本，用于 branch_addr_list。
     size_t l = line.find('{');
     size_t r = line.find('}');
     if (l == std::string::npos || r == std::string::npos || r <= l) return false;
@@ -1337,6 +1401,7 @@ static bool parseArrayValuesFromLine64(const std::string& line, std::vector<uint
     while (std::getline(ss, token, ',')) {
         std::string trimmed = trim_copy(token);
         if (trimmed.empty()) continue;
+        // 同样允许十进制/十六进制混合输入。
         unsigned long long value = std::strtoull(trimmed.c_str(), nullptr, 0);
         values.push_back(static_cast<uint64_t>(value));
     }
@@ -1347,6 +1412,7 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
     std::istringstream in(content);
     std::string line;
 
+    // 每次解析都先清空输出，防止残留旧状态。
     out = zUnencodedBytecode();
 
     bool got_reg_list = false;
@@ -1360,6 +1426,7 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
     uint64_t parsed_branch_addr_count = 0;
 
     bool in_inst_list = false;
+    // 文本里某些行可能没有地址注释，保底给一个自增地址。
     uint32_t auto_addr = 0;
 
     // 第一阶段：提取 reg/type/branch/inst 等静态定义。
@@ -1369,6 +1436,7 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
 
         if (!in_inst_list) {
             if (trimmed.find("static const uint32_t reg_id_list[]") != std::string::npos) {
+                // 解析寄存器索引表。
                 got_reg_list = parseArrayValuesFromLine(trimmed, out.regList);
                 continue;
             }
@@ -1376,6 +1444,7 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
                 continue;
             }
             if (trimmed.find("static const uint32_t type_id_count") != std::string::npos) {
+                // 解析 type 数量定义。
                 size_t eq = trimmed.find('=');
                 size_t sc = trimmed.find(';', eq);
                 if (eq == std::string::npos || sc == std::string::npos) return false;
@@ -1384,10 +1453,12 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
                 continue;
             }
             if (trimmed.find("static const uint32_t type_id_list[]") != std::string::npos) {
+                // 解析 type 列表定义。
                 got_type_list = parseArrayValuesFromLine(trimmed, out.typeTags);
                 continue;
             }
             if (trimmed.find("static const uint32_t branch_id_count") != std::string::npos) {
+                // 解析本地 branch 数量。
                 size_t eq = trimmed.find('=');
                 size_t sc = trimmed.find(';', eq);
                 if (eq == std::string::npos || sc == std::string::npos) return false;
@@ -1396,6 +1467,7 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
                 continue;
             }
             if (trimmed.find("static const uint64_t branch_addr_count") != std::string::npos) {
+                // 解析全局 branch_addr_list 数量。
                 size_t eq = trimmed.find('=');
                 size_t sc = trimmed.find(';', eq);
                 if (eq == std::string::npos || sc == std::string::npos) return false;
@@ -1404,6 +1476,7 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
                 continue;
             }
             if (trimmed.find("uint64_t branch_addr_list") != std::string::npos && trimmed.find('{') != std::string::npos) {
+                // 解析全局 BL 目标地址表。
                 std::vector<uint64_t> branch_addr_values;
                 if (!parseArrayValuesFromLine64(trimmed, branch_addr_values)) return false;
                 out.branchAddrWords = std::move(branch_addr_values);
@@ -1411,6 +1484,7 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
                 continue;
             }
             if (trimmed.find("branch_id_list") != std::string::npos && trimmed.find('{') != std::string::npos) {
+                // 解析本地 branch 目标 PC 列表。
                 std::vector<uint32_t> branch_values;
                 if (!parseArrayValuesFromLine(trimmed, branch_values)) return false;
                 out.branchWords = std::move(branch_values);
@@ -1418,6 +1492,7 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
                 continue;
             }
             if (trimmed.find("static const uint32_t inst_id_count") != std::string::npos) {
+                // 解析扁平 inst 总 word 数。
                 size_t eq = trimmed.find('=');
                 size_t sc = trimmed.find(';', eq);
                 if (eq == std::string::npos || sc == std::string::npos) return false;
@@ -1426,15 +1501,18 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
                 continue;
             }
             if (trimmed.find("uint32_t inst_id_list[]") != std::string::npos) {
+                // 进入 inst 列表多行区段。
                 in_inst_list = true;
                 continue;
             }
         } else {
             if (trimmed == "};") {
+                // 遇到右花括号，inst 区段结束。
                 in_inst_list = false;
                 continue;
             }
 
+            // 形如 "1,2,3, // OP_XXX 0xaddr: asm..."，先剥离注释部分。
             size_t comment_pos = trimmed.find("//");
             std::string value_part = (comment_pos == std::string::npos) ? trimmed : trim_copy(trimmed.substr(0, comment_pos));
             if (!value_part.empty() && value_part.back() == ',') {
@@ -1448,11 +1526,13 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
             while (std::getline(ss, token, ',')) {
                 std::string token_trimmed = trim_copy(token);
                 if (token_trimmed.empty()) continue;
+                // inst_id_list 中数字默认按十进制输出，这里按十进制解析。
                 unsigned long long value = std::strtoull(token_trimmed.c_str(), nullptr, 10);
                 words.push_back(static_cast<uint32_t>(value));
             }
             if (words.empty()) continue;
 
+            // 默认使用自增地址；若注释中带 0x 地址则覆盖。
             uint64_t addr = static_cast<uint64_t>(auto_addr++);
             std::string asm_text;
             if (comment_pos != std::string::npos) {
@@ -1462,34 +1542,42 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
                     size_t colon_pos = comment.find(':', addr_pos);
                     if (colon_pos != std::string::npos) {
                         std::string addr_str = comment.substr(addr_pos, colon_pos - addr_pos);
+                        // 注释地址按十六进制解析。
                         addr = std::strtoull(addr_str.c_str(), nullptr, 16);
                         asm_text = trim_copy(comment.substr(colon_pos + 1));
                     }
                 }
             }
 
+            // 保存 opcode 行。
             out.instByAddress[addr] = std::move(words);
             if (!asm_text.empty()) {
+                // 保存对应反汇编文本（可选）。
                 out.asmByAddress[addr] = std::move(asm_text);
             }
         }
     }
 
+    // 必填区段缺失即视为格式不完整。
     if (!got_reg_list || !got_type_count || !got_type_list || !got_branch_count || !got_branch_list ||
         !got_branch_addr_count || !got_branch_addr_list || !got_inst_count) {
         return false;
     }
 
+    // type_count 与实际 type 列表长度不一致时，以实际长度为准修正。
     if (out.typeTags.size() != out.typeCount) {
         out.typeCount = static_cast<uint32_t>(out.typeTags.size());
     }
+    // branch_id_list 长度必须严格等于 branchCount。
     if (out.branchWords.size() != out.branchCount) {
         return false;
     }
+    // branch_addr_count 也必须与实际数组一致。
     if (parsed_branch_addr_count != out.branchAddrWords.size()) {
         return false;
     }
 
+    // 重新累计 inst words 数，避免源文本计数与真实内容不一致。
     uint32_t computed_inst_count = 0;
     for (const auto& kv : out.instByAddress) {
         computed_inst_count += static_cast<uint32_t>(kv.second.size());
@@ -1498,8 +1586,10 @@ static bool parseUnencodedFromTextContent(const std::string& content, zUnencoded
         out.instCount = computed_inst_count;
     }
 
+    // registerCount 至少保留 x0-x3 四个调用约定寄存器槽。
     out.registerCount = static_cast<uint32_t>(out.regList.size());
     if (out.registerCount < 4) out.registerCount = 4;
+    // 当前文本路线不携带 init values。
     out.initValueCount = 0;
 
     return true;
@@ -1513,12 +1603,15 @@ static std::vector<uint8_t> parseFunctionBytesFromDisasm(const std::map<uint64_t
         std::string mnemonic;
         std::istringstream ss(asm_text);
         ss >> mnemonic;
+        // 空行直接跳过，不生成占位字节。
         if (mnemonic.empty()) continue;
+        // 对少量关键指令给出更接近真实的占位机器码。
         if (mnemonic == "ret") {
             bytes.insert(bytes.end(), {0xC0, 0x03, 0x5F, 0xD6});
         } else if (mnemonic == "b" || mnemonic == "bl" || mnemonic.rfind("b.", 0) == 0) {
             bytes.insert(bytes.end(), {0x00, 0x00, 0x00, 0x14});
         } else {
+            // 其它统一降级为 NOP 占位，确保长度可视化连续。
             bytes.insert(bytes.end(), {0x1F, 0x20, 0x03, 0xD5});
         }
     }
@@ -1526,6 +1619,7 @@ static std::vector<uint8_t> parseFunctionBytesFromDisasm(const std::map<uint64_t
 }
 
 static uint64_t inferFunctionAddress(const zUnencodedBytecode& unencoded) {
+    // 优先从“有 asm 文本”的首条指令推断函数入口地址。
     for (const auto& kv : unencoded.instByAddress) {
         auto asm_it = unencoded.asmByAddress.find(kv.first);
         if (asm_it != unencoded.asmByAddress.end() && !asm_it->second.empty()) {
@@ -1533,9 +1627,11 @@ static uint64_t inferFunctionAddress(const zUnencodedBytecode& unencoded) {
         }
     }
 
+    // 若 asm 文本缺失，退化为 asmByAddress 的首地址。
     if (!unencoded.asmByAddress.empty()) {
         return unencoded.asmByAddress.begin()->first;
     }
+    // 再退化为 0，调用方需按空函数处理。
     return 0;
 }
 
@@ -1549,6 +1645,7 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
     out << " };\n";
     out << "static const uint32_t reg_id_count = sizeof(reg_id_list)/sizeof(uint32_t);\n";
 
+    // 输出类型表定义。
     out << "static const uint32_t type_id_count = " << unencoded.typeCount << ";\n";
     out << "static const uint32_t type_id_list[] = { ";
     for (size_t i = 0; i < unencoded.typeTags.size(); i++) {
@@ -1557,6 +1654,7 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
     }
     out << " };\n";
 
+    // 输出本地 branch 表（映射到本函数 PC）。
     out << "static const uint32_t branch_id_count = " << unencoded.branchCount << ";\n";
     if (unencoded.branchCount > 0) {
         out << "uint32_t branch_id_list[] = { ";
@@ -1569,6 +1667,7 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
         out << "uint32_t branch_id_list[1] = {};\n";
     }
 
+    // 输出全局 call 目标地址表（BL 使用）。
     out << "static const uint64_t branch_addr_count = " << unencoded.branchAddrWords.size() << ";\n";
     if (!unencoded.branchAddrWords.empty()) {
         out << "uint64_t branch_addr_list[] = { ";
@@ -1581,17 +1680,21 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
         out << "uint64_t branch_addr_list[1] = {};\n";
     }
 
+    // 输出 inst 总 word 数与推断出的函数入口地址。
     out << "static const uint32_t inst_id_count = " << unencoded.instCount << ";\n";
     out << "static const uint64_t fun_addr = "
         << str_format("0x%" PRIx64, inferFunctionAddress(unencoded)) << ";\n";
     out << "uint32_t inst_id_list[] = {\n";
 
+    // 统一注释对齐列，降低版本差异导致的 diff 抖动。
     const size_t comment_column = 54;
     const size_t op_name_width = 20;
     for (auto it = unencoded.instByAddress.begin(); it != unencoded.instByAddress.end(); ++it) {
+        // 每一行 inst_id_list 对应一个地址下的 opcode words。
         const auto& opcode_list = it->second;
         const char* op_name = opcode_list.empty() ? "OP_UNKNOWN" : getOpcodeName(opcode_list[0]);
 
+        // 查找该地址对应的反汇编文本（可能不存在）。
         auto asm_it = unencoded.asmByAddress.find(it->first);
         const char* asm_str = (asm_it != unencoded.asmByAddress.end()) ? asm_it->second.c_str() : "";
         std::string asm_with_addr = (asm_str[0] != '\0')
@@ -1599,6 +1702,7 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
             : std::string();
         const char* asm_display = (asm_str[0] != '\0') ? asm_with_addr.c_str() : asm_str;
 
+        // 统一格式化：数值区 + 注释区。
         std::string line = formatInstructionLine(opcode_list, op_name, asm_display, comment_column, op_name_width);
         out << line << "\n";
     }
@@ -1615,22 +1719,27 @@ zFunction::zFunction(const zFunctionData& data)
 }
 
 const std::string& zFunction::name() const {
+    // 返回函数逻辑名（来源于提取阶段的符号名）。
     return function_name;
 }
 
 Elf64_Addr zFunction::offset() const {
+    // 返回函数在 so 中的虚拟地址（或相对地址，取决于上游填充约定）。
     return function_offset;
 }
 
 size_t zFunction::size() const {
+    // 返回原始机器码字节长度。
     return function_bytes.size();
 }
 
 const uint8_t* zFunction::data() const {
+    // 空函数返回 nullptr，调用方可据此快速判空。
     return function_bytes.empty() ? nullptr : function_bytes.data();
 }
 
 bool zFunction::empty() const {
+    // 与 size()==0 语义一致的便捷接口。
     return function_bytes.empty();
 }
 
@@ -1665,29 +1774,37 @@ void zFunction::set_unencoded_cache(
 }
 
 void zFunction::rebuild_asm_list_from_unencoded() const {
+    // 每次重建前先清空旧展示结果，避免残留。
     asm_list_.clear();
     // 把按地址缓存的 opcode 行重建成展示用的 zInst 列表。
     for (const auto& kv : inst_words_by_addr_cache_) {
+        // map 键是原始指令地址。
         uint64_t addr = kv.first;
+        // 未编码缓存不含真实原始字节，这里用 4 字节占位。
         std::vector<uint8_t> raw(4, 0);
         std::string asm_text;
+        // 默认类型填 vm，表示这是虚拟化后的展示条目。
         std::string asm_type = "vm";
 
         auto it = asm_text_by_addr_cache_.find(addr);
         if (it != asm_text_by_addr_cache_.end()) {
             asm_text = it->second;
+            // 以首 token 作为 asm_type（例如 mov/add/bl）。
             std::istringstream ss(asm_text);
             ss >> asm_type;
             if (asm_type.empty()) asm_type = "vm";
         }
 
+        // 组装统一的 zInst 展示节点。
         asm_list_.emplace_back(addr, std::move(raw), 4u, std::move(asm_type), std::move(asm_text));
     }
+    // 标记展示缓存可用。
     asm_ready_ = true;
 }
 
 // 确保未编码缓存可用：优先复用缓存，缺失时再由机器码反推。
 void zFunction::ensure_unencoded_ready() const {
+    // 已有缓存则直接复用。
     if (unencoded_ready_) return;
 
     // 没有原始机器码时，写入空缓存，避免后续重复判空分支。
@@ -1698,6 +1815,7 @@ void zFunction::ensure_unencoded_ready() const {
         return;
     }
 
+    // 初始化 Capstone 句柄。
     csh handle = 0;
     if (cs_open(CS_ARCH_AARCH64, CS_MODE_ARM, &handle) != CS_ERR_OK) {
         set_unencoded_cache(0, {}, 0, {}, 0, {}, {}, 0, 0, {}, {});
@@ -1706,9 +1824,12 @@ void zFunction::ensure_unencoded_ready() const {
         return;
     }
 
+    // 由机器码翻译出中间结构。
     zUnencodedBytecode unencoded = buildUnencodedByCapstone(handle, data(), size(), offset());
+    // 翻译后立即关闭句柄，避免资源泄漏。
     cs_close(&handle);
 
+    // 翻译失败时仍写入空缓存，确保对象状态自洽。
     if (!unencoded.translationOk) {
         set_unencoded_cache(0, {}, 0, {}, 0, {}, {}, 0, 0, {}, {});
         unencoded_translate_ok_ = false;
@@ -1739,6 +1860,7 @@ void zFunction::ensure_unencoded_ready() const {
 
 // 确保反汇编展示列表可用：优先复用未编码缓存，其次走 Capstone。
 void zFunction::ensure_asm_ready() const {
+    // 展示缓存已生成则直接返回。
     if (asm_ready_) {
         return;
     }
@@ -1749,12 +1871,14 @@ void zFunction::ensure_asm_ready() const {
         return;
     }
 
+    // 否则走真实 Capstone 反汇编路径重建展示列表。
     asm_list_.clear();
     if (!data() || size() == 0) {
         asm_ready_ = true;
         return;
     }
 
+    // 打开 Capstone 进行逐条反汇编。
     csh handle = 0;
     if (cs_open(CS_ARCH_AARCH64, CS_MODE_ARM, &handle) != CS_ERR_OK) {
         asm_ready_ = true;
@@ -1765,9 +1889,11 @@ void zFunction::ensure_asm_ready() const {
     size_t count = cs_disasm(handle, data(), size(), offset(), 0, &insn);
     // 逐条指令转成 zInst 结构，统一供 assemblyInfo() 输出。
     for (size_t i = 0; i < count; i++) {
+        // 拿到单条反汇编结果。
         const cs_insn& item = insn[i];
         std::vector<uint8_t> raw(item.bytes, item.bytes + item.size);
 
+        // mnemonic 作为类型，mnemonic + op_str 作为展示文本。
         std::string asm_type = item.mnemonic ? item.mnemonic : "";
         std::string disasm_text = asm_type;
         if (item.op_str && item.op_str[0] != '\0') {
@@ -1784,27 +1910,33 @@ void zFunction::ensure_asm_ready() const {
         );
     }
 
+    // 释放 Capstone 分配的指令数组。
     if (insn) {
         cs_free(insn, count);
     }
+    // 关闭句柄并标记展示缓存完成。
     cs_close(&handle);
     asm_ready_ = true;
 }
 
 zFunction& zFunction::analyzeAssembly() {
+    // 显式触发一次展示缓存构建，便于链式调用。
     ensure_asm_ready();
     return *this;
 }
 
 const std::vector<zInst>& zFunction::assemblyList() const {
+    // 惰性构建后返回只读列表。
     ensure_asm_ready();
     return asm_list_;
 }
 
 std::string zFunction::assemblyInfo() const {
+    // 惰性构建展示列表。
     ensure_asm_ready();
 
     std::ostringstream oss;
+    // 用换行拼接每条 zInst 的信息文本。
     for (size_t i = 0; i < asm_list_.size(); i++) {
         if (i > 0) {
             oss << "\n";
@@ -1814,7 +1946,27 @@ std::string zFunction::assemblyInfo() const {
     return oss.str();
 }
 
+bool zFunction::prepareTranslation(std::string* error) const {
+    // 统一触发未编码缓存准备流程。
+    ensure_unencoded_ready();
+    if (!unencoded_translate_ok_) {
+        if (error != nullptr) {
+            *error = unencoded_translate_error_;
+        }
+        return false;
+    }
+    if (error != nullptr) {
+        error->clear();
+    }
+    return true;
+}
+
+const std::string& zFunction::lastTranslationError() const {
+    return unencoded_translate_error_;
+}
+
 const std::vector<uint64_t>& zFunction::sharedBranchAddrs() const {
+    // 先确保 unencoded 缓存就绪，避免返回未初始化数据。
     ensure_unencoded_ready();
     if (!unencoded_translate_ok_) {
         static const std::vector<uint64_t> kEmpty;
@@ -1827,6 +1979,7 @@ const std::vector<uint64_t>& zFunction::sharedBranchAddrs() const {
 }
 
 bool zFunction::remapBlToSharedBranchAddrs(const std::vector<uint64_t>& shared_branch_addrs) {
+    // 先确保本函数已完成翻译。
     ensure_unencoded_ready();
     if (!unencoded_translate_ok_) {
         LOGE("remapBlToSharedBranchAddrs failed for %s: %s",
@@ -1834,6 +1987,7 @@ bool zFunction::remapBlToSharedBranchAddrs(const std::vector<uint64_t>& shared_b
              unencoded_translate_error_.c_str());
         return false;
     }
+    // 若全局表为空，则要求本函数也不包含任何 OP_BL。
     if (shared_branch_addrs.empty()) {
         for (const auto& kv : inst_words_by_addr_cache_) {
             const std::vector<uint32_t>& words = kv.second;
@@ -1845,12 +1999,14 @@ bool zFunction::remapBlToSharedBranchAddrs(const std::vector<uint64_t>& shared_b
         return true;
     }
 
+    // 构建“目标地址 -> 全局索引”加速表。
     std::unordered_map<uint64_t, uint32_t> global_index_map;
     global_index_map.reserve(shared_branch_addrs.size());
     for (uint32_t i = 0; i < static_cast<uint32_t>(shared_branch_addrs.size()); ++i) {
         global_index_map.emplace(shared_branch_addrs[i], i);
     }
 
+    // 扫描每条指令，把 OP_BL 的本地索引重写为全局索引。
     for (auto& kv : inst_words_by_addr_cache_) {
         std::vector<uint32_t>& words = kv.second;
         if (words.empty() || words[0] != OP_BL) {
@@ -1860,11 +2016,13 @@ bool zFunction::remapBlToSharedBranchAddrs(const std::vector<uint64_t>& shared_b
             return false;
         }
 
+        // OP_BL 协议：words[1] 为本地 call 目标索引。
         const uint32_t local_index = words[1];
         if (local_index >= branch_addrs_cache_.size()) {
             return false;
         }
 
+        // 通过本地索引拿到真实地址，再映射到全局索引。
         const uint64_t target_addr = branch_addrs_cache_[local_index];
         auto it = global_index_map.find(target_addr);
         if (it == global_index_map.end()) {
@@ -1880,6 +2038,7 @@ bool zFunction::remapBlToSharedBranchAddrs(const std::vector<uint64_t>& shared_b
 
 // 按导出模式输出函数数据。
 bool zFunction::dump(const char* file_path, DumpMode mode) const {
+    // 目标路径必须有效。
     if (!file_path || file_path[0] == '\0') return false;
 
     // 从缓存恢复统一中间结构，避免不同导出模式重复拼装。
@@ -1899,6 +2058,7 @@ bool zFunction::dump(const char* file_path, DumpMode mode) const {
         return unencoded;
     };
 
+    // 路线 1：导出未编码二进制。
     if (mode == DumpMode::UNENCODED_BIN) {
         ensure_unencoded_ready();
         if (!unencoded_translate_ok_) {
@@ -1913,6 +2073,7 @@ bool zFunction::dump(const char* file_path, DumpMode mode) const {
         return writeUnencodedToBinaryStream(out, unencoded);
     }
 
+    // 其余路线同样依赖 unencoded 缓存。
     ensure_unencoded_ready();
     if (!unencoded_translate_ok_) {
         LOGE("dump failed for %s: %s",
@@ -1922,6 +2083,7 @@ bool zFunction::dump(const char* file_path, DumpMode mode) const {
     }
     zUnencodedBytecode unencoded = build_unencoded_from_cache();
 
+    // 路线 2：导出编码后的紧凑二进制。
     if (mode == DumpMode::ENCODED) {
         // 编码导出时做“往返一致性”校验，保证序列化协议稳定。
         zFunctionData source_data;
@@ -1931,22 +2093,26 @@ bool zFunction::dump(const char* file_path, DumpMode mode) const {
             return false;
         }
 
+        // 先编码。
         std::vector<uint8_t> encoded;
         if (!source_data.serializeEncoded(encoded, &error)) {
             LOGE("dump encoded failed: serialize error: %s", error.c_str());
             return false;
         }
 
+        // 再反序列化，校验协议自一致。
         zFunctionData decoded_data;
         if (!zFunctionData::deserializeEncoded(encoded.data(), encoded.size(), decoded_data, &error)) {
             LOGE("dump encoded failed: deserialize error: %s", error.c_str());
             return false;
         }
+        // 最后做字段级一致性比对。
         if (!source_data.encodedEquals(decoded_data, &error)) {
             LOGE("dump encoded failed: round-trip mismatch: %s", error.c_str());
             return false;
         }
 
+        // 校验通过后再落盘。
         std::ofstream out(file_path, std::ios::binary);
         if (!out) return false;
         if (!encoded.empty()) {
@@ -1955,6 +2121,7 @@ bool zFunction::dump(const char* file_path, DumpMode mode) const {
         return static_cast<bool>(out);
     }
 
+    // 路线 3：导出历史文本格式（fun_xxx.txt）。
     std::ofstream out(file_path);
     if (!out) return false;
     return writeUnencodedToStream(out, unencoded);
