@@ -1,0 +1,6 @@
+[INFO][main][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:526] Validate success: demo1_add_segment
+[DBG] main() entered, argc=3
+[DBG]   argv[0]=D:\work\2026\0123_elf_editor\zElfEditor\cmake-build-debug\zElfEditor.exe
+[DBG]   argv[1]=validate
+[DBG]   argv[2]=demo1_add_segment
+[DBG] cmd=validate

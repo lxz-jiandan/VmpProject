@@ -1,17 +1,5 @@
 # ninja log v5
-21	223	7934184984726526	CMakeFiles/VmProtect.dir/zLog.cpp.obj	23ec0b731793dee7
-2743	4943	7934185031929645	VmProtect.exe	5e65c37040a9b83b
-18	808	7934184990523901	CMakeFiles/VmProtect.dir/zInst.cpp.obj	81068e2a6a48b584
-29	1028	7934184992680151	CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj	6b4237598d4668dd
-15	1153	7934184993991133	CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj	5eb8ef16b84a49a
-8	2742	7934185009870588	CMakeFiles/VmProtect.dir/main.cpp.obj	192d02603ff8c24e
-12	1343	7934184995898069	CMakeFiles/VmProtect.dir/zElf.cpp.obj	35795c9cc08141cd
-25	2516	7934185007600416	CMakeFiles/VmProtect.dir/zFunction.cpp.obj	b2d5c76930b353fd
-30	393	7934196575927869	CMakeFiles/VmProtect.dir/zLog.cpp.obj	23ec0b731793dee7
-25	1550	7934196587318016	CMakeFiles/VmProtect.dir/zInst.cpp.obj	81068e2a6a48b584
-48	1969	7934196591564374	CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj	6b4237598d4668dd
-37	2235	7934196594335554	CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj	5eb8ef16b84a49a
-19	2527	7934196597355071	CMakeFiles/VmProtect.dir/zElf.cpp.obj	35795c9cc08141cd
-43	3857	7934196610671099	CMakeFiles/VmProtect.dir/zFunction.cpp.obj	b2d5c76930b353fd
-12	4164	7934196613757712	CMakeFiles/VmProtect.dir/main.cpp.obj	192d02603ff8c24e
-4166	6578	7934196637904757	VmProtect.exe	5e65c37040a9b83b
+22	182	7934225418040150	CMakeFiles/VmProtect.dir/zLog.cpp.obj	12e23878b4e83486
+15	669	7934225422906637	CMakeFiles/VmProtect.dir/zInst.cpp.obj	cefab0407cd814db
+36	820	7934225424416629	CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj	f6cd1e7ac476ee74
+45	937	7934225425592205	CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj	3937192e41b1f172

@@ -1,0 +1,27 @@
+EXIT:1
+[INFO][main][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:384] test_step1 start
+[INFO][main][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:391] test_step1 input: ..\demo1
+[INFO][main][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:399] test_step1: add_segment -> demo1_add_segment
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:277] PHT relocated to 0x5000, rescue PT_LOAD added (phnum=15)
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:803] Section '.text' grew beyond LOAD[2] boundary, will relocate via cursor
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:926] Created new LOAD segment for section '.text': off=0x6000 vaddr=0x6000 size=0x55c flags=0x5
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:803] Section '.plt' grew beyond LOAD[2] boundary, will relocate via cursor
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:926] Created new LOAD segment for section '.plt': off=0x7000 vaddr=0x7000 size=0x80 flags=0x5
+[INFO][main][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:411] test_step1: backup after add_segment
+[INFO][main][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:425] test_step1: add_section -> demo1_add_section
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:803] Section '.text' grew beyond LOAD[2] boundary, will relocate via cursor
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:926] Created new LOAD segment for section '.text': off=0x5000 vaddr=0x3000 size=0x55c flags=0x5
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:803] Section '.plt' grew beyond LOAD[2] boundary, will relocate via cursor
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:926] Created new LOAD segment for section '.plt': off=0x6000 vaddr=0x4000 size=0x80 flags=0x5
+[INFO][main][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:442] test_step1: backup after add_section
+[INFO][main][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:449] test_step1: add_section_segment -> demo1_add_section_segment
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:803] Section '.text' grew beyond LOAD[2] boundary, will relocate via cursor
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:926] Created new LOAD segment for section '.text': off=0x5000 vaddr=0x3000 size=0x55c flags=0x5
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:803] Section '.plt' grew beyond LOAD[2] boundary, will relocate via cursor
+[WARN][reconstructionImpl][D:/work/2026/0123_elf_editor/zElfEditor/zElfReconstruction.cpp:926] Created new LOAD segment for section '.plt': off=0x6000 vaddr=0x4000 size=0x80 flags=0x5
+[INFO][main][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:467] test_step1: device regression -> demo1_add_segment
+[INFO][run_device_regression][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:339] Device regression start: local=demo1_add_segment
+[INFO][run_device_regression][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:345] Device regression: adb push "demo1_add_segment" /data/local/tmp/demo1_add_segment
+[INFO][run_device_regression][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:352] Device regression: adb shell "su -c chmod 777 /data/local/tmp/demo1_add_segment"
+[INFO][run_device_regression][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:359] Device regression: adb shell "su -c /data/local/tmp/demo1_add_segment"
+[ERROR][run_device_regression][D:/work/2026/0123_elf_editor/zElfEditor/main.cpp:362] Device regression failed: run (exit=1)

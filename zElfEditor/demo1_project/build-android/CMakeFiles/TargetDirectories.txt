@@ -1,0 +1,3 @@
+D:/work/2026/0123_elf_editor/zElfEditor/demo1_project/build-android/CMakeFiles/rebuild_cache.dir
+D:/work/2026/0123_elf_editor/zElfEditor/demo1_project/build-android/CMakeFiles/demo1.dir
+D:/work/2026/0123_elf_editor/zElfEditor/demo1_project/build-android/CMakeFiles/edit_cache.dir
