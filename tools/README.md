@@ -2,7 +2,7 @@
 
 `run_regression.py` runs end-to-end startup regression:
 
-1. Python implementation of `VmProtect/build_run.bat` logic:
+1. Build and export artifacts from `VmProtect`:
    - detect `cmake` / `ninja` / (`gcc` + `g++`)
    - configure + build `VmProtect`
    - run `VmProtect.exe` to export artifacts

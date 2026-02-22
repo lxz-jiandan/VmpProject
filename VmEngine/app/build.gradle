@@ -99,7 +99,7 @@ tasks.register("buildVmProtectTool") {
         exec {
             commandLine cmakeExe,
                     "--build", vmProtectBuildDir.absolutePath,
-                    "--target", "VmProtect", "VmProtectPatchbay",
+                    "--target", "VmProtect",
                     "-j", "12"
             workingDir vmProtectProjectDir
         }

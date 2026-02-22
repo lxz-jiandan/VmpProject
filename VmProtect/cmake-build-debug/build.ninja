@@ -52,65 +52,163 @@ build cmake_object_order_depends_target_VmProtect: phony || CMakeFiles/VmProtect
 build CMakeFiles/VmProtect.dir/main.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/main.cpp || cmake_object_order_depends_target_VmProtect
   DEP_FILE = CMakeFiles\VmProtect.dir\main.cpp.obj.d
   FLAGS = -g -std=c++17
-  INCLUDES = -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
   OBJECT_DIR = CMakeFiles\VmProtect.dir
   OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
 
 build CMakeFiles/VmProtect.dir/zElf.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zElf.cpp || cmake_object_order_depends_target_VmProtect
   DEP_FILE = CMakeFiles\VmProtect.dir\zElf.cpp.obj.d
   FLAGS = -g -std=c++17
-  INCLUDES = -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
   OBJECT_DIR = CMakeFiles\VmProtect.dir
   OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
 
 build CMakeFiles/VmProtect.dir/zLog.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zLog.cpp || cmake_object_order_depends_target_VmProtect
   DEP_FILE = CMakeFiles\VmProtect.dir\zLog.cpp.obj.d
   FLAGS = -g -std=c++17
-  INCLUDES = -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
   OBJECT_DIR = CMakeFiles\VmProtect.dir
   OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
 
 build CMakeFiles/VmProtect.dir/zInst.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zInst.cpp || cmake_object_order_depends_target_VmProtect
   DEP_FILE = CMakeFiles\VmProtect.dir\zInst.cpp.obj.d
   FLAGS = -g -std=c++17
-  INCLUDES = -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
   OBJECT_DIR = CMakeFiles\VmProtect.dir
   OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
 
 build CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zSoBinBundle.cpp || cmake_object_order_depends_target_VmProtect
   DEP_FILE = CMakeFiles\VmProtect.dir\zSoBinBundle.cpp.obj.d
   FLAGS = -g -std=c++17
-  INCLUDES = -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
   OBJECT_DIR = CMakeFiles\VmProtect.dir
   OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
 
 build CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zFunctionData.cpp || cmake_object_order_depends_target_VmProtect
   DEP_FILE = CMakeFiles\VmProtect.dir\zFunctionData.cpp.obj.d
   FLAGS = -g -std=c++17
-  INCLUDES = -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
   OBJECT_DIR = CMakeFiles\VmProtect.dir
   OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
 
 build CMakeFiles/VmProtect.dir/zFunction.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zFunction.cpp || cmake_object_order_depends_target_VmProtect
   DEP_FILE = CMakeFiles\VmProtect.dir\zFunction.cpp.obj.d
   FLAGS = -g -std=c++17
-  INCLUDES = -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
   OBJECT_DIR = CMakeFiles\VmProtect.dir
   OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/main.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/main.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\main.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElf.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElf.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElf.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElfHeader.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfHeader.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfHeader.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zProgramTableElement.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zProgramTableElement.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zProgramTableElement.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElfProgramHeaderTable.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfProgramHeaderTable.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfProgramHeaderTable.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zSectionTableElement.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zSectionTableElement.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zSectionTableElement.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElfSectionHeaderTable.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfSectionHeaderTable.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfSectionHeaderTable.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElfUtils.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfUtils.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfUtils.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElfValidator.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfValidator.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfValidator.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElfReconstruction.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfReconstruction.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfReconstruction.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElfInject.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfInject.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfInject.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElfLoader.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfLoader.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfLoader.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElfAddressRewriter.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfAddressRewriter.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfAddressRewriter.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+
+build CMakeFiles/VmProtect.dir/patchbay_tool/zElfPcRelativePatcher.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfPcRelativePatcher.cpp || cmake_object_order_depends_target_VmProtect
+  DEFINES = -DzElf=PatchbayElf
+  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfPcRelativePatcher.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtect.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
 
 
 # =============================================================================
@@ -120,179 +218,15 @@ build CMakeFiles/VmProtect.dir/zFunction.cpp.obj: CXX_COMPILER__VmProtect_Debug 
 #############################################
 # Link the executable VmProtect.exe
 
-build VmProtect.exe: CXX_EXECUTABLE_LINKER__VmProtect_Debug CMakeFiles/VmProtect.dir/main.cpp.obj CMakeFiles/VmProtect.dir/zElf.cpp.obj CMakeFiles/VmProtect.dir/zLog.cpp.obj CMakeFiles/VmProtect.dir/zInst.cpp.obj CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj CMakeFiles/VmProtect.dir/zFunction.cpp.obj | ../capstone_sdk/lib/capstone.lib
+build VmProtect.exe: CXX_EXECUTABLE_LINKER__VmProtect_Debug CMakeFiles/VmProtect.dir/main.cpp.obj CMakeFiles/VmProtect.dir/zElf.cpp.obj CMakeFiles/VmProtect.dir/zLog.cpp.obj CMakeFiles/VmProtect.dir/zInst.cpp.obj CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj CMakeFiles/VmProtect.dir/zFunction.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/main.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElf.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfHeader.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zProgramTableElement.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfProgramHeaderTable.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zSectionTableElement.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfSectionHeaderTable.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfUtils.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfValidator.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfReconstruction.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfInject.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfLoader.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfAddressRewriter.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfPcRelativePatcher.cpp.obj | ../capstone_sdk/lib/capstone.lib
   FLAGS = -g
   LINK_LIBRARIES = ../capstone_sdk/lib/capstone.lib  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\VmProtect.dir
   POST_BUILD = cd .
   PRE_LINK = cd .
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
   TARGET_FILE = VmProtect.exe
   TARGET_IMPLIB = libVmProtect.dll.a
-  TARGET_PDB = VmProtect.pdb
-
-# =============================================================================
-# Object build statements for EXECUTABLE target VmProtectPatchbay
-
-
-#############################################
-# Order-only phony target for VmProtectPatchbay
-
-build cmake_object_order_depends_target_VmProtectPatchbay: phony || CMakeFiles/VmProtectPatchbay.dir
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/main.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/main.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\main.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElf.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElf.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElf.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfHeader.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfHeader.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfHeader.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zProgramTableElement.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zProgramTableElement.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zProgramTableElement.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfProgramHeaderTable.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfProgramHeaderTable.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfProgramHeaderTable.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zSectionTableElement.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zSectionTableElement.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zSectionTableElement.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfSectionHeaderTable.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfSectionHeaderTable.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfSectionHeaderTable.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfUtils.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfUtils.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfUtils.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfValidator.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfValidator.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfValidator.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfReconstruction.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfReconstruction.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfReconstruction.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfInject.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfInject.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfInject.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfLoader.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfLoader.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfLoader.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfAddressRewriter.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfAddressRewriter.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfAddressRewriter.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfPcRelativePatcher.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfPcRelativePatcher.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfPcRelativePatcher.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zLog.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zLog.cpp || cmake_object_order_depends_target_VmProtectPatchbay
-  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zLog.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_PDB = VmProtectPatchbay.pdb
-
-
-# =============================================================================
-# Link build statements for EXECUTABLE target VmProtectPatchbay
-
-
-#############################################
-# Link the executable VmProtectPatchbay.exe
-
-build VmProtectPatchbay.exe: CXX_EXECUTABLE_LINKER__VmProtectPatchbay_Debug CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/main.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElf.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfHeader.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zProgramTableElement.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfProgramHeaderTable.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zSectionTableElement.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfSectionHeaderTable.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfUtils.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfValidator.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfReconstruction.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfInject.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfLoader.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfAddressRewriter.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfPcRelativePatcher.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zLog.cpp.obj | ../capstone_sdk/lib/capstone.lib
-  FLAGS = -g
-  LINK_LIBRARIES = ../capstone_sdk/lib/capstone.lib  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
-  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
-  POST_BUILD = cd .
-  PRE_LINK = cd .
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
-  TARGET_FILE = VmProtectPatchbay.exe
-  TARGET_IMPLIB = libVmProtectPatchbay.dll.a
-  TARGET_PDB = VmProtectPatchbay.pdb
+  TARGET_PDB = VmProtect.exe.dbg
 
 
 #############################################
@@ -322,8 +256,6 @@ build rebuild_cache: phony CMakeFiles/rebuild_cache.util
 
 build VmProtect: phony VmProtect.exe
 
-build VmProtectPatchbay: phony VmProtectPatchbay.exe
-
 # =============================================================================
 # Folder targets.
 
@@ -332,7 +264,7 @@ build VmProtectPatchbay: phony VmProtectPatchbay.exe
 #############################################
 # Folder: Z:/2026/0217_vmp_project/VmpProject/VmProtect/cmake-build-debug
 
-build all: phony VmProtect.exe VmProtectPatchbay.exe
+build all: phony VmProtect.exe
 
 # =============================================================================
 # Built-in targets
@@ -341,14 +273,14 @@ build all: phony VmProtect.exe VmProtectPatchbay.exe
 #############################################
 # Re-run CMake if any of its inputs changed.
 
-build build.ninja: RERUN_CMAKE | ../CMakeLists.txt C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCCompiler.cmake.in C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCCompilerABI.c C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCXXCompiler.cmake.in C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCXXCompilerABI.cpp C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCompilerIdDetection.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCXXCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCompileFeatures.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCompilerABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCompilerId.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineRCCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeFindBinUtils.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeParseImplicitIncludeInfo.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeParseImplicitLinkInfo.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeParseLibraryArchitecture.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeRCCompiler.cmake.in C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeRCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeSystem.cmake.in C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeTestCCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeTestCXXCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeTestCompilerCommon.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeTestRCCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/ADSP-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/ARMCC-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/ARMClang-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/AppleClang-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Borland-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Bruce-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Clang-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Clang-DetermineCompilerInternal.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Comeau-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Compaq-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Compaq-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Cray-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Embarcadero-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Fujitsu-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/FujitsuClang-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GHS-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-FindBinUtils.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/HP-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/HP-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IAR-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IBMCPP-C-DetermineVersionInternal.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IBMCPP-CXX-DetermineVersionInternal.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IBMClang-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IBMClang-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Intel-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IntelLLVM-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/LCC-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/LCC-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/MSVC-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/NVHPC-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/NVIDIA-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/OpenWatcom-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/PGI-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/PathScale-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/SCO-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/SDCC-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/SunPro-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/SunPro-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/TI-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/TinyCC-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/VisualAge-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/VisualAge-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Watcom-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/XL-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/XL-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/XLClang-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/XLClang-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/zOS-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/zOS-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Internal/FeatureTesting.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-Determine-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-C-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-CXX-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-windres.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/WindowsPaths.cmake CMakeCache.txt CMakeFiles/3.23.2/CMakeCCompiler.cmake CMakeFiles/3.23.2/CMakeCXXCompiler.cmake CMakeFiles/3.23.2/CMakeRCCompiler.cmake CMakeFiles/3.23.2/CMakeSystem.cmake
+build build.ninja: RERUN_CMAKE | ../CMakeLists.txt C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeRCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-C-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-CXX-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-windres.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/WindowsPaths.cmake CMakeCache.txt CMakeFiles/3.23.2/CMakeCCompiler.cmake CMakeFiles/3.23.2/CMakeCXXCompiler.cmake CMakeFiles/3.23.2/CMakeRCCompiler.cmake CMakeFiles/3.23.2/CMakeSystem.cmake
   pool = console
 
 
 #############################################
 # A missing CMake input file is not an error.
 
-build ../CMakeLists.txt C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCCompiler.cmake.in C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCCompilerABI.c C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCXXCompiler.cmake.in C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCXXCompilerABI.cpp C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCompilerIdDetection.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCXXCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCompileFeatures.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCompilerABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineCompilerId.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineRCCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeDetermineSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeFindBinUtils.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeParseImplicitIncludeInfo.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeParseImplicitLinkInfo.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeParseLibraryArchitecture.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeRCCompiler.cmake.in C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeRCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeSystem.cmake.in C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeTestCCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeTestCXXCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeTestCompilerCommon.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeTestRCCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/ADSP-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/ARMCC-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/ARMClang-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/AppleClang-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Borland-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Bruce-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Clang-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Clang-DetermineCompilerInternal.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Comeau-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Compaq-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Compaq-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Cray-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Embarcadero-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Fujitsu-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/FujitsuClang-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GHS-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-FindBinUtils.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/HP-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/HP-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IAR-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IBMCPP-C-DetermineVersionInternal.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IBMCPP-CXX-DetermineVersionInternal.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IBMClang-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IBMClang-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Intel-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/IntelLLVM-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/LCC-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/LCC-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/MSVC-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/NVHPC-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/NVIDIA-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/OpenWatcom-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/PGI-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/PathScale-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/SCO-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/SDCC-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/SunPro-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/SunPro-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/TI-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/TinyCC-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/VisualAge-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/VisualAge-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/Watcom-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/XL-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/XL-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/XLClang-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/XLClang-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/zOS-C-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/zOS-CXX-DetermineCompiler.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Internal/FeatureTesting.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-Determine-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-C-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-CXX-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-windres.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/WindowsPaths.cmake CMakeCache.txt CMakeFiles/3.23.2/CMakeCCompiler.cmake CMakeFiles/3.23.2/CMakeCXXCompiler.cmake CMakeFiles/3.23.2/CMakeRCCompiler.cmake CMakeFiles/3.23.2/CMakeSystem.cmake: phony
+build ../CMakeLists.txt C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCXXInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeCommonLanguageInclude.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeGenericSystem.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeInitializeConfigs.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeLanguageInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeRCInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeSystemSpecificInformation.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/CMakeSystemSpecificInitialize.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/CMakeCommonCompilerMacros.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Compiler/GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-C-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-C.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-CXX-ABI.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU-CXX.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-GNU.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows-windres.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/Windows.cmake C$:/Program$ Files/JetBrains/CLion$ 2022.2.5/bin/cmake/win/share/cmake-3.23/Modules/Platform/WindowsPaths.cmake CMakeCache.txt CMakeFiles/3.23.2/CMakeCCompiler.cmake CMakeFiles/3.23.2/CMakeCXXCompiler.cmake CMakeFiles/3.23.2/CMakeRCCompiler.cmake CMakeFiles/3.23.2/CMakeSystem.cmake: phony
 
 
 #############################################

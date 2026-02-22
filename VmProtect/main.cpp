@@ -28,6 +28,7 @@
 #include "zFunction.h"
 #include "zLog.h"
 #include "zSoBinBundle.h"
+#include "patchbay_tool/patchbay_entry.h"
 
 namespace fs = std::filesystem;
 
@@ -60,7 +61,7 @@ struct VmProtectPolicy {
     std::string patch_donor_so;
     // patchbay 导出统一指向的实现符号。
     std::string patch_impl_symbol = "z_takeover_dispatch_by_id";
-    // patch 工具可执行文件路径。
+    // 外部 patch 工具可执行文件路径（可选，不传则用内置 patchbay 子命令）。
     std::string patch_tool_exe;
     // true: donor 所有导出都补齐；false: 仅补 fun_* 与 Java_*。
     bool patch_all_exports = false;
@@ -470,7 +471,7 @@ void printUsage() {
         << "  --final-so <file>            Final protected so path (default overwrite host-so)\n"
         << "  --patch-donor-so <file>      Donor so for patchbay export fill\n"
         << "  --patch-impl-symbol <name>   Impl symbol used by export_alias_from_patchbay\n"
-        << "  --patch-tool-exe <file>      Patch tool executable path\n"
+        << "  --patch-tool-exe <file>      External patch tool executable path (optional)\n"
         << "  --patch-all-exports          Patch all donor exports (default: only fun_* and Java_*)\n"
         << "  --patch-no-allow-validate-fail Disable --allow-validate-fail during patch\n"
         << "  --shared-branch-file <file>  Shared branch list output file name\n"
@@ -725,6 +726,18 @@ int runCommandLine(const std::vector<std::string>& args) {
     return std::system(line.c_str());
 }
 
+int runPatchbayCommandInProcess(const std::vector<std::string>& args) {
+    if (args.empty()) {
+        return -1;
+    }
+    std::vector<char*> argv;
+    argv.reserve(args.size());
+    for (const std::string& arg : args) {
+        argv.push_back(const_cast<char*>(arg.c_str()));
+    }
+    return vmprotect_patchbay_entry(static_cast<int>(argv.size()), argv.data());
+}
+
 bool moveOrReplaceFile(const std::string& from, const std::string& to) {
     if (from.empty() || to.empty()) {
         return false;
@@ -746,36 +759,13 @@ bool moveOrReplaceFile(const std::string& from, const std::string& to) {
     return true;
 }
 
-std::string resolveNeighborExecutable(const std::string& self_exe_path,
-                                      const std::string& neighbor_name) {
-    if (self_exe_path.empty() || neighbor_name.empty()) {
-        return "";
-    }
-    std::error_code ec;
-    fs::path self_path(self_exe_path);
-    if (self_path.is_relative()) {
-        self_path = fs::absolute(self_path, ec);
-        if (ec) {
-            return "";
-        }
-    }
-    const fs::path parent = self_path.parent_path();
-    if (parent.empty()) {
-        return "";
-    }
-    return (parent / neighbor_name).lexically_normal().string();
-}
-
 bool runPatchbayExportFromDonor(const std::string& patch_tool_exe,
+                                const std::string& self_exe,
                                 const std::string& input_so,
                                 const std::string& donor_so,
                                 const std::string& impl_symbol,
                                 bool patch_all_exports,
                                 bool allow_validate_fail) {
-    if (!fileExists(patch_tool_exe)) {
-        LOGE("patch tool executable not found: %s", patch_tool_exe.c_str());
-        return false;
-    }
     if (!fileExists(input_so)) {
         LOGE("patch input so not found: %s", input_so.c_str());
         return false;
@@ -790,8 +780,18 @@ bool runPatchbayExportFromDonor(const std::string& patch_tool_exe,
     }
 
     const std::string patched_tmp = input_so + ".patchbay.tmp.so";
+    const std::string tool_exe = patch_tool_exe.empty() ? self_exe : patch_tool_exe;
+    if (tool_exe.empty()) {
+        LOGE("patch tool executable is empty");
+        return false;
+    }
+    if (!patch_tool_exe.empty() && !fileExists(tool_exe)) {
+        LOGE("patch tool executable not found: %s", tool_exe.c_str());
+        return false;
+    }
+
     std::vector<std::string> cmd = {
-        patch_tool_exe,
+        tool_exe,
         "export_alias_from_patchbay",
         input_so,
         donor_so,
@@ -805,7 +805,9 @@ bool runPatchbayExportFromDonor(const std::string& patch_tool_exe,
         cmd.emplace_back("--only-fun-java");
     }
 
-    const int rc = runCommandLine(cmd);
+    const int rc = patch_tool_exe.empty()
+        ? runPatchbayCommandInProcess(cmd)
+        : runCommandLine(cmd);
     if (rc != 0) {
         LOGE("patch tool command failed rc=%d", rc);
         return false;
@@ -820,7 +822,7 @@ bool runPatchbayExportFromDonor(const std::string& patch_tool_exe,
     }
 
     LOGI("patchbay export completed: tool=%s input=%s donor=%s impl=%s patch_all_exports=%d",
-         patch_tool_exe.c_str(),
+         tool_exe.c_str(),
          input_so.c_str(),
          donor_so.c_str(),
          impl_symbol.c_str(),
@@ -1147,6 +1149,10 @@ bool exportProtectedPackage(const VmProtectPolicy& policy,
 } // namespace
 
 int main(int argc, char* argv[]) {
+    if (argc >= 2 && vmprotect_is_patchbay_command(argv[1])) {
+        return vmprotect_patchbay_entry(argc, argv);
+    }
+
     // main 总流程：
     // 1) 合并 policy + CLI；
     // 2) 解析目标函数；
@@ -1321,16 +1327,8 @@ int main(int argc, char* argv[]) {
                 LOGE("patch requires patch_donor_so");
                 return 1;
             }
-            std::string patch_tool_exe = policy.patch_tool_exe;
-            if (patch_tool_exe.empty()) {
-                patch_tool_exe = resolveNeighborExecutable(argv[0], "VmProtectPatchbay.exe");
-            }
-            if (patch_tool_exe.empty() || !fileExists(patch_tool_exe)) {
-                LOGE("patch tool executable not found: %s (set --patch-tool-exe explicitly if needed)",
-                     patch_tool_exe.empty() ? "(empty)" : patch_tool_exe.c_str());
-                return 1;
-            }
-            if (!runPatchbayExportFromDonor(patch_tool_exe,
+            if (!runPatchbayExportFromDonor(policy.patch_tool_exe,
+                                            argv[0] ? argv[0] : "",
                                             final_so_path,
                                             policy.patch_donor_so,
                                             policy.patch_impl_symbol,

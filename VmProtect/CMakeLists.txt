@@ -24,10 +24,8 @@ add_executable(VmProtect
     zFunctionData.cpp
     zFunction.cpp
 )
-target_link_libraries(VmProtect PRIVATE capstone_static)
-
 set(PATCHBAY_TOOL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/patchbay_tool")
-add_executable(VmProtectPatchbay
+set(PATCHBAY_SOURCES
     ${PATCHBAY_TOOL_DIR}/main.cpp
     ${PATCHBAY_TOOL_DIR}/zElf.cpp
     ${PATCHBAY_TOOL_DIR}/zElfHeader.cpp
@@ -42,9 +40,16 @@ add_executable(VmProtectPatchbay
     ${PATCHBAY_TOOL_DIR}/zElfLoader.cpp
     ${PATCHBAY_TOOL_DIR}/zElfAddressRewriter.cpp
     ${PATCHBAY_TOOL_DIR}/zElfPcRelativePatcher.cpp
-    ${PATCHBAY_TOOL_DIR}/zLog.cpp
 )
-target_include_directories(VmProtectPatchbay PRIVATE
+
+# Compile patchbay implementation into VmProtect and rename its zElf class
+# to avoid symbol collision with VmProtect's existing zElf implementation.
+set_source_files_properties(${PATCHBAY_SOURCES} PROPERTIES
+    COMPILE_DEFINITIONS "zElf=PatchbayElf"
+)
+target_sources(VmProtect PRIVATE ${PATCHBAY_SOURCES})
+
+target_include_directories(VmProtect PRIVATE
     ${PATCHBAY_TOOL_DIR}
 )
-target_link_libraries(VmProtectPatchbay PRIVATE capstone_static)
+target_link_libraries(VmProtect PRIVATE capstone_static)

@@ -5,10 +5,10 @@
 ## 1. 当前状态（2026-02）
 
 - 已将 `VmProtect` 从“固定 demo 流程”改为 `CLI + policy` 配置模式。
-- 已建立 Python 端到端回归脚本（替代手工串行执行 `build_run.bat + gradle + startActivity + logcat`）。
+- 已建立 Python 端到端回归脚本（统一导出、安装、启动与日志判定）。
 - 已落地 Route4 方案基础能力：
 - `L1`：把 `libdemo_expand.so` 追加到 `libvmengine.so` 尾部（embed）。
-- `L2`：基于 PatchBay 的符号注入与导出接管（由 `VmProtectPatchbay` 执行后处理）。
+- `L2`：基于 PatchBay 的符号注入与导出接管（由 `VmProtect.exe` 内置 patchbay 子命令执行）。
 - `L2.5`：基于清单自动生成导出桩汇编与符号映射头（`tools/gen_takeover_stubs.py`）。
 - demo 工程支持把受保护 `libvmengine.so` 重命名注入为 `libdemo.so`，并在 `onCreate` 主动 JNI 验证返回值。
 
@@ -16,7 +16,7 @@
 
 - `VmProtect`
 - 离线分析与翻译导出工具（`VmProtect.exe`）。
-- PatchBay 后处理工具（`VmProtectPatchbay.exe`）。
+- 同时内置 PatchBay 后处理子命令（`export_alias_from_patchbay` 等）。
 - 输入目标 so，输出 `*.txt/*.bin`、`branch_addr_list.txt`、`libdemo_expand.so`、覆盖率看板等。
 - `VmEngine`
 - Android App + Native VM 引擎。
@@ -89,17 +89,7 @@ VmProtect\cmake-build-debug\VmProtect.exe --help
 
 Policy 示例文件：`VmProtect/vmprotect.policy.example`。
 
-### 5.4 保留历史批处理入口
-
-旧流程脚本仍在：
-
-```powershell
-VmProtect\build_run.bat
-```
-
-说明：当前推荐优先使用 Python 脚本（`tools/run_regression.py`），逻辑更完整且输出更直观。
-
-### 5.5 Gradle 直连 VmProtect.exe（Stage3）
+### 5.4 Gradle 直连 VmProtect.exe（Stage3）
 
 `VmEngine/app/build.gradle` 已新增 Debug 任务 `runVmProtectPipelineDebug`：
 
@@ -107,7 +97,7 @@ VmProtect\build_run.bat
 - 同一次调用内完成：
 - 函数导出产物生成（`txt/bin/branch_addr_list/libdemo_expand.so`）；
 - `libdemo_expand.so` embed 到 `libvmengine.so`；
-- 通过 PatchBay 补全导出（默认使用 `VmProtectPatchbay.exe`，仅 `fun_*` / `Java_*`）。
+- 通过 PatchBay 补全导出（默认使用 `VmProtect.exe export_alias_from_patchbay`，仅 `fun_*` / `Java_*`）。
 
 开启方式：
 
@@ -119,10 +109,10 @@ gradlew.bat installDebug -PvmpEnabled=true
 常用可选参数：
 
 - `-PvmpToolExe=<path>`：`VmProtect.exe` 路径（默认 `VmProtect/cmake-build-debug/VmProtect.exe`）。
-- `-PvmpAutoBuildTool=true`：自动构建 `VmProtect.exe` + `VmProtectPatchbay.exe`（默认关闭）。
+- `-PvmpAutoBuildTool=true`：自动构建 `VmProtect.exe`（默认关闭）。
 - `-PvmpInputSo=<path>`：输入 so（默认 `VmProtect/libdemo.so`）。
 - `-PvmpPatchDonorSo=<path>`：patch donor so（默认 `VmProtect/libdemo.so`）。
-- `-PvmpPatchToolExe=<path>`：外部 patch 工具路径（可选；不传则默认使用 `VmProtectPatchbay.exe`）。
+- `-PvmpPatchToolExe=<path>`：外部兼容 patch 工具路径（可选；不传则默认使用 `VmProtect.exe` 内置 patchbay）。
 - `-PvmpPatchImplSymbol=<name>`：导出统一指向实现符号（默认 `z_takeover_dispatch_by_id`）。
 - `-PvmpPatchAllExports=true`：补齐 donor 全部导出（默认仅 `fun_*` / `Java_*`）。
 - `-PvmpFunctions=fun_add,fun_for,...`：覆盖默认函数清单。
@@ -139,7 +129,7 @@ gradlew.bat installDebug -PvmpEnabled=true
 ### 6.2 Route4 L2（PatchBay 符号注入）
 
 - `VmEngine` 在 `.vmp_patchbay` 段预留 dynsym/dynstr/hash/versym 空间。
-- `VmProtectPatchbay export_alias_from_patchbay`（或外部兼容 patch 工具）把 donor 导出映射为目标 so 导出，并统一指向接管实现符号。
+- `VmProtect.exe export_alias_from_patchbay`（或外部兼容 patch 工具）把 donor 导出映射为目标 so 导出，并统一指向接管实现符号。
 - 该方式目标是减少对 text/data 布局扰动，简化后处理 patch。
 
 ### 6.3 Route4 L2.5（导出桩生成）
@@ -197,7 +187,7 @@ demo 冒烟脚本（`tools/run_demo_vmp_verify.py`）检查 `VMP_DEMO_CHECK PASS
 - 脚本报 `adb not found`
 - 检查 `local.properties` 中 `sdk.dir` 或设置 `ANDROID_SDK_ROOT`。
 - `patch tool executable not found`
-- 默认使用 `VmProtect/cmake-build-debug/VmProtectPatchbay.exe`，可传 `-PvmpPatchToolExe=<path>` 覆盖。
+- 默认使用 `VmProtect/cmake-build-debug/VmProtect.exe` 内置 patchbay，可传 `-PvmpPatchToolExe=<path>` 覆盖。
 - `protected vmengine so not found`
 - 先构建 `VmEngine` native，或在 demo 构建时传 `-PprotectedDemoSo=<path>`。
 

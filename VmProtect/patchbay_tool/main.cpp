@@ -9,6 +9,7 @@
 
 #include "zElf.h"
 #include "zLog.h"
+#include "patchbay_entry.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -1598,25 +1599,26 @@ static bool run_device_regression(const std::string& local_demo3_path) {
     return true;
 }
 
-int main(int argc, char* argv[]) {
-    fprintf(stderr, "[DBG] main() entered, argc=%d\n", argc);
-    for (int i = 0; i < argc; ++i) {
-        fprintf(stderr, "[DBG]   argv[%d]=%s\n", i, argv[i]);
+bool vmprotect_is_patchbay_command(const char* raw_cmd) {
+    if (raw_cmd == nullptr || raw_cmd[0] == '\0') {
+        return false;
     }
+    const std::string cmd(raw_cmd);
+    return cmd == "export_alias_patchbay" ||
+           cmd == "export_alias_from_patchbay";
+}
+
+int vmprotect_patchbay_entry(int argc, char* argv[]) {
 
     // 支持命令行选择流程；未指定时走默认 demo3 生成流程。
     const std::string cmd = (argc >= 2) ? std::string(argv[1]) : "demo3";
-    fprintf(stderr, "[DBG] cmd=%s\n", cmd.c_str());
-
     if (cmd == "test_step1") {
-        fprintf(stderr, "[DBG] test_step1 enter\n");
         LOGI("test_step1 start");
         const std::string demo1 = resolve_demo_path("demo1");
         const std::string demo1_add_segment = resolve_demo_path("demo1_add_segment");
         const std::string demo1_add_section = resolve_demo_path("demo1_add_section");
         const std::string demo1_add_section_segment = resolve_demo_path("demo1_add_section_segment");
 
-        fprintf(stderr, "[DBG] loading demo1: %s\n", demo1.c_str());
         LOGI("test_step1 input: %s", demo1.c_str());
         zElf elf(demo1.c_str());
         if (!elf.isLoaded()) {
@@ -1624,74 +1626,57 @@ int main(int argc, char* argv[]) {
             return 2;
         }
 
-        fprintf(stderr, "[DBG] add_segment\n");
         LOGI("test_step1: add_segment -> %s", demo1_add_segment.c_str());
         if (!elf.add_segment(PT_LOAD, "RW_")) {
             LOGE("Failed to add segment");
             return 3;
         }
-        fprintf(stderr, "[DBG] relocate -> %s\n", demo1_add_segment.c_str());
         if (!elf.relocate(demo1_add_segment)) {
             LOGE("Failed to relocate output: %s", demo1_add_segment.c_str());
             return 4;
         }
 
-        fprintf(stderr, "[DBG] backup after add_segment\n");
         LOGI("test_step1: backup after add_segment");
         if (!elf.backup()) {
             LOGE("Failed to restore original demo1");
             return 5;
         }
 
-        fprintf(stderr, "[DBG] get_first/last_load_segment\n");
         const int first_load_segment = elf.get_first_load_segment();
         const int last_load_segment = elf.get_last_load_segment();
         if (first_load_segment < 0 || last_load_segment < 0) {
             LOGE("Missing PT_LOAD segments");
             return 6;
         }
-        fprintf(stderr, "[DBG] add_section1 (first=%d) add_section2 (last=%d)\n", first_load_segment, last_load_segment);
         LOGI("test_step1: add_section -> %s", demo1_add_section.c_str());
         if (!elf.add_section("test_add_section1", (size_t)first_load_segment)) {
             LOGE("Failed to add section on first PT_LOAD");
             return 7;
         }
-        fprintf(stderr, "[DBG] add_section1 done, add_section2\n");
         if (!elf.add_section("test_add_section2", (size_t)last_load_segment)) {
             LOGE("Failed to add section on last PT_LOAD");
             return 7;
         }
-        fprintf(stderr, "[DBG] relocate -> %s\n", demo1_add_section.c_str());
         if (!elf.relocate(demo1_add_section)) {
             LOGE("Failed to relocate output: %s", demo1_add_section.c_str());
             return 4;
         }
 
-        fprintf(stderr, "[DBG] backup after add_section\n");
         LOGI("test_step1: backup after add_section");
         if (!elf.backup()) {
             LOGE("Failed to restore original demo1");
             return 5;
         }
 
-        fprintf(stderr, "[DBG] add_section_segment\n");
         LOGI("test_step1: add_section_segment -> %s", demo1_add_section_segment.c_str());
         if (!elf.add_section("add_section_segment")) {
             LOGE("Failed to add default section");
             return 7;
         }
-        fprintf(stderr, "[DBG] relocate -> %s\n", demo1_add_section_segment.c_str());
         if (!elf.relocate(demo1_add_section_segment)) {
             LOGE("Failed to relocate output: %s", demo1_add_section_segment.c_str());
             return 4;
         }
-        fprintf(stderr, "[DBG] all relocations done\n");
-
-        
-
-
-
-
         // 设备回归测试：依次验证三个输出
         LOGI("test_step1: device regression -> %s", demo1_add_segment.c_str());
         if (!run_device_regression(demo1_add_segment)) {

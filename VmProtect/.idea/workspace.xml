@@ -11,6 +11,7 @@
   </component>
   <component name="CMakeRunConfigurationManager">
     <generated>
+      <config projectName="VmProtect" targetName="VmProtectPatchbay" />
       <config projectName="VmProtect" targetName="VmProtect" />
     </generated>
   </component>
@@ -20,88 +21,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="3eb48fa7-983f-4271-a538-03196c812a3e" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/encodings.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/my_vmp.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeCache.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/.ninja_deps" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/.ninja_log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeCache.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/3.23.2/CMakeCCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/3.23.2/CMakeCXXCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/3.23.2/CMakeDetermineCompilerABI_C.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/3.23.2/CMakeDetermineCompilerABI_CXX.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/3.23.2/CMakeRCCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/3.23.2/CMakeSystem.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/3.23.2/CompilerIdC/CMakeCCompilerId.c" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/3.23.2/CompilerIdC/a.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/3.23.2/CompilerIdCXX/CMakeCXXCompilerId.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/3.23.2/CompilerIdCXX/a.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/CMakeOutput.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/TargetDirectories.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/VmProtect.dir/main.cpp.obj" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/VmProtect.dir/zElf.cpp.obj" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/VmProtect.dir/zFunction.cpp.obj" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/VmProtect.dir/zInst.cpp.obj" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/VmProtect.dir/zLog.cpp.obj" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/cmake.check_cache" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/rules.ninja" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/VmProtect.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/branch_addr_list.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/build.ninja" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/cmake_install.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/coverage_report.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_add.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_add.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_bitmask_branch.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_bitmask_branch.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_branch_call.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_branch_call.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_call_chain.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_call_chain.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_class_static_member.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_class_static_member.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_countdown_muladd.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_countdown_muladd.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_cpp_make_string.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_cpp_make_string.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_cpp_string_len.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_cpp_string_len.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_cpp_vector_sum.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_cpp_vector_sum.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_cpp_virtual_mix.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_cpp_virtual_mix.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_for.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_for.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_for_add.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_for_add.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_global_data_mix.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_global_data_mix.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_global_mutable_state.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_global_mutable_state.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_global_struct_acc.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_global_struct_acc.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_global_table_rw.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_global_table_rw.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_if_sub.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_if_sub.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_loop_call_mix.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_loop_call_mix.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_multi_branch_path.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_multi_branch_path.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_static_local_table.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_static_local_table.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_switch_dispatch.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/fun_switch_dispatch.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/libdemo_expand.so" beforeDir="false" />
-    </list>
+    <list default="true" id="3eb48fa7-983f-4271-a538-03196c812a3e" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -128,24 +48,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "cf.advertisement.text.has.clang-format": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "last_opened_file_path": "D:/work/2026/0217_vmp_project/VmpProject/zElfEditor",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "CMakeSettings"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;cf.advertisement.text.has.clang-format&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/work/2026/0217_vmp_project/VmpProject/zElfEditor&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;CMakeSettings&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\work\2026\0202_my_vmp\VmProtect" />
@@ -198,6 +118,8 @@
       <workItem from="1771690792078" duration="85000" />
       <workItem from="1771690913027" duration="3053000" />
       <workItem from="1771719182997" duration="469000" />
+      <workItem from="1771784668522" duration="127000" />
+      <workItem from="1771784811100" duration="953000" />
     </task>
     <servers />
   </component>

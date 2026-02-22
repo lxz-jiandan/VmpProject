@@ -65,13 +65,13 @@ def run_cmd(cmd, cwd=None, env=None, check=True):
 
 def locate_patch_tool_exe(project_root: Path):
     candidates = [
-        project_root / "VmProtect" / "cmake-build-debug" / "VmProtectPatchbay.exe",
-        project_root / "VmProtect" / "cmake-build-debug" / "VmProtectPatchbay",
+        project_root / "VmProtect" / "cmake-build-debug" / "VmProtect.exe",
+        project_root / "VmProtect" / "cmake-build-debug" / "VmProtect",
     ]
     for candidate in candidates:
         if candidate.exists():
             return str(candidate)
-    raise RuntimeError("patch tool executable not found (build VmProtectPatchbay first)")
+    raise RuntimeError("patch tool executable not found (build VmProtect first)")
 
 
 def locate_tool(name: str, candidates):
@@ -172,7 +172,7 @@ def extract_relevant_log_lines(log_text: str):
 
 
 def run_vmprotect_export(project_root: Path, env: dict, functions):
-    # 对应旧 build_run.bat 的“离线导出阶段”：
+    # 离线导出阶段：
     # - 编译 VmProtect；
     # - 运行 VmProtect 生成 txt/bin/expand so；
     # - 把产物同步到 VmEngine assets。
@@ -448,7 +448,7 @@ def main():
     env = os.environ.copy()
     env["JAVA_HOME"] = java_home
 
-    # 1) Build/export from VmProtect (build_run.bat logic implemented in Python).
+    # 1) Build/export from VmProtect.
     run_vmprotect_export(root, env, args.functions)
 
     # 2) Optionally patch vmengine symbol exports before install.
