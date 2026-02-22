@@ -11,7 +11,6 @@
   </component>
   <component name="CMakeRunConfigurationManager">
     <generated>
-      <config projectName="VmProtect" targetName="VmProtectPatchbay" />
       <config projectName="VmProtect" targetName="VmProtect" />
     </generated>
   </component>
@@ -81,7 +80,7 @@
         <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
-    <configuration name="VmProtect" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="VmProtect" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="VmProtect" RUN_TARGET_NAME="VmProtect">
+    <configuration name="VmProtect" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="--input-so ../libdemo.so --function fun_add --function fun_for" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="VmProtect" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="VmProtect" RUN_TARGET_NAME="VmProtect">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -119,7 +118,7 @@
       <workItem from="1771690913027" duration="3053000" />
       <workItem from="1771719182997" duration="469000" />
       <workItem from="1771784668522" duration="127000" />
-      <workItem from="1771784811100" duration="953000" />
+      <workItem from="1771784811100" duration="3109000" />
     </task>
     <servers />
   </component>
@@ -151,8 +150,18 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/main.cpp</url>
-          <line>763</line>
+          <line>493</line>
           <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/main.cpp</url>
+          <line>871</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/main.cpp</url>
+          <line>944</line>
+          <option name="timeStamp" value="3" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

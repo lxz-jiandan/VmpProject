@@ -63,7 +63,7 @@ def run_cmd(cmd, cwd=None, env=None, check=True):
     return proc
 
 
-def locate_patch_tool_exe(project_root: Path):
+def locate_vmprotect_exe(project_root: Path):
     candidates = [
         project_root / "VmProtect" / "cmake-build-debug" / "VmProtect.exe",
         project_root / "VmProtect" / "cmake-build-debug" / "VmProtect",
@@ -71,7 +71,7 @@ def locate_patch_tool_exe(project_root: Path):
     for candidate in candidates:
         if candidate.exists():
             return str(candidate)
-    raise RuntimeError("patch tool executable not found (build VmProtect first)")
+    raise RuntimeError("VmProtect executable not found (build VmProtect first)")
 
 
 def locate_tool(name: str, candidates):
@@ -248,7 +248,14 @@ def run_vmprotect_export(project_root: Path, env: dict, functions):
     target_exe = build_dir / exe_name
     if not target_exe.exists():
         raise RuntimeError(f"missing executable: {target_exe}")
-    run_cmd([str(target_exe), *functions], cwd=str(build_dir), env=env)
+    export_cmd = [
+        str(target_exe),
+        "--input-so",
+        str(vmprotect_dir / "libdemo.so"),
+    ]
+    for function_name in functions:
+        export_cmd.extend(["--function", function_name])
+    run_cmd(export_cmd, cwd=str(build_dir), env=env)
 
     if not vmengine_assets_dir.exists():
         print(f"[WARN] asset dir not found: {vmengine_assets_dir}")
@@ -369,7 +376,7 @@ def patch_vmengine_symbols_patchbay(
         env=env,
     )
 
-    patch_tool = locate_patch_tool_exe(project_root)
+    patch_tool = locate_vmprotect_exe(project_root)
     targets = find_vmengine_so_outputs(vmengine_dir)
     if not targets:
         raise RuntimeError("no vmengine so outputs found under app/build/intermediates/cxx/Debug")

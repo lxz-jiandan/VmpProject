@@ -13,13 +13,10 @@ def vmProtectProjectDir = file("${vmpProjectRoot}/VmProtect")
 def vmProtectBuildDir = file("${vmProtectProjectDir}/cmake-build-debug")
 def vmpPatchDonorSo = file((project.findProperty("vmpPatchDonorSo")
         ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
-def vmpPatchToolExeRaw = (project.findProperty("vmpPatchToolExe")
-        ?: "").toString().trim()
 def vmpPatchImplSymbol = (project.findProperty("vmpPatchImplSymbol")
         ?: "z_takeover_dispatch_by_id").toString()
 def vmpPatchAllExports = ((project.findProperty("vmpPatchAllExports") ?: "false").toString().toBoolean())
 def vmpFunctionsRaw = (project.findProperty("vmpFunctions") ?: "").toString().trim()
-def vmpPolicyRaw = (project.findProperty("vmpPolicy") ?: "").toString().trim()
 def vmpOutputDir = file("$buildDir/generated/vmprotectOut")
 def vmpAssetsDir = file("src/main/assets")
 
@@ -130,13 +127,6 @@ tasks.register("runVmProtectPipelineDebug") {
         if (!vmpPatchDonorSo.exists()) {
             throw new GradleException("vmp donor so not found: ${vmpPatchDonorSo}")
         }
-        def vmpPatchToolExe = null
-        if (!vmpPatchToolExeRaw.isEmpty()) {
-            vmpPatchToolExe = file(vmpPatchToolExeRaw)
-            if (!vmpPatchToolExe.exists()) {
-                throw new GradleException("patch tool executable not found: ${vmpPatchToolExe}")
-            }
-        }
 
         if (vmpOutputDir.exists()) {
             delete vmpOutputDir
@@ -156,18 +146,8 @@ tasks.register("runVmProtectPipelineDebug") {
                 "--patch-donor-so", vmpPatchDonorSo.absolutePath,
                 "--patch-impl-symbol", vmpPatchImplSymbol,
         ]
-        if (vmpPatchToolExe != null) {
-            cmd.addAll(["--patch-tool-exe", vmpPatchToolExe.absolutePath])
-        }
         if (vmpPatchAllExports) {
             cmd.add("--patch-all-exports")
-        }
-        if (!vmpPolicyRaw.isEmpty()) {
-            def policyFile = file(vmpPolicyRaw)
-            if (!policyFile.exists()) {
-                throw new GradleException("vmp policy file not found: ${policyFile}")
-            }
-            cmd.addAll(["--policy", policyFile.absolutePath])
         }
         parseVmpFunctions().each { fn ->
             cmd.addAll(["--function", fn])

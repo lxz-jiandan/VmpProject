@@ -1,15 +1,13 @@
 /*
  * [VMP_FLOW_NOTE] 文件级流程注释
- * - VmProtect CLI 主入口，负责策略解析、覆盖率看板与导出物生成。
+ * - VmProtect CLI 主入口，负责配置解析、覆盖率看板与导出物生成。
  * - 加固链路位置：第 1 阶段（离线分析与产物构建）。
- * - 输入：原始 arm64 so + 函数清单/策略配置。
+ * - 输入：原始 arm64 so + 函数清单/CLI 配置。
  * - 输出：函数 txt/bin、branch_addr_list.txt、libdemo_expand.so。
  */
 #include <algorithm>
-#include <cctype>
 #include <cinttypes>
 #include <cstring>
-#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -34,9 +32,9 @@ namespace fs = std::filesystem;
 
 namespace {
 
-struct VmProtectPolicy {
+struct VmProtectConfig {
     // 待分析/导出的原始 so。
-    std::string input_so = "libdemo.so";
+    std::string input_so;
     // 所有导出产物输出目录。
     std::string output_dir = ".";
     // 尾部拼包后的 so 文件名。
@@ -47,8 +45,6 @@ struct VmProtectPolicy {
     std::string coverage_report = "coverage_report.md";
     // 目标函数清单。
     std::vector<std::string> functions;
-    // 是否显式指定了函数（用于区分默认清单与外部注入）。
-    bool has_explicit_functions = false;
     // 是否分析 ELF 内全部函数（而非函数白名单）。
     bool analyze_all_functions = false;
     // 是否仅出覆盖率报告，不导出 payload。
@@ -61,8 +57,6 @@ struct VmProtectPolicy {
     std::string patch_donor_so;
     // patchbay 导出统一指向的实现符号。
     std::string patch_impl_symbol = "z_takeover_dispatch_by_id";
-    // 外部 patch 工具可执行文件路径（可选，不传则用内置 patchbay 子命令）。
-    std::string patch_tool_exe;
     // true: donor 所有导出都补齐；false: 仅补 fun_* 与 Java_*。
     bool patch_all_exports = false;
     // patchbay 失败时是否放宽 validate。
@@ -72,8 +66,6 @@ struct VmProtectPolicy {
 struct CliOverrides {
     // 命令行 help 开关。
     bool show_help = false;
-    // policy 文件路径（可选）。
-    std::string policy_file;
     std::string input_so;
     std::string output_dir;
     std::string expanded_so;
@@ -88,7 +80,6 @@ struct CliOverrides {
     std::string final_so;
     std::string patch_donor_so;
     std::string patch_impl_symbol;
-    std::string patch_tool_exe;
     bool patch_all_exports_set = false;
     bool patch_all_exports = false;
     bool patch_allow_validate_fail_set = false;
@@ -140,26 +131,6 @@ const std::vector<std::string> kDefaultFunctions = {
     "fun_global_mutable_state",
 };
 
-std::string trimCopy(const std::string& value) {
-    size_t begin = 0;
-    while (begin < value.size() &&
-           std::isspace(static_cast<unsigned char>(value[begin])) != 0) {
-        ++begin;
-    }
-    size_t end = value.size();
-    while (end > begin &&
-           std::isspace(static_cast<unsigned char>(value[end - 1])) != 0) {
-        --end;
-    }
-    return value.substr(begin, end - begin);
-}
-
-std::string lowerCopy(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    return value;
-}
-
 bool fileExists(const std::string& path) {
     std::error_code ec;
     return !path.empty() && fs::exists(path, ec) && fs::is_regular_file(path, ec);
@@ -176,48 +147,6 @@ bool ensureDirectory(const std::string& path) {
     return fs::create_directories(path, ec);
 }
 
-std::string resolvePath(const fs::path& base_dir, const std::string& value) {
-    fs::path p(value);
-    if (p.is_absolute()) {
-        return p.lexically_normal().string();
-    }
-    return (base_dir / p).lexically_normal().string();
-}
-
-bool parseBoolValue(const std::string& raw, bool& out) {
-    const std::string value = lowerCopy(trimCopy(raw));
-    if (value == "1" || value == "true" || value == "yes" || value == "on") {
-        out = true;
-        return true;
-    }
-    if (value == "0" || value == "false" || value == "no" || value == "off") {
-        out = false;
-        return true;
-    }
-    return false;
-}
-
-std::vector<std::string> parseFunctionList(const std::string& value) {
-    std::vector<std::string> out;
-    std::string token;
-    for (char ch : value) {
-        if (ch == ',' || std::isspace(static_cast<unsigned char>(ch)) != 0) {
-            std::string trimmed = trimCopy(token);
-            if (!trimmed.empty()) {
-                out.push_back(trimmed);
-            }
-            token.clear();
-            continue;
-        }
-        token.push_back(ch);
-    }
-    std::string trimmed = trimCopy(token);
-    if (!trimmed.empty()) {
-        out.push_back(trimmed);
-    }
-    return out;
-}
-
 void deduplicateKeepOrder(std::vector<std::string>& values) {
     std::unordered_set<std::string> seen;
     std::vector<std::string> dedup;
@@ -230,142 +159,8 @@ void deduplicateKeepOrder(std::vector<std::string>& values) {
     values.swap(dedup);
 }
 
-bool loadFunctionsFromFile(const std::string& path, std::vector<std::string>& out) {
-    std::ifstream in(path);
-    if (!in) {
-        return false;
-    }
-    std::string line;
-    while (std::getline(in, line)) {
-        std::string trimmed = trimCopy(line);
-        if (trimmed.empty() || trimmed[0] == '#' || trimmed[0] == ';') {
-            continue;
-        }
-        out.push_back(trimmed);
-    }
-    return true;
-}
-
-bool loadPolicyFile(const std::string& policy_path, VmProtectPolicy& policy) {
-    // 解析策略文件：
-    // - 支持 key=value / key:value；
-    // - 支持 functions 与 functions_file；
-    // - 所有相对路径按 policy 文件目录解析。
-    std::ifstream in(policy_path);
-    if (!in) {
-        LOGE("failed to open policy file: %s", policy_path.c_str());
-        return false;
-    }
-
-    const fs::path base_dir = fs::path(policy_path).parent_path();
-    std::string line;
-    size_t line_no = 0;
-    while (std::getline(in, line)) {
-        ++line_no;
-        std::string trimmed = trimCopy(line);
-        if (trimmed.empty() || trimmed[0] == '#' || trimmed[0] == ';') {
-            continue;
-        }
-
-        const size_t eq = trimmed.find('=');
-        const size_t colon = trimmed.find(':');
-        size_t sep = std::string::npos;
-        if (eq != std::string::npos && colon != std::string::npos) {
-            sep = std::min(eq, colon);
-        } else if (eq != std::string::npos) {
-            sep = eq;
-        } else if (colon != std::string::npos) {
-            sep = colon;
-        }
-
-        if (sep == std::string::npos || sep == 0 || sep + 1 >= trimmed.size()) {
-            LOGE("invalid policy line %zu: %s", line_no, trimmed.c_str());
-            return false;
-        }
-
-        const std::string key = lowerCopy(trimCopy(trimmed.substr(0, sep)));
-        const std::string value = trimCopy(trimmed.substr(sep + 1));
-
-        if (key == "input_so") {
-            policy.input_so = resolvePath(base_dir, value);
-        } else if (key == "output_dir") {
-            policy.output_dir = resolvePath(base_dir, value);
-        } else if (key == "expanded_so") {
-            policy.expanded_so = value;
-        } else if (key == "host_so") {
-            policy.host_so = resolvePath(base_dir, value);
-        } else if (key == "final_so") {
-            policy.final_so = resolvePath(base_dir, value);
-        } else if (key == "patch_donor_so") {
-            policy.patch_donor_so = resolvePath(base_dir, value);
-        } else if (key == "patch_impl_symbol") {
-            policy.patch_impl_symbol = value;
-        } else if (key == "patch_tool_exe") {
-            policy.patch_tool_exe = resolvePath(base_dir, value);
-        } else if (key == "shared_branch_file") {
-            policy.shared_branch_file = value;
-        } else if (key == "coverage_report") {
-            policy.coverage_report = value;
-        } else if (key == "coverage_only") {
-            bool parsed = false;
-            if (!parseBoolValue(value, parsed)) {
-                LOGE("invalid bool for coverage_only at line %zu", line_no);
-                return false;
-            }
-            policy.coverage_only = parsed;
-        } else if (key == "analyze_all_functions") {
-            bool parsed = false;
-            if (!parseBoolValue(value, parsed)) {
-                LOGE("invalid bool for analyze_all_functions at line %zu", line_no);
-                return false;
-            }
-            policy.analyze_all_functions = parsed;
-        } else if (key == "patch_all_exports") {
-            bool parsed = false;
-            if (!parseBoolValue(value, parsed)) {
-                LOGE("invalid bool for patch_all_exports at line %zu", line_no);
-                return false;
-            }
-            policy.patch_all_exports = parsed;
-        } else if (key == "patch_allow_validate_fail") {
-            bool parsed = false;
-            if (!parseBoolValue(value, parsed)) {
-                LOGE("invalid bool for patch_allow_validate_fail at line %zu", line_no);
-                return false;
-            }
-            policy.patch_allow_validate_fail = parsed;
-        } else if (key == "functions") {
-            std::vector<std::string> list = parseFunctionList(value);
-            policy.functions.insert(policy.functions.end(), list.begin(), list.end());
-            policy.has_explicit_functions = true;
-        } else if (key == "function") {
-            if (!value.empty()) {
-                policy.functions.push_back(value);
-                policy.has_explicit_functions = true;
-            }
-        } else if (key == "functions_file") {
-            std::vector<std::string> loaded;
-            const std::string function_file = resolvePath(base_dir, value);
-            if (!loadFunctionsFromFile(function_file, loaded)) {
-                LOGE("failed to load functions_file: %s", function_file.c_str());
-                return false;
-            }
-            policy.functions.insert(policy.functions.end(), loaded.begin(), loaded.end());
-            policy.has_explicit_functions = true;
-        } else {
-            LOGE("unknown policy key at line %zu: %s", line_no, key.c_str());
-            return false;
-        }
-    }
-
-    deduplicateKeepOrder(policy.functions);
-    return true;
-}
-
 bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& error) {
-    // 兼容历史调用方式：
-    // 1) 新参数模式：--function xxx；
-    // 2) 旧位置参数模式：直接写函数名。
+    // 统一 CLI：函数名必须通过 --function 显式传入，避免位置参数歧义。
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i] ? argv[i] : "";
         if (arg.empty()) {
@@ -373,10 +168,6 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
         }
         if (arg == "-h" || arg == "--help") {
             cli.show_help = true;
-            continue;
-        }
-        if (arg == "--policy" && i + 1 < argc) {
-            cli.policy_file = argv[++i];
             continue;
         }
         if (arg == "--input-so" && i + 1 < argc) {
@@ -411,10 +202,6 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             cli.patch_impl_symbol = argv[++i];
             continue;
         }
-        if (arg == "--patch-tool-exe" && i + 1 < argc) {
-            cli.patch_tool_exe = argv[++i];
-            continue;
-        }
         if (arg == "--coverage-report" && i + 1 < argc) {
             cli.coverage_report = argv[++i];
             continue;
@@ -433,11 +220,6 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             cli.patch_allow_validate_fail = false;
             continue;
         }
-        if (arg == "--patch-allow-validate-fail") {
-            cli.patch_allow_validate_fail_set = true;
-            cli.patch_allow_validate_fail = true;
-            continue;
-        }
         if (arg == "--coverage-only") {
             cli.coverage_only_set = true;
             cli.coverage_only = true;
@@ -452,8 +234,8 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             error = "unknown option: " + arg;
             return false;
         }
-        // Backward compatibility: positional args are function names.
-        cli.functions.push_back(arg);
+        error = "unexpected positional argument: " + arg + " (use --function <name>)";
+        return false;
     }
     return true;
 }
@@ -461,17 +243,15 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
 void printUsage() {
     std::cout
         << "Usage:\n"
-        << "  VmProtect.exe [options] [function ...]\n\n"
+        << "  VmProtect.exe [options]\n\n"
         << "Options:\n"
-        << "  --policy <file>              Load policy file\n"
-        << "  --input-so <file>            Input arm64 so path\n"
+        << "  --input-so <file>            Input arm64 so path (required)\n"
         << "  --output-dir <dir>           Output directory for txt/bin/report\n"
         << "  --expanded-so <file>         Expanded so output file name\n"
         << "  --host-so <file>             Host so for embed/patch output (e.g. libvmengine.so)\n"
         << "  --final-so <file>            Final protected so path (default overwrite host-so)\n"
         << "  --patch-donor-so <file>      Donor so for patchbay export fill\n"
         << "  --patch-impl-symbol <name>   Impl symbol used by export_alias_from_patchbay\n"
-        << "  --patch-tool-exe <file>      External patch tool executable path (optional)\n"
         << "  --patch-all-exports          Patch all donor exports (default: only fun_* and Java_*)\n"
         << "  --patch-no-allow-validate-fail Disable --allow-validate-fail during patch\n"
         << "  --shared-branch-file <file>  Shared branch list output file name\n"
@@ -482,26 +262,12 @@ void printUsage() {
         << "  -h, --help                   Show this help\n";
 }
 
-std::string resolveInputSoFallback(const std::string& configured) {
-    if (fileExists(configured)) {
-        return configured;
-    }
-    fs::path configured_path(configured);
-    if (!configured_path.is_absolute()) {
-        const fs::path parent_candidate = fs::path("..") / configured_path;
-        if (fileExists(parent_candidate.lexically_normal().string())) {
-            return parent_candidate.lexically_normal().string();
-        }
-    }
-    return configured;
-}
-
-std::string joinOutputPath(const VmProtectPolicy& policy, const std::string& file_name) {
+std::string joinOutputPath(const VmProtectConfig& config, const std::string& file_name) {
     fs::path p(file_name);
     if (p.is_absolute()) {
         return p.lexically_normal().string();
     }
-    return (fs::path(policy.output_dir) / p).lexically_normal().string();
+    return (fs::path(config.output_dir) / p).lexically_normal().string();
 }
 
 // Read file bytes into memory for payload packing.
@@ -694,38 +460,6 @@ bool embedExpandedSoIntoHost(const std::string& host_so,
     return true;
 }
 
-std::string quoteCommandArg(const std::string& arg) {
-    if (arg.find_first_of(" \t\"") == std::string::npos) {
-        return arg;
-    }
-    std::string out = "\"";
-    for (char ch : arg) {
-        if (ch == '"') {
-            out += "\\\"";
-        } else {
-            out.push_back(ch);
-        }
-    }
-    out.push_back('"');
-    return out;
-}
-
-int runCommandLine(const std::vector<std::string>& args) {
-    if (args.empty()) {
-        return -1;
-    }
-    std::ostringstream cmd;
-    for (size_t i = 0; i < args.size(); ++i) {
-        if (i > 0) {
-            cmd << ' ';
-        }
-        cmd << quoteCommandArg(args[i]);
-    }
-    const std::string line = cmd.str();
-    LOGI("run command: %s", line.c_str());
-    return std::system(line.c_str());
-}
-
 int runPatchbayCommandInProcess(const std::vector<std::string>& args) {
     if (args.empty()) {
         return -1;
@@ -759,9 +493,7 @@ bool moveOrReplaceFile(const std::string& from, const std::string& to) {
     return true;
 }
 
-bool runPatchbayExportFromDonor(const std::string& patch_tool_exe,
-                                const std::string& self_exe,
-                                const std::string& input_so,
+bool runPatchbayExportFromDonor(const std::string& input_so,
                                 const std::string& donor_so,
                                 const std::string& impl_symbol,
                                 bool patch_all_exports,
@@ -780,18 +512,9 @@ bool runPatchbayExportFromDonor(const std::string& patch_tool_exe,
     }
 
     const std::string patched_tmp = input_so + ".patchbay.tmp.so";
-    const std::string tool_exe = patch_tool_exe.empty() ? self_exe : patch_tool_exe;
-    if (tool_exe.empty()) {
-        LOGE("patch tool executable is empty");
-        return false;
-    }
-    if (!patch_tool_exe.empty() && !fileExists(tool_exe)) {
-        LOGE("patch tool executable not found: %s", tool_exe.c_str());
-        return false;
-    }
 
     std::vector<std::string> cmd = {
-        tool_exe,
+        "VmProtect.exe",
         "export_alias_from_patchbay",
         input_so,
         donor_so,
@@ -805,11 +528,9 @@ bool runPatchbayExportFromDonor(const std::string& patch_tool_exe,
         cmd.emplace_back("--only-fun-java");
     }
 
-    const int rc = patch_tool_exe.empty()
-        ? runPatchbayCommandInProcess(cmd)
-        : runCommandLine(cmd);
+    const int rc = runPatchbayCommandInProcess(cmd);
     if (rc != 0) {
-        LOGE("patch tool command failed rc=%d", rc);
+        LOGE("patchbay command failed rc=%d", rc);
         return false;
     }
     if (!fileExists(patched_tmp)) {
@@ -821,8 +542,7 @@ bool runPatchbayExportFromDonor(const std::string& patch_tool_exe,
         return false;
     }
 
-    LOGI("patchbay export completed: tool=%s input=%s donor=%s impl=%s patch_all_exports=%d",
-         tool_exe.c_str(),
+    LOGI("patchbay export completed: tool=embedded input=%s donor=%s impl=%s patch_all_exports=%d",
          input_so.c_str(),
          donor_so.c_str(),
          impl_symbol.c_str(),
@@ -1054,7 +774,7 @@ bool collectFunctions(zElf& elf,
     functions.clear();
     functions.reserve(function_names.size());
     for (const std::string& function_name : function_names) {
-        zFunction* function = elf.getfunction(function_name.c_str());
+        zFunction* function = elf.getFunction(function_name.c_str());
         if (function == nullptr) {
             LOGE("failed to resolve function: %s", function_name.c_str());
             return false;
@@ -1067,7 +787,7 @@ bool collectFunctions(zElf& elf,
     return true;
 }
 
-bool exportProtectedPackage(const VmProtectPolicy& policy,
+bool exportProtectedPackage(const VmProtectConfig& config,
                             const std::vector<std::string>& function_names,
                             const std::vector<zFunction*>& functions) {
     // 导出阶段（加固产物生成）：
@@ -1091,7 +811,7 @@ bool exportProtectedPackage(const VmProtectPolicy& policy,
         appendUniqueBranchAddrs(function->sharedBranchAddrs(), seen_addrs, shared_branch_addrs);
     }
 
-    const std::string shared_branch_file = joinOutputPath(policy, policy.shared_branch_file);
+    const std::string shared_branch_file = joinOutputPath(config, config.shared_branch_file);
     if (!writeSharedBranchAddrList(shared_branch_file.c_str(), shared_branch_addrs)) {
         LOGE("failed to write shared branch list: %s", shared_branch_file.c_str());
         return false;
@@ -1109,8 +829,8 @@ bool exportProtectedPackage(const VmProtectPolicy& policy,
             return false;
         }
 
-        const std::string txt_path = joinOutputPath(policy, function_name + ".txt");
-        const std::string bin_path = joinOutputPath(policy, function_name + ".bin");
+        const std::string txt_path = joinOutputPath(config, function_name + ".txt");
+        const std::string bin_path = joinOutputPath(config, function_name + ".bin");
         if (!function->dump(txt_path.c_str(), zFunction::DumpMode::UNENCODED)) {
             LOGE("failed to dump unencoded txt: %s", txt_path.c_str());
             return false;
@@ -1130,9 +850,9 @@ bool exportProtectedPackage(const VmProtectPolicy& policy,
         payloads.push_back(std::move(payload));
     }
 
-    const std::string expanded_so_path = joinOutputPath(policy, policy.expanded_so);
+    const std::string expanded_so_path = joinOutputPath(config, config.expanded_so);
     if (!zSoBinBundleWriter::writeExpandedSo(
-            policy.input_so.c_str(),
+            config.input_so.c_str(),
             expanded_so_path.c_str(),
             payloads,
             shared_branch_addrs)) {
@@ -1154,7 +874,7 @@ int main(int argc, char* argv[]) {
     }
 
     // main 总流程：
-    // 1) 合并 policy + CLI；
+    // 1) 合并 CLI；
     // 2) 解析目标函数；
     // 3) 生成翻译覆盖率看板；
     // 4) (可选) 导出加固产物。
@@ -1170,94 +890,83 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    VmProtectPolicy policy;
-    policy.functions = kDefaultFunctions;
-    deduplicateKeepOrder(policy.functions);
-
-    if (!cli.policy_file.empty()) {
-        if (!loadPolicyFile(cli.policy_file, policy)) {
-            return 1;
-        }
-        if (!policy.has_explicit_functions) {
-            policy.functions = kDefaultFunctions;
-        }
-    }
+    VmProtectConfig config;
+    config.functions = kDefaultFunctions;
+    deduplicateKeepOrder(config.functions);
 
     if (!cli.input_so.empty()) {
-        policy.input_so = cli.input_so;
+        config.input_so = cli.input_so;
     }
     if (!cli.output_dir.empty()) {
-        policy.output_dir = cli.output_dir;
+        config.output_dir = cli.output_dir;
     }
     if (!cli.expanded_so.empty()) {
-        policy.expanded_so = cli.expanded_so;
+        config.expanded_so = cli.expanded_so;
     }
     if (!cli.shared_branch_file.empty()) {
-        policy.shared_branch_file = cli.shared_branch_file;
+        config.shared_branch_file = cli.shared_branch_file;
     }
     if (!cli.host_so.empty()) {
-        policy.host_so = cli.host_so;
+        config.host_so = cli.host_so;
     }
     if (!cli.final_so.empty()) {
-        policy.final_so = cli.final_so;
+        config.final_so = cli.final_so;
     }
     if (!cli.patch_donor_so.empty()) {
-        policy.patch_donor_so = cli.patch_donor_so;
+        config.patch_donor_so = cli.patch_donor_so;
     }
     if (!cli.patch_impl_symbol.empty()) {
-        policy.patch_impl_symbol = cli.patch_impl_symbol;
-    }
-    if (!cli.patch_tool_exe.empty()) {
-        policy.patch_tool_exe = cli.patch_tool_exe;
+        config.patch_impl_symbol = cli.patch_impl_symbol;
     }
     if (cli.patch_all_exports_set) {
-        policy.patch_all_exports = cli.patch_all_exports;
+        config.patch_all_exports = cli.patch_all_exports;
     }
     if (cli.patch_allow_validate_fail_set) {
-        policy.patch_allow_validate_fail = cli.patch_allow_validate_fail;
+        config.patch_allow_validate_fail = cli.patch_allow_validate_fail;
     }
     if (!cli.coverage_report.empty()) {
-        policy.coverage_report = cli.coverage_report;
+        config.coverage_report = cli.coverage_report;
     }
     if (!cli.functions.empty()) {
-        policy.functions = cli.functions;
-        policy.has_explicit_functions = true;
+        config.functions = cli.functions;
     }
     if (cli.coverage_only_set) {
-        policy.coverage_only = cli.coverage_only;
+        config.coverage_only = cli.coverage_only;
     }
     if (cli.analyze_all_set) {
-        policy.analyze_all_functions = cli.analyze_all;
+        config.analyze_all_functions = cli.analyze_all;
     }
 
-    deduplicateKeepOrder(policy.functions);
-    policy.input_so = resolveInputSoFallback(policy.input_so);
-
-    if (!fileExists(policy.input_so)) {
-        LOGE("input so not found: %s", policy.input_so.c_str());
+    deduplicateKeepOrder(config.functions);
+    if (config.input_so.empty()) {
+        LOGE("input so is empty (use --input-so)");
         return 1;
     }
-    if (!policy.host_so.empty() && !fileExists(policy.host_so)) {
-        LOGE("host so not found: %s", policy.host_so.c_str());
+    if (!fileExists(config.input_so)) {
+        LOGE("input so not found: %s", config.input_so.c_str());
         return 1;
     }
-    if ((!policy.patch_donor_so.empty() || !policy.patch_tool_exe.empty()) && policy.host_so.empty()) {
+    if (!config.host_so.empty() && !fileExists(config.host_so)) {
+        LOGE("host so not found: %s", config.host_so.c_str());
+        return 1;
+    }
+    if (!config.patch_donor_so.empty() && config.host_so.empty()) {
         LOGE("patch options require host_so (--host-so)");
         return 1;
     }
-    if (!policy.patch_donor_so.empty() && !fileExists(policy.patch_donor_so)) {
-        LOGE("patch donor so not found: %s", policy.patch_donor_so.c_str());
+    if (!config.patch_donor_so.empty() && !fileExists(config.patch_donor_so)) {
+        LOGE("patch donor so not found: %s", config.patch_donor_so.c_str());
         return 1;
     }
-    if (!ensureDirectory(policy.output_dir)) {
-        LOGE("failed to create output dir: %s", policy.output_dir.c_str());
+    if (!ensureDirectory(config.output_dir)) {
+        LOGE("failed to create output dir: %s", config.output_dir.c_str());
         return 1;
     }
 
-    zElf elf(policy.input_so.c_str());
+    zElf elf(config.input_so.c_str());
 
     std::vector<std::string> function_names;
-    if (policy.analyze_all_functions) {
+    if (config.analyze_all_functions) {
         const std::vector<zFunction>& list = elf.getFunctionList();
         function_names.reserve(list.size());
         for (const zFunction& function : list) {
@@ -1266,7 +975,7 @@ int main(int argc, char* argv[]) {
             }
         }
     } else {
-        function_names = policy.functions;
+        function_names = config.functions;
     }
     deduplicateKeepOrder(function_names);
     if (function_names.empty()) {
@@ -1298,42 +1007,36 @@ int main(int argc, char* argv[]) {
         cs_close(&handle);
     }
 
-    const std::string coverage_report_path = joinOutputPath(policy, policy.coverage_report);
+    const std::string coverage_report_path = joinOutputPath(config, config.coverage_report);
     if (!writeCoverageReport(coverage_report_path, board)) {
         LOGE("failed to write coverage report: %s", coverage_report_path.c_str());
         return 1;
     }
     LOGI("coverage report written: %s", coverage_report_path.c_str());
 
-    if (policy.coverage_only) {
+    if (config.coverage_only) {
         // 仅看板模式：用于“翻译覆盖看板”快速迭代。
         LOGI("coverage-only mode enabled, export skipped");
         return 0;
     }
 
-    if (!exportProtectedPackage(policy, function_names, functions)) {
+    if (!exportProtectedPackage(config, function_names, functions)) {
         return 1;
     }
 
-    if (!policy.host_so.empty()) {
-        const std::string expanded_so_path = joinOutputPath(policy, policy.expanded_so);
+    if (!config.host_so.empty()) {
+        const std::string expanded_so_path = joinOutputPath(config, config.expanded_so);
         const std::string final_so_path =
-            policy.final_so.empty() ? policy.host_so : policy.final_so;
-        if (!embedExpandedSoIntoHost(policy.host_so, expanded_so_path, final_so_path)) {
+            config.final_so.empty() ? config.host_so : config.final_so;
+        if (!embedExpandedSoIntoHost(config.host_so, expanded_so_path, final_so_path)) {
             return 1;
         }
-        if (!policy.patch_donor_so.empty() || !policy.patch_tool_exe.empty()) {
-            if (policy.patch_donor_so.empty()) {
-                LOGE("patch requires patch_donor_so");
-                return 1;
-            }
-            if (!runPatchbayExportFromDonor(policy.patch_tool_exe,
-                                            argv[0] ? argv[0] : "",
-                                            final_so_path,
-                                            policy.patch_donor_so,
-                                            policy.patch_impl_symbol,
-                                            policy.patch_all_exports,
-                                            policy.patch_allow_validate_fail)) {
+        if (!config.patch_donor_so.empty()) {
+            if (!runPatchbayExportFromDonor(final_so_path,
+                                            config.patch_donor_so,
+                                            config.patch_impl_symbol,
+                                            config.patch_all_exports,
+                                            config.patch_allow_validate_fail)) {
                 return 1;
             }
         }

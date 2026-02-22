@@ -134,8 +134,6 @@ public:
     bool build_function_list();
     // 规范命名入口：查询/构建目标函数对象。
     zFunction* getFunction(const char* function_name);
-    // 历史兼容入口：等价于 getFunction（保留旧调用点）。
-    zFunction* getfunction(const char* function_name);
     // 只读访问当前已构建的函数列表。
     const std::vector<zFunction>& getFunctionList() const;
 

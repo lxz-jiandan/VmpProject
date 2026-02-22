@@ -1013,10 +1013,6 @@ zFunction* zElf::getFunction(const char* function_name) {
     return find_function_in_list(function_name);
 }
 
-zFunction* zElf::getfunction(const char* function_name) {
-    return getFunction(function_name);
-}
-
 const std::vector<zFunction>& zElf::getFunctionList() const {
     return function_list_;
 }
