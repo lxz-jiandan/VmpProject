@@ -12,7 +12,7 @@
  * - Linux ELF 基础常量头（本仓库内用于 VmProtect/VmEngine 的 ELF 解析与校验）。
  * - 加固链路位置：公共基础定义层。
  * - 输入：无（编译期常量/结构声明）。
- * - 输出：EM_*/SHT_*/PT_* 等宏与 ELF 结构体定义。
+ * - 输出：EM_* / SHT_* / PT_* 等宏与 ELF 结构体定义。
  */
 #ifndef _UAPI_LINUX_ELF_H
 #define _UAPI_LINUX_ELF_H
