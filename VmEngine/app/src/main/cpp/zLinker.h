@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 自定义链接器接口与 soinfo 结构声明。
+ * - 加固链路位置：运行时装载接口层。
+ * - 输入：装载请求/符号查询。
+ * - 输出：soinfo 与地址解析能力。
+ */
 #ifndef Z_LINKER_H
 #define Z_LINKER_H
 

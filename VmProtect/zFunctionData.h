@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 函数数据容器接口定义。
+ * - 加固链路位置：翻译数据接口层。
+ * - 输入：函数基础元信息。
+ * - 输出：统一的数据访问抽象。
+ */
 #ifndef VMPROTECT_ZFUNCTION_DATA_H
 #define VMPROTECT_ZFUNCTION_DATA_H
 

@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 离线工具日志实现，统一调试/错误输出。
+ * - 加固链路位置：离线工具观测层。
+ * - 输入：日志级别与格式化参数。
+ * - 输出：控制台可读日志。
+ */
 #include "zLog.h"
 #include <cstdio>   // printf / vsnprintf。
 #include <cstdlib>  // 保留：兼容历史实现可能引入的标准库依赖。

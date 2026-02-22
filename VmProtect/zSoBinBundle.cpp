@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 把函数 payload 和共享 branch 表打包进 expand so 尾部。
+ * - 加固链路位置：离线导出封装阶段。
+ * - 输入：原始 so + payload 列表 + branch 地址。
+ * - 输出：带 bundle 尾部的 libdemo_expand.so。
+ */
 #include "zSoBinBundle.h"
 
 #include "zLog.h"

@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 日志宏与接口声明。
+ * - 加固链路位置：全局基础设施。
+ * - 输入：模块日志请求。
+ * - 输出：统一日志格式。
+ */
 #ifndef TESTPOST_LOGQUEUE_H
 #define TESTPOST_LOGQUEUE_H
 

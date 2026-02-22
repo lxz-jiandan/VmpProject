@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 函数级翻译与编码实现，含指令解析、IR/VM 映射与导出。
+ * - 加固链路位置：离线翻译核心。
+ * - 输入：单个函数机器码。
+ * - 输出：可供 VmEngine 执行的编码 payload。
+ */
 #include "zFunction.h"
 #include "zLog.h"
 #include <utility>

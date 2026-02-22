@@ -2,6 +2,75 @@ plugins {
     alias(libs.plugins.androidApplication)
 }
 
+def vmpProjectRoot = rootProject.projectDir.parentFile
+def generatedVmpJniRoot = file("$buildDir/generated/vmpJniLibs/main")
+def generatedVmpArm64Dir = file("$generatedVmpJniRoot/arm64-v8a")
+def generatedVmpDemoSo = file("$generatedVmpArm64Dir/libdemo.so")
+def generatedVmpDemoRefSo = file("$generatedVmpArm64Dir/libdemo_ref.so")
+def donorDemoSo = file("${vmpProjectRoot}/VmProtect/libdemo.so")
+
+def resolveProtectedVmengineSo = {
+    def overridePath = project.findProperty("protectedDemoSo") as String
+    if (overridePath != null && !overridePath.trim().isEmpty()) {
+        return file(overridePath)
+    }
+
+    def candidates = []
+    def cxxDebugRoot = file("${vmpProjectRoot}/VmEngine/app/build/intermediates/cxx/Debug")
+    if (cxxDebugRoot.exists()) {
+        cxxDebugRoot.eachDir { dir ->
+            def so = new File(dir, "obj/arm64-v8a/libvmengine.so")
+            if (so.exists()) {
+                candidates.add(so)
+            }
+        }
+    }
+
+    def cmakeFallback = file("${vmpProjectRoot}/VmEngine/app/build/intermediates/cmake/debug/obj/arm64-v8a/libvmengine.so")
+    if (cmakeFallback.exists()) {
+        candidates.add(cmakeFallback)
+    }
+
+    if (candidates.isEmpty()) {
+        return null
+    }
+    candidates.sort { a, b -> Long.compare(b.lastModified(), a.lastModified()) }
+    return candidates[0]
+}
+
+tasks.register("prepareProtectedDemoSo") {
+    outputs.files(generatedVmpDemoSo, generatedVmpDemoRefSo)
+    outputs.upToDateWhen { false }
+    doLast {
+        def inputSo = resolveProtectedVmengineSo()
+        if (inputSo == null || !inputSo.exists()) {
+            throw new GradleException(
+                    "protected vmengine so not found. Build VmEngine first, or pass -PprotectedDemoSo=<path>")
+        }
+        if (!donorDemoSo.exists()) {
+            throw new GradleException("reference demo so not found: ${donorDemoSo}")
+        }
+
+        if (generatedVmpArm64Dir.exists()) {
+            delete generatedVmpArm64Dir
+        }
+        generatedVmpArm64Dir.mkdirs()
+
+        copy {
+            from inputSo
+            into generatedVmpArm64Dir
+            rename { "libdemo.so" }
+        }
+        copy {
+            from donorDemoSo
+            into generatedVmpArm64Dir
+            rename { "libdemo_ref.so" }
+        }
+        println("[VMP] injected protected so: ${inputSo} -> ${generatedVmpDemoSo}")
+        println("[VMP] injected reference so: ${donorDemoSo} -> ${generatedVmpDemoRefSo}")
+    }
+}
+
 android {
     namespace 'com.example.demo'
     compileSdk 34
@@ -12,6 +81,9 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,6 +107,15 @@ android {
     buildFeatures {
         viewBinding true
     }
+    sourceSets {
+        main {
+            jniLibs.srcDirs += generatedVmpJniRoot
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn("prepareProtectedDemoSo")
 }
 
 dependencies {

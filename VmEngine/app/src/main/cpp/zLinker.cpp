@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 自定义链接器实现，负责 so 装载、重定位与符号解析。
+ * - 加固链路位置：运行时动态装载核心。
+ * - 输入：so 文件路径。
+ * - 输出：可执行映像与 soinfo。
+ */
 #include "zLinker.h"
 
 #include "zLog.h"

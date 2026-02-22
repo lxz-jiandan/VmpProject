@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - VM 指令结构声明。
+ * - 加固链路位置：翻译表示层。
+ * - 输入：指令字段（opcode/operand）。
+ * - 输出：统一的 VM 指令模型。
+ */
 #ifndef VMPROTECT_ZINST_H
 #define VMPROTECT_ZINST_H
 

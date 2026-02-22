@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - ELF 解析核心，实现符号/段/动态表读取与函数抽取。
+ * - 加固链路位置：离线翻译前置基础设施。
+ * - 输入：目标 so 文件字节。
+ * - 输出：zFunction 对象列表与函数地址映射。
+ */
 #include "zElf.h"
 #include "elf.h"
 #include "zLog.h"

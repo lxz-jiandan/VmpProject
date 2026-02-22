@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 运行时函数数据接口声明。
+ * - 加固链路位置：执行数据接口层。
+ * - 输入：函数数据请求。
+ * - 输出：统一数据访问能力。
+ */
 #ifndef Z_FUNCTION_DATA_H
 #define Z_FUNCTION_DATA_H
 

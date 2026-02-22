@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# [VMP_FLOW_NOTE] 文件级流程注释
+# - 端到端自动回归脚本：导出、patch、安装、启动、判定。
+# - 加固链路位置：工程自动化测试入口。
+# - 输入：项目路径、函数清单、patch 参数。
+# - 输出：启动回归 PASS/FAIL 结论。
 import argparse
 import os
 import shutil
@@ -10,6 +15,7 @@ from pathlib import Path
 
 
 DEFAULT_FUNCTIONS = [
+    # 默认导出/回归函数集：覆盖基础算术、分支、C++对象、全局状态等场景。
     "fun_for",
     "fun_add",
     "fun_for_add",
@@ -35,6 +41,10 @@ DEFAULT_FUNCTIONS = [
 
 
 def run_cmd(cmd, cwd=None, env=None, check=True):
+    # 统一子进程执行入口：
+    # 1) 打印命令，便于 CI/本地回放；
+    # 2) 透传 stdout/stderr；
+    # 3) 在 check=True 时把非 0 退出码升级为异常。
     print(f"$ {' '.join(cmd)}")
     proc = subprocess.run(
         cmd,
@@ -162,6 +172,10 @@ def extract_relevant_log_lines(log_text: str):
 
 
 def run_vmprotect_export(project_root: Path, env: dict, functions):
+    # 对应旧 build_run.bat 的“离线导出阶段”：
+    # - 编译 VmProtect；
+    # - 运行 VmProtect 生成 txt/bin/expand so；
+    # - 把产物同步到 VmEngine assets。
     vmprotect_dir = project_root / "VmProtect"
     vmengine_assets_dir = project_root / "VmEngine" / "app" / "src" / "main" / "assets"
     build_dir = vmprotect_dir / "cmake-build-debug"
@@ -339,6 +353,10 @@ def patch_vmengine_symbols_patchbay(
     impl_symbol: str,
     only_fun_java: bool,
 ):
+    # route4 L2 接管前置：
+    # 1) 先强制重编 native，拿到“干净” libvmengine.so；
+    # 2) 用 zElfEditor 把 donor 导出注入到 vmengine；
+    # 3) 回写 patched so，供 installDebug 打包。
     if not donor_so.exists():
         raise RuntimeError(f"donor so not found: {donor_so}")
 
@@ -377,6 +395,11 @@ def patch_vmengine_symbols_patchbay(
 
 
 def main():
+    # 脚本主流程：
+    # A. VmProtect 导出；
+    # B. (可选) patch vmengine 导出；
+    # C. 安装 VmEngine；
+    # D. startActivity + logcat 判定。
     parser = argparse.ArgumentParser(description="Run VmProtect + VmEngine startup regression.")
     parser.add_argument(
         "--project-root",
@@ -466,6 +489,7 @@ def main():
         print(line)
 
     expected_markers = [
+        # 这些标记共同定义了“启动链路健康”。
         "route_unencoded_text result=1",
         "route_native_vs_vm result=1",
         "route_encoded_asset_bin result=1",

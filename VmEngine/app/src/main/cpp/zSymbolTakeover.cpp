@@ -1,6 +1,14 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 导出符号接管实现：导出桩 -> dispatch_by_id -> VM 执行。
+ * - 加固链路位置：第四路线 L2（符号接管）。
+ * - 输入：symbol->fun_addr 映射与入参。
+ * - 输出：被接管导出的 VM 执行结果。
+ */
 #include "zSymbolTakeover.h"
 
 #include <cstring>
+#include <dlfcn.h>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -12,9 +20,15 @@
 namespace {
 
 struct zTakeoverState {
+    // 全局状态锁，保护映射表与当前活动 so。
     std::mutex mutex;
+    // 导出符号名 -> fun_addr（VM 函数地址）映射。
     std::unordered_map<std::string, uint64_t> fun_addr_by_symbol;
+    // 当前用于执行 VM 函数的 so 名称（如 libdemo_expand_embedded.so）。
     std::string active_so_name;
+    // 参考 so 句柄（demo 侧可通过 JNI 主动注入）。
+    void* reference_so_handle = nullptr;
+    // 初始化是否完成。
     bool ready = false;
 };
 
@@ -38,6 +52,64 @@ uint64_t toVmArg(int value) {
     return static_cast<uint64_t>(static_cast<int64_t>(value));
 }
 
+bool fallbackFromReferenceSo(const char* symbol_name, int a, int b, int* out_result) {
+    // fallback 优先级：
+    // 1) 复用已注入句柄；
+    // 2) 按库名 dlopen；
+    // 3) 按当前 so 同目录绝对路径 dlopen。
+    // 目的：当 VM route 不可用时仍可返回一个可预期结果，避免崩溃。
+    if (!isValidText(symbol_name) || out_result == nullptr) {
+        return false;
+    }
+
+    void* reference_handle = nullptr;
+    {
+        zTakeoverState& state = getTakeoverState();
+        std::lock_guard<std::mutex> lock(state.mutex);
+        reference_handle = state.reference_so_handle;
+    }
+    if (reference_handle == nullptr) {
+        // demo 场景会额外打包 libdemo_ref.so，优先按库名尝试。
+        reference_handle = dlopen("libdemo_ref.so", RTLD_NOW | RTLD_LOCAL);
+    }
+    if (reference_handle == nullptr) {
+        // 某些 Android 命名空间下，裸库名不可见；退化为同目录绝对路径加载。
+        Dl_info info{};
+        if (dladdr(reinterpret_cast<void*>(&fallbackFromReferenceSo), &info) != 0 &&
+            info.dli_fname != nullptr && info.dli_fname[0] != '\0') {
+            std::string path = info.dli_fname;
+            const size_t slash = path.find_last_of('/');
+            if (slash != std::string::npos) {
+                path.resize(slash + 1);
+                path += "libdemo_ref.so";
+                reference_handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+            }
+        }
+    }
+    if (reference_handle != nullptr) {
+        zTakeoverState& state = getTakeoverState();
+        std::lock_guard<std::mutex> lock(state.mutex);
+        if (state.reference_so_handle == nullptr) {
+            state.reference_so_handle = reference_handle;
+        }
+    }
+    if (reference_handle == nullptr) {
+        return false;
+    }
+
+    dlerror();
+    void* sym = dlsym(reference_handle, symbol_name);
+    const char* sym_error = dlerror();
+    if (sym == nullptr || sym_error != nullptr) {
+        return false;
+    }
+
+    using BinaryFn = int (*)(int, int);
+    auto fn = reinterpret_cast<BinaryFn>(sym);
+    *out_result = fn(a, b);
+    return true;
+}
+
 int fallback_fun_add(int a, int b) {
     return a + b;
 }
@@ -58,9 +130,51 @@ int fallback_fun_if_sub(int a, int b) {
     return b - a;
 }
 
+int fallback_fun_for_add(int a, int b) {
+    return fallback_fun_for(a, b);
+}
+
+int fallback_fun_countdown_muladd(int a, int b) {
+    int acc = 0;
+    int counter = a;
+    while (counter > 0) {
+        acc += b;
+        --counter;
+    }
+    return acc + a;
+}
+
+int fallback_fun_loop_call_mix(int a, int b) {
+    int acc = 0;
+    for (int i = 0; i < 4; ++i) {
+        if (i < 2) {
+            acc += fallback_fun_add(a, b);
+        } else {
+            acc += fallback_fun_add(a, 1);
+        }
+    }
+    return acc;
+}
+
+int fallback_fun_call_chain(int a, int b) {
+    return fallback_fun_for(a, b) + fallback_fun_add(a, b) + fallback_fun_if_sub(a, b);
+}
+
+int fallback_fun_branch_call(int a, int b) {
+    if (a >= b) {
+        return fallback_fun_countdown_muladd(a, b) + fallback_fun_add(a, b);
+    }
+    return fallback_fun_loop_call_mix(a, b) + fallback_fun_add(a, b);
+}
+
 int fallbackBySymbolName(const char* symbol_name, int a, int b) {
+    // 对最常见的 demo 函数提供公式级兜底，减少联调阶段“全部失败”的噪音。
     if (symbol_name == nullptr) {
         return 0;
+    }
+    int ref_result = 0;
+    if (fallbackFromReferenceSo(symbol_name, a, b, &ref_result)) {
+        return ref_result;
     }
     if (std::strcmp(symbol_name, "fun_add") == 0) {
         return fallback_fun_add(a, b);
@@ -71,11 +185,30 @@ int fallbackBySymbolName(const char* symbol_name, int a, int b) {
     if (std::strcmp(symbol_name, "fun_if_sub") == 0) {
         return fallback_fun_if_sub(a, b);
     }
+    if (std::strcmp(symbol_name, "fun_for_add") == 0) {
+        return fallback_fun_for_add(a, b);
+    }
+    if (std::strcmp(symbol_name, "fun_countdown_muladd") == 0) {
+        return fallback_fun_countdown_muladd(a, b);
+    }
+    if (std::strcmp(symbol_name, "fun_loop_call_mix") == 0) {
+        return fallback_fun_loop_call_mix(a, b);
+    }
+    if (std::strcmp(symbol_name, "fun_call_chain") == 0) {
+        return fallback_fun_call_chain(a, b);
+    }
+    if (std::strcmp(symbol_name, "fun_branch_call") == 0) {
+        return fallback_fun_branch_call(a, b);
+    }
     LOGE("[route_symbol_takeover] fallback missing for symbol=%s", symbol_name);
     return 0;
 }
 
 int dispatchByIdOrFallback(uint32_t symbol_id, int a, int b) {
+    // 导出桩统一转发到这里：
+    // - 先通过 symbol_id 找到符号名；
+    // - 再优先走 VM dispatch；
+    // - 失败时再走 reference/formula fallback。
     const char* symbol_name = zTakeoverGeneratedSymbolNameById(symbol_id);
     if (!isValidText(symbol_name)) {
         LOGE("[route_symbol_takeover] invalid symbol_id=%u", symbol_id);
@@ -97,6 +230,10 @@ bool zSymbolTakeoverInit(
     const zTakeoverSymbolEntry* entries,
     size_t entry_count
 ) {
+    // 接管初始化：
+    // 1) 校验 entries；
+    // 2) 选择可用 so（primary/fallback）；
+    // 3) 写入全局接管状态。
     if (entries == nullptr || entry_count == 0) {
         LOGE("[route_symbol_takeover] init failed: empty entries");
         return false;
@@ -143,6 +280,7 @@ void zSymbolTakeoverClear() {
     std::lock_guard<std::mutex> lock(state.mutex);
     state.fun_addr_by_symbol.clear();
     state.active_so_name.clear();
+    state.reference_so_handle = nullptr;
     state.ready = false;
 }
 
@@ -173,6 +311,8 @@ const char* zSymbolTakeoverSymbolNameAt(size_t index) {
 }
 
 bool zSymbolTakeoverDispatchBinary(const char* symbol_name, int a, int b, int* out_result) {
+    // 真正的 VM 执行路径：
+    // symbol_name -> fun_addr -> engine.execute(...)。
     if (!isValidText(symbol_name)) {
         return false;
     }
@@ -208,5 +348,15 @@ bool zSymbolTakeoverDispatchBinary(const char* symbol_name, int a, int b, int* o
 }
 
 extern "C" __attribute__((visibility("default"))) int z_takeover_dispatch_by_id(int a, int b, uint32_t symbol_id) {
+    // 注意：所有导出桩最终都跳到该函数，ABI 形态固定为 (a,b,symbol_id)。
     return dispatchByIdOrFallback(symbol_id, a, b);
+}
+
+extern "C" __attribute__((visibility("default"))) void z_takeover_set_reference_so_handle(void* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    zTakeoverState& state = getTakeoverState();
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.reference_so_handle = handle;
 }

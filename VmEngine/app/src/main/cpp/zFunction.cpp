@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 运行时侧函数对象实现，负责载入编码数据并提供执行所需视图。
+ * - 加固链路位置：VmEngine 执行前准备。
+ * - 输入：离线导出的编码 payload。
+ * - 输出：可缓存并执行的函数对象。
+ */
 #include "zFunction.h"
 #include "zVmEngine.h"
 #include "zLog.h"

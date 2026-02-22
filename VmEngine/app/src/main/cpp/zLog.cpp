@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 运行时日志实现。
+ * - 加固链路位置：运行时观测层。
+ * - 输入：模块日志请求。
+ * - 输出：logcat 可读日志。
+ */
 // vasprintf/free 定义。
 #include <stdlib.h>
 #include "zLog.h"

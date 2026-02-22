@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 运行时 expand so 尾部 bundle 读取器。
+ * - 加固链路位置：route3/route4 payload 加载。
+ * - 输入：expand so 路径。
+ * - 输出：函数 payload 列表与共享 branch 地址。
+ */
 #include "zSoBinBundle.h"
 
 #include "zLog.h"

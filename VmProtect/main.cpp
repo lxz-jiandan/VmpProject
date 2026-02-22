@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - VmProtect CLI 主入口，负责策略解析、覆盖率看板与导出物生成。
+ * - 加固链路位置：第 1 阶段（离线分析与产物构建）。
+ * - 输入：原始 arm64 so + 函数清单/策略配置。
+ * - 输出：函数 txt/bin、branch_addr_list.txt、libdemo_expand.so。
+ */
 #include <algorithm>
 #include <cctype>
 #include <cinttypes>
@@ -26,19 +33,30 @@ namespace fs = std::filesystem;
 namespace {
 
 struct VmProtectPolicy {
+    // 待分析/导出的原始 so。
     std::string input_so = "libdemo.so";
+    // 所有导出产物输出目录。
     std::string output_dir = ".";
+    // 尾部拼包后的 so 文件名。
     std::string expanded_so = "libdemo_expand.so";
+    // 全函数共享 branch 表文件名。
     std::string shared_branch_file = "branch_addr_list.txt";
+    // 翻译覆盖率看板文件名。
     std::string coverage_report = "coverage_report.md";
+    // 目标函数清单。
     std::vector<std::string> functions;
+    // 是否显式指定了函数（用于区分默认清单与外部注入）。
     bool has_explicit_functions = false;
+    // 是否分析 ELF 内全部函数（而非函数白名单）。
     bool analyze_all_functions = false;
+    // 是否仅出覆盖率报告，不导出 payload。
     bool coverage_only = false;
 };
 
 struct CliOverrides {
+    // 命令行 help 开关。
     bool show_help = false;
+    // policy 文件路径（可选）。
     std::string policy_file;
     std::string input_so;
     std::string output_dir;
@@ -53,6 +71,7 @@ struct CliOverrides {
 };
 
 struct FunctionCoverageRow {
+    // 单函数覆盖率条目。
     std::string function_name;
     uint64_t total_instructions = 0;
     uint64_t supported_instructions = 0;
@@ -62,6 +81,7 @@ struct FunctionCoverageRow {
 };
 
 struct CoverageBoard {
+    // 全局覆盖率看板（汇总 + 按函数 + 指令分布）。
     uint64_t total_instructions = 0;
     uint64_t supported_instructions = 0;
     uint64_t unsupported_instructions = 0;
@@ -71,6 +91,7 @@ struct CoverageBoard {
 };
 
 const std::vector<std::string> kDefaultFunctions = {
+    // 默认函数清单：保证回归包含算术、分支、对象、全局状态等典型路径。
     "fun_for",
     "fun_add",
     "fun_for_add",
@@ -201,6 +222,10 @@ bool loadFunctionsFromFile(const std::string& path, std::vector<std::string>& ou
 }
 
 bool loadPolicyFile(const std::string& policy_path, VmProtectPolicy& policy) {
+    // 解析策略文件：
+    // - 支持 key=value / key:value；
+    // - 支持 functions 与 functions_file；
+    // - 所有相对路径按 policy 文件目录解析。
     std::ifstream in(policy_path);
     if (!in) {
         LOGE("failed to open policy file: %s", policy_path.c_str());
@@ -289,6 +314,9 @@ bool loadPolicyFile(const std::string& policy_path, VmProtectPolicy& policy) {
 }
 
 bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& error) {
+    // 兼容历史调用方式：
+    // 1) 新参数模式：--function xxx；
+    // 2) 旧位置参数模式：直接写函数名。
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i] ? argv[i] : "";
         if (arg.empty()) {
@@ -629,6 +657,7 @@ bool writeCoverageReport(const std::string& report_path, const CoverageBoard& bo
 bool collectFunctions(zElf& elf,
                       const std::vector<std::string>& function_names,
                       std::vector<zFunction*>& functions) {
+    // 根据函数名从 ELF 中取出函数对象，后续覆盖率统计与导出都依赖该列表。
     functions.clear();
     functions.reserve(function_names.size());
     for (const std::string& function_name : function_names) {
@@ -648,6 +677,11 @@ bool collectFunctions(zElf& elf,
 bool exportProtectedPackage(const VmProtectPolicy& policy,
                             const std::vector<std::string>& function_names,
                             const std::vector<zFunction*>& functions) {
+    // 导出阶段（加固产物生成）：
+    // A. prepareTranslation 预校验，确保函数可翻译；
+    // B. 汇总共享 branch 地址；
+    // C. 导出 txt/bin；
+    // D. 拼包写入 expanded so。
     for (size_t i = 0; i < functions.size(); ++i) {
         std::string error;
         if (!functions[i]->prepareTranslation(&error)) {
@@ -722,6 +756,11 @@ bool exportProtectedPackage(const VmProtectPolicy& policy,
 } // namespace
 
 int main(int argc, char* argv[]) {
+    // main 总流程：
+    // 1) 合并 policy + CLI；
+    // 2) 解析目标函数；
+    // 3) 生成翻译覆盖率看板；
+    // 4) (可选) 导出加固产物。
     CliOverrides cli;
     std::string cli_error;
     if (!parseCommandLine(argc, argv, cli, cli_error)) {
@@ -812,6 +851,7 @@ int main(int argc, char* argv[]) {
 
     CoverageBoard board;
     {
+        // 覆盖率统计使用 capstone 反汇编原始函数，并结合支持指令集合做统计。
         csh handle = 0;
         if (cs_open(CS_ARCH_AARCH64, CS_MODE_ARM, &handle) != CS_ERR_OK) {
             LOGE("coverage failed: capstone cs_open failed");
@@ -836,6 +876,7 @@ int main(int argc, char* argv[]) {
     LOGI("coverage report written: %s", coverage_report_path.c_str());
 
     if (policy.coverage_only) {
+        // 仅看板模式：用于“翻译覆盖看板”快速迭代。
         LOGI("coverage-only mode enabled, export skipped");
         return 0;
     }

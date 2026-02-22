@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - bundle 读取接口声明。
+ * - 加固链路位置：运行时 payload 解析接口层。
+ * - 输入：so 路径。
+ * - 输出：zSoBinEntry 列表。
+ */
 #ifndef Z_SO_BIN_BUNDLE_H
 #define Z_SO_BIN_BUNDLE_H
 

@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - opcode 处理函数实现，定义每条 VM 指令语义。
+ * - 加固链路位置：解释执行语义层。
+ * - 输入：VMContext 当前状态。
+ * - 输出：寄存器/PC/标志位更新。
+ */
 #include "zVmOpcodes.h"
 #include "zLog.h"
 #include <cstring>

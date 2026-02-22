@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - opcode 常量与处理函数声明。
+ * - 加固链路位置：解释器指令接口层。
+ * - 输入：opcode 编号。
+ * - 输出：对应处理入口。
+ */
 #ifndef Z_VM_OPCODES_H
 #define Z_VM_OPCODES_H
 

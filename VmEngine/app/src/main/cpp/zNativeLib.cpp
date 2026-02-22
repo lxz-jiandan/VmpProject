@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - JNI_OnLoad 回归总控，串联多条执行路线与 takeover 校验。
+ * - 加固链路位置：运行时入口编排层。
+ * - 输入：assets + expand so + 内嵌 payload + 符号清单。
+ * - 输出：各路线回归结果与 JNI 初始化状态。
+ */
 #include <jni.h>  // JNI_OnLoad / JNIEnv / JavaVM。
 
 #include <cerrno>         // errno / strerror。
@@ -998,6 +1005,43 @@ bool initSymbolTakeover(
     return zSymbolTakeoverInit(config, entries.data(), entries.size());
 }
 
+bool reloadTakeoverSoForCleanState(zVmEngine& engine, EmbeddedExpandRouteStatus embedded_status) {
+    // 为 symbol takeover 准备“全新映像”，避免前序路线调用污染全局/静态状态。
+    if (embedded_status == EmbeddedExpandRouteStatus::kPass) {
+        if (g_libdemo_expand_embedded_so_path.empty()) {
+            LOGE("[route_symbol_takeover] reload failed: embedded so path is empty");
+            return false;
+        }
+        if (!engine.LoadLibrary(g_libdemo_expand_embedded_so_path.c_str())) {
+            LOGE("[route_symbol_takeover] reload failed: %s", g_libdemo_expand_embedded_so_path.c_str());
+            return false;
+        }
+        LOGI("[route_symbol_takeover] reloaded takeover so for clean state: %s", g_libdemo_expand_embedded_so_path.c_str());
+        return true;
+    }
+
+    if (!g_libdemo_expand_so_path.empty()) {
+        if (!engine.LoadLibrary(g_libdemo_expand_so_path.c_str())) {
+            LOGE("[route_symbol_takeover] reload failed: %s", g_libdemo_expand_so_path.c_str());
+            return false;
+        }
+        LOGI("[route_symbol_takeover] reloaded takeover so for clean state: %s", g_libdemo_expand_so_path.c_str());
+        return true;
+    }
+
+    if (!g_libdemo_so_path.empty()) {
+        if (!engine.LoadLibrary(g_libdemo_so_path.c_str())) {
+            LOGE("[route_symbol_takeover] reload failed: %s", g_libdemo_so_path.c_str());
+            return false;
+        }
+        LOGI("[route_symbol_takeover] reloaded takeover so for clean state: %s", g_libdemo_so_path.c_str());
+        return true;
+    }
+
+    LOGE("[route_symbol_takeover] reload failed: no available so path");
+    return false;
+}
+
 bool test_symbolTakeover(const std::vector<FunctionCaseResult>& reference_cases) {
     if (reference_cases.empty()) {
         LOGE("[route_symbol_takeover] reference_cases is empty");
@@ -1016,7 +1060,7 @@ bool test_symbolTakeover(const std::vector<FunctionCaseResult>& reference_cases)
     std::string current_so_path;
     void* self_handle = nullptr;
     if (resolveCurrentLibraryPath(reinterpret_cast<void*>(&test_symbolTakeover), current_so_path)) {
-        self_handle = dlopen(current_so_path.c_str(), RTLD_NOW);
+        self_handle = dlopen(current_so_path.c_str(), RTLD_NOW | RTLD_LOCAL);
     }
 
     const size_t takeover_symbol_count = zSymbolTakeoverSymbolCount();
@@ -1027,9 +1071,12 @@ bool test_symbolTakeover(const std::vector<FunctionCaseResult>& reference_cases)
         }
         return false;
     }
+    using SymbolBinaryFn = int (*)(int, int);
+    size_t validated_count = 0;
     for (size_t i = 0; i < takeover_symbol_count; ++i) {
         const char* symbol_name = zSymbolTakeoverSymbolNameAt(i);
-        auto it = case_map.find(symbol_name == nullptr ? std::string() : std::string(symbol_name));
+        const std::string symbol_name_value = symbol_name == nullptr ? std::string() : std::string(symbol_name);
+        auto it = case_map.find(symbol_name_value);
         if (it == case_map.end()) {
             LOGE("[route_symbol_takeover] missing reference case: %s", symbol_name == nullptr ? "(null)" : symbol_name);
             if (self_handle != nullptr) {
@@ -1037,6 +1084,7 @@ bool test_symbolTakeover(const std::vector<FunctionCaseResult>& reference_cases)
             }
             return false;
         }
+
         void* sym = nullptr;
         if (self_handle != nullptr) {
             sym = dlsym(self_handle, symbol_name);
@@ -1051,11 +1099,11 @@ bool test_symbolTakeover(const std::vector<FunctionCaseResult>& reference_cases)
             }
             return false;
         }
-        using SymbolBinaryFn = int (*)(int, int);
+
         SymbolBinaryFn symbol_fn = reinterpret_cast<SymbolBinaryFn>(sym);
         const int result = symbol_fn(2, 4);
         const int expected = static_cast<int>(it->second.expected_result);
-        LOGI("[route_symbol_takeover][%s] symbol=%p result=%d expected=%d active_so=%s",
+        LOGI("[route_symbol_takeover][%s] symbol=%p result=%d expected=%d expected_source=route1_baseline active_so=%s",
              symbol_name,
              sym,
              result,
@@ -1071,6 +1119,19 @@ bool test_symbolTakeover(const std::vector<FunctionCaseResult>& reference_cases)
             }
             return false;
         }
+        ++validated_count;
+    }
+    LOGI("[route_symbol_takeover] parity summary: validated=%llu total=%llu",
+         static_cast<unsigned long long>(validated_count),
+         static_cast<unsigned long long>(takeover_symbol_count));
+    if (validated_count != takeover_symbol_count) {
+        LOGE("[route_symbol_takeover] validated count mismatch: validated=%llu total=%llu",
+             static_cast<unsigned long long>(validated_count),
+             static_cast<unsigned long long>(takeover_symbol_count));
+        if (self_handle != nullptr) {
+            dlclose(self_handle);
+        }
+        return false;
     }
     if (self_handle != nullptr) {
         dlclose(self_handle);
@@ -1138,20 +1199,24 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
          ok_embedded_expand ? 1 : 0,
          static_cast<int>(embedded_status));
 
+    // 为接管回归准备干净 so 状态，避免 route1/2/3/4 的前序执行污染全局数据。
+    const bool ok_takeover_reload = reloadTakeoverSoForCleanState(engine, embedded_status);
+
     // 路线4（L2 MVP）：在 libvmengine.so 导出 fun_add/fun_for/fun_if_sub 并转发到 VM。
-    const bool ok_takeover_init = initSymbolTakeover(reference_cases, embedded_status);
+    const bool ok_takeover_init = ok_takeover_reload && initSymbolTakeover(reference_cases, embedded_status);
     const bool ok_symbol_takeover = ok_takeover_init && test_symbolTakeover(reference_cases);
     LOGI("route_symbol_takeover result=%d", ok_symbol_takeover ? 1 : 0);
 
     // 任一路线失败，JNI_OnLoad 必须返回 JNI_ERR。
     if (!(ok_unencoded && ok_native_vs_vm && ok_encoded_asset && ok_encoded_expand && ok_embedded_expand && ok_symbol_takeover)) {
-        LOGE("JNI_OnLoad route regression failed: unencoded=%d native_vs_vm=%d asset_bin=%d expand_so=%d embedded_expand=%d embedded_state=%d symbol_takeover=%d takeover_init=%d",
+        LOGE("JNI_OnLoad route regression failed: unencoded=%d native_vs_vm=%d asset_bin=%d expand_so=%d embedded_expand=%d embedded_state=%d takeover_reload=%d symbol_takeover=%d takeover_init=%d",
              ok_unencoded ? 1 : 0,
              ok_native_vs_vm ? 1 : 0,
              ok_encoded_asset ? 1 : 0,
              ok_encoded_expand ? 1 : 0,
              ok_embedded_expand ? 1 : 0,
              static_cast<int>(embedded_status),
+             ok_takeover_reload ? 1 : 0,
              ok_symbol_takeover ? 1 : 0,
              ok_takeover_init ? 1 : 0);
         return JNI_ERR;

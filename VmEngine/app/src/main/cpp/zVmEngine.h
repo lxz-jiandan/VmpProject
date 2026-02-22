@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - VM 引擎公开接口声明。
+ * - 加固链路位置：执行核心接口层。
+ * - 输入：执行请求。
+ * - 输出：结果与缓存控制能力。
+ */
 #ifndef Z_VM_ENGINE_H
 #define Z_VM_ENGINE_H
 

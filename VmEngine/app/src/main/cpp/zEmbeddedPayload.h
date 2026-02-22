@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 内嵌 payload 读取协议接口声明。
+ * - 加固链路位置：route4 数据入口。
+ * - 输入：宿主 so 与状态输出指针。
+ * - 输出：payload 与读取状态。
+ */
 #ifndef Z_EMBEDDED_PAYLOAD_H
 #define Z_EMBEDDED_PAYLOAD_H
 

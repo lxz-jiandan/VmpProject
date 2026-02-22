@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - VM 执行引擎实现，负责缓存函数、分发 opcode、执行结果返回。
+ * - 加固链路位置：运行时执行核心。
+ * - 输入：函数对象 + 参数 + so 上下文。
+ * - 输出：函数执行结果。
+ */
 #include "zVmEngine.h"
 #include "zVmOpcodes.h"
 #include "zLog.h"

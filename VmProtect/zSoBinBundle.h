@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - expand so 打包器接口声明。
+ * - 加固链路位置：离线封装接口层。
+ * - 输入：payload 与元数据。
+ * - 输出：可被 VmEngine 解析的 bundle。
+ */
 #ifndef VMPROTECT_ZSOBINBUNDLE_H
 #define VMPROTECT_ZSOBINBUNDLE_H
 

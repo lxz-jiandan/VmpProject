@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 从宿主 so 末尾读取嵌入 payload 并做 CRC 校验。
+ * - 加固链路位置：第四路线 L1（内嵌 expand so 读取）。
+ * - 输入：宿主 so 路径。
+ * - 输出：校验通过的 payload 字节。
+ */
 #include "zEmbeddedPayload.h"
 
 #include "zLog.h"
@@ -9,10 +16,15 @@ namespace {
 
 #pragma pack(push, 1)
 struct EmbeddedPayloadFooter {
+    // 固定魔数，用来识别“这不是普通 so 尾部字节，而是我们定义的 footer”。
     uint32_t magic;
+    // 协议版本，便于未来平滑升级。
     uint32_t version;
+    // payload 长度（字节）。
     uint64_t payload_size;
+    // payload 的 CRC32 校验值。
     uint32_t payload_crc32;
+    // 预留字段（当前未使用，保持 ABI 稳定）。
     uint32_t reserved;
 };
 #pragma pack(pop)
@@ -80,6 +92,11 @@ bool zEmbeddedPayload::readEmbeddedPayloadFromHostSo(
     std::vector<uint8_t>& out_payload,
     zEmbeddedPayloadReadStatus* out_status
 ) {
+    // 读取流程：
+    // 1) 整体读入 host so；
+    // 2) 反向读取 footer；
+    // 3) 校验 magic/version/size/crc；
+    // 4) 抽取 payload 返回。
     out_payload.clear();
     if (out_status != nullptr) {
         *out_status = zEmbeddedPayloadReadStatus::kInvalid;
@@ -144,4 +161,3 @@ bool zEmbeddedPayload::readEmbeddedPayloadFromHostSo(
     }
     return true;
 }
-

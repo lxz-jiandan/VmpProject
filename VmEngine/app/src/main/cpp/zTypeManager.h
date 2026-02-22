@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - 类型管理接口与结构体声明。
+ * - 加固链路位置：运行时类型接口层。
+ * - 输入：类型请求。
+ * - 输出：统一类型操作能力。
+ */
 #ifndef Z_TYPE_SYSTEM_H
 #define Z_TYPE_SYSTEM_H
 

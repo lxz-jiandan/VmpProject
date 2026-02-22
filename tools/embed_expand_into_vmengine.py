@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# [VMP_FLOW_NOTE] 文件级流程注释
+# - 把 libdemo_expand.so 作为 payload 嵌入 libvmengine.so 尾部。
+# - 加固链路位置：route4 L1 产物构建。
+# - 输入：vmengine so + expand so。
+# - 输出：带 footer 的宿主 so。
 import argparse
 import struct
 import zlib
@@ -30,6 +35,7 @@ def write_bytes(path: Path, data: bytes) -> None:
 
 
 def parse_existing_footer(host: bytes):
+    # 若宿主已带历史 payload，先解析并校验，后续会覆盖旧 payload。
     if len(host) < FOOTER_STRUCT.size:
         return None
     magic, version, payload_size, payload_crc32, _reserved = FOOTER_STRUCT.unpack_from(
@@ -56,6 +62,7 @@ def parse_existing_footer(host: bytes):
 
 
 def build_footer(payload: bytes) -> bytes:
+    # footer 只记录最小必要信息：magic/version/size/crc，便于运行时快速校验。
     payload_crc = zlib.crc32(payload) & 0xFFFFFFFF
     return FOOTER_STRUCT.pack(
         FOOTER_MAGIC,
@@ -113,4 +120,3 @@ if __name__ == "__main__":
     except EmbedError as exc:
         print(f"[ERROR] {exc}")
         raise SystemExit(1)
-

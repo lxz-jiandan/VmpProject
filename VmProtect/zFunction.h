@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - zFunction 数据结构与翻译 API 声明。
+ * - 加固链路位置：离线翻译接口层。
+ * - 输入：函数原始数据与上下文。
+ * - 输出：编码结果与调试导出能力。
+ */
 #ifndef VMPROTECT_ZFUNCTION_H
 #define VMPROTECT_ZFUNCTION_H
 

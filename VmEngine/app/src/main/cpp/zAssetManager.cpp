@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - Android assets/file 读写与解包实现。
+ * - 加固链路位置：运行时准备阶段。
+ * - 输入：assets 文件名。
+ * - 输出：本地文件路径或内存字节。
+ */
 #include "zAssestManager.h"
 
 #include <vector>

@@ -1,3 +1,10 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释
+ * - VM 指令对象与序列化辅助实现。
+ * - 加固链路位置：翻译结果落盘前处理。
+ * - 输入：翻译后的 VM 指令流。
+ * - 输出：可写入 txt/bin 的标准化表示。
+ */
 #include "zInst.h"
 #include <sstream>  // std::ostringstream。
 #include <iomanip>  // std::hex/std::setw/std::setfill。
