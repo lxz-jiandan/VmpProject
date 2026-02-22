@@ -63,15 +63,15 @@ def run_cmd(cmd, cwd=None, env=None, check=True):
     return proc
 
 
-def locate_zelfeditor_exe(project_root: Path):
+def locate_patch_tool_exe(project_root: Path):
     candidates = [
-        project_root / "zElfEditor" / "cmake-build-debug" / "zElfEditor.exe",
-        project_root / "zElfEditor" / "cmake-build-debug" / "zElfEditor",
+        project_root / "VmProtect" / "cmake-build-debug" / "VmProtectPatchbay.exe",
+        project_root / "VmProtect" / "cmake-build-debug" / "VmProtectPatchbay",
     ]
     for candidate in candidates:
         if candidate.exists():
             return str(candidate)
-    raise RuntimeError("zElfEditor executable not found (build zElfEditor first)")
+    raise RuntimeError("patch tool executable not found (build VmProtectPatchbay first)")
 
 
 def locate_tool(name: str, candidates):
@@ -355,7 +355,7 @@ def patch_vmengine_symbols_patchbay(
 ):
     # route4 L2 接管前置：
     # 1) 先强制重编 native，拿到“干净” libvmengine.so；
-    # 2) 用 zElfEditor 把 donor 导出注入到 vmengine；
+    # 2) 用 patch 工具把 donor 导出注入到 vmengine；
     # 3) 回写 patched so，供 installDebug 打包。
     if not donor_so.exists():
         raise RuntimeError(f"donor so not found: {donor_so}")
@@ -369,7 +369,7 @@ def patch_vmengine_symbols_patchbay(
         env=env,
     )
 
-    zelfeditor = locate_zelfeditor_exe(project_root)
+    patch_tool = locate_patch_tool_exe(project_root)
     targets = find_vmengine_so_outputs(vmengine_dir)
     if not targets:
         raise RuntimeError("no vmengine so outputs found under app/build/intermediates/cxx/Debug")
@@ -378,7 +378,7 @@ def patch_vmengine_symbols_patchbay(
         validate_android_elf_layout(target_so)
         patched_so = target_so.with_suffix(".patched.so")
         cmd = [
-            zelfeditor,
+            patch_tool,
             "export_alias_from_patchbay",
             str(target_so),
             str(donor_so),

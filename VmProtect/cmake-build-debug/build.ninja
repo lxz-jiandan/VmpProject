@@ -131,6 +131,169 @@ build VmProtect.exe: CXX_EXECUTABLE_LINKER__VmProtect_Debug CMakeFiles/VmProtect
   TARGET_IMPLIB = libVmProtect.dll.a
   TARGET_PDB = VmProtect.pdb
 
+# =============================================================================
+# Object build statements for EXECUTABLE target VmProtectPatchbay
+
+
+#############################################
+# Order-only phony target for VmProtectPatchbay
+
+build cmake_object_order_depends_target_VmProtectPatchbay: phony || CMakeFiles/VmProtectPatchbay.dir
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/main.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/main.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\main.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElf.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElf.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElf.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfHeader.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfHeader.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfHeader.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zProgramTableElement.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zProgramTableElement.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zProgramTableElement.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfProgramHeaderTable.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfProgramHeaderTable.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfProgramHeaderTable.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zSectionTableElement.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zSectionTableElement.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zSectionTableElement.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfSectionHeaderTable.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfSectionHeaderTable.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfSectionHeaderTable.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfUtils.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfUtils.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfUtils.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfValidator.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfValidator.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfValidator.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfReconstruction.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfReconstruction.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfReconstruction.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfInject.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfInject.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfInject.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfLoader.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfLoader.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfLoader.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfAddressRewriter.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfAddressRewriter.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfAddressRewriter.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfPcRelativePatcher.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfPcRelativePatcher.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zElfPcRelativePatcher.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+build CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zLog.cpp.obj: CXX_COMPILER__VmProtectPatchbay_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zLog.cpp || cmake_object_order_depends_target_VmProtectPatchbay
+  DEP_FILE = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool\zLog.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  OBJECT_FILE_DIR = CMakeFiles\VmProtectPatchbay.dir\patchbay_tool
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_PDB = VmProtectPatchbay.pdb
+
+
+# =============================================================================
+# Link build statements for EXECUTABLE target VmProtectPatchbay
+
+
+#############################################
+# Link the executable VmProtectPatchbay.exe
+
+build VmProtectPatchbay.exe: CXX_EXECUTABLE_LINKER__VmProtectPatchbay_Debug CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/main.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElf.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfHeader.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zProgramTableElement.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfProgramHeaderTable.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zSectionTableElement.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfSectionHeaderTable.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfUtils.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfValidator.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfReconstruction.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfInject.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfLoader.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfAddressRewriter.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zElfPcRelativePatcher.cpp.obj CMakeFiles/VmProtectPatchbay.dir/patchbay_tool/zLog.cpp.obj | ../capstone_sdk/lib/capstone.lib
+  FLAGS = -g
+  LINK_LIBRARIES = ../capstone_sdk/lib/capstone.lib  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+  OBJECT_DIR = CMakeFiles\VmProtectPatchbay.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = CMakeFiles\VmProtectPatchbay.dir\
+  TARGET_FILE = VmProtectPatchbay.exe
+  TARGET_IMPLIB = libVmProtectPatchbay.dll.a
+  TARGET_PDB = VmProtectPatchbay.pdb
+
 
 #############################################
 # Utility command for edit_cache
@@ -159,6 +322,8 @@ build rebuild_cache: phony CMakeFiles/rebuild_cache.util
 
 build VmProtect: phony VmProtect.exe
 
+build VmProtectPatchbay: phony VmProtectPatchbay.exe
+
 # =============================================================================
 # Folder targets.
 
@@ -167,7 +332,7 @@ build VmProtect: phony VmProtect.exe
 #############################################
 # Folder: Z:/2026/0217_vmp_project/VmpProject/VmProtect/cmake-build-debug
 
-build all: phony VmProtect.exe
+build all: phony VmProtect.exe VmProtectPatchbay.exe
 
 # =============================================================================
 # Built-in targets

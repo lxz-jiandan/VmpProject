@@ -2,6 +2,204 @@ plugins {
     alias(libs.plugins.androidApplication)
 }
 
+def vmpProjectRoot = rootProject.projectDir.parentFile
+def vmpEnabled = ((project.findProperty("vmpEnabled") ?: "false").toString().toBoolean())
+def vmpAutoBuildTool = ((project.findProperty("vmpAutoBuildTool") ?: "false").toString().toBoolean())
+def vmpToolExe = file((project.findProperty("vmpToolExe")
+        ?: "${vmpProjectRoot}/VmProtect/cmake-build-debug/VmProtect.exe").toString())
+def vmpInputSo = file((project.findProperty("vmpInputSo")
+        ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
+def vmProtectProjectDir = file("${vmpProjectRoot}/VmProtect")
+def vmProtectBuildDir = file("${vmProtectProjectDir}/cmake-build-debug")
+def vmpPatchDonorSo = file((project.findProperty("vmpPatchDonorSo")
+        ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
+def vmpPatchToolExeRaw = (project.findProperty("vmpPatchToolExe")
+        ?: "").toString().trim()
+def vmpPatchImplSymbol = (project.findProperty("vmpPatchImplSymbol")
+        ?: "z_takeover_dispatch_by_id").toString()
+def vmpPatchAllExports = ((project.findProperty("vmpPatchAllExports") ?: "false").toString().toBoolean())
+def vmpFunctionsRaw = (project.findProperty("vmpFunctions") ?: "").toString().trim()
+def vmpPolicyRaw = (project.findProperty("vmpPolicy") ?: "").toString().trim()
+def vmpOutputDir = file("$buildDir/generated/vmprotectOut")
+def vmpAssetsDir = file("src/main/assets")
+
+def parseVmpFunctions = {
+    if (vmpFunctionsRaw.isEmpty()) {
+        return []
+    }
+    return vmpFunctionsRaw.split(",")
+            .collect { it.trim() }
+            .findAll { !it.isEmpty() }
+}
+
+def resolveCmakeExe = {
+    def candidates = [
+            file("C:/Program Files/JetBrains/CLion 2022.2.5/bin/cmake/win/bin/cmake.exe"),
+            file("D:/Clion2022/bin/cmake/win/bin/cmake.exe"),
+    ]
+    def hit = candidates.find { it.exists() }
+    return hit != null ? hit.absolutePath : "cmake"
+}
+
+def resolveNinjaExe = {
+    def candidates = [
+            file("C:/Program Files/JetBrains/CLion 2022.2.5/bin/ninja/win/ninja.exe"),
+            file("D:/Clion2022/bin/ninja/win/ninja.exe"),
+    ]
+    def hit = candidates.find { it.exists() }
+    return hit != null ? hit.absolutePath : "ninja"
+}
+
+def resolveVmengineSoForDebug = {
+    def candidates = []
+    def cxxDebugRoot = file("$buildDir/intermediates/cxx/Debug")
+    if (cxxDebugRoot.exists()) {
+        cxxDebugRoot.eachDir { dir ->
+            def so = new File(dir, "obj/arm64-v8a/libvmengine.so")
+            if (so.exists()) {
+                candidates.add(so)
+            }
+        }
+    }
+    def cmakeFallback = file("$buildDir/intermediates/cmake/debug/obj/arm64-v8a/libvmengine.so")
+    if (cmakeFallback.exists()) {
+        candidates.add(cmakeFallback)
+    }
+    if (candidates.isEmpty()) {
+        return null
+    }
+    candidates.sort { a, b -> Long.compare(b.lastModified(), a.lastModified()) }
+    return candidates[0]
+}
+
+tasks.register("buildVmProtectTool") {
+    group = "vmp"
+    description = "Configure and build VmProtect.exe"
+    outputs.file(vmpToolExe)
+    outputs.upToDateWhen { false }
+    onlyIf { vmpEnabled && vmpAutoBuildTool }
+    doLast {
+        def cmakeExe = resolveCmakeExe()
+        def ninjaExe = resolveNinjaExe()
+        if (!vmProtectBuildDir.exists()) {
+            vmProtectBuildDir.mkdirs()
+        }
+        def cmakeCache = file("${vmProtectBuildDir}/CMakeCache.txt")
+        if (!cmakeCache.exists()) {
+            exec {
+                commandLine cmakeExe,
+                        "-G", "Ninja",
+                        "-S", vmProtectProjectDir.absolutePath.replace("\\", "/"),
+                        "-B", vmProtectBuildDir.absolutePath.replace("\\", "/"),
+                        "-DCMAKE_BUILD_TYPE=Debug",
+                        "-DCMAKE_MAKE_PROGRAM=${ninjaExe.replace('\\', '/')}"
+                workingDir vmProtectProjectDir
+            }
+        }
+        exec {
+            commandLine cmakeExe,
+                    "--build", vmProtectBuildDir.absolutePath,
+                    "--target", "VmProtect", "VmProtectPatchbay",
+                    "-j", "12"
+            workingDir vmProtectProjectDir
+        }
+    }
+}
+
+tasks.register("runVmProtectPipelineDebug") {
+    group = "vmp"
+    description = "Run VmProtect.exe to export assets and produce final protected libvmengine.so (debug)."
+    dependsOn("externalNativeBuildDebug", "buildVmProtectTool")
+    outputs.dir(vmpOutputDir)
+    outputs.dir(vmpAssetsDir)
+    outputs.upToDateWhen { false }
+    onlyIf { vmpEnabled }
+    doLast {
+        def hostSo = resolveVmengineSoForDebug()
+        if (hostSo == null || !hostSo.exists()) {
+            throw new GradleException("debug libvmengine.so not found under app/build/intermediates")
+        }
+        if (!vmpToolExe.exists()) {
+            throw new GradleException(
+                    "VmProtect.exe not found: ${vmpToolExe}. " +
+                            "Build it first, or run with -PvmpAutoBuildTool=true")
+        }
+        if (!vmpInputSo.exists()) {
+            throw new GradleException("vmp input so not found: ${vmpInputSo}")
+        }
+        if (!vmpPatchDonorSo.exists()) {
+            throw new GradleException("vmp donor so not found: ${vmpPatchDonorSo}")
+        }
+        def vmpPatchToolExe = null
+        if (!vmpPatchToolExeRaw.isEmpty()) {
+            vmpPatchToolExe = file(vmpPatchToolExeRaw)
+            if (!vmpPatchToolExe.exists()) {
+                throw new GradleException("patch tool executable not found: ${vmpPatchToolExe}")
+            }
+        }
+
+        if (vmpOutputDir.exists()) {
+            delete vmpOutputDir
+        }
+        vmpOutputDir.mkdirs()
+        vmpAssetsDir.mkdirs()
+
+        def cmd = [
+                vmpToolExe.absolutePath,
+                "--input-so", vmpInputSo.absolutePath,
+                "--output-dir", vmpOutputDir.absolutePath,
+                "--expanded-so", "libdemo_expand.so",
+                "--shared-branch-file", "branch_addr_list.txt",
+                "--coverage-report", "coverage_report.md",
+                "--host-so", hostSo.absolutePath,
+                "--final-so", hostSo.absolutePath,
+                "--patch-donor-so", vmpPatchDonorSo.absolutePath,
+                "--patch-impl-symbol", vmpPatchImplSymbol,
+        ]
+        if (vmpPatchToolExe != null) {
+            cmd.addAll(["--patch-tool-exe", vmpPatchToolExe.absolutePath])
+        }
+        if (vmpPatchAllExports) {
+            cmd.add("--patch-all-exports")
+        }
+        if (!vmpPolicyRaw.isEmpty()) {
+            def policyFile = file(vmpPolicyRaw)
+            if (!policyFile.exists()) {
+                throw new GradleException("vmp policy file not found: ${policyFile}")
+            }
+            cmd.addAll(["--policy", policyFile.absolutePath])
+        }
+        parseVmpFunctions().each { fn ->
+            cmd.addAll(["--function", fn])
+        }
+
+        println("[VMP] running: ${cmd.join(' ')}")
+        exec {
+            commandLine cmd
+            workingDir vmpProjectRoot
+        }
+
+        delete(fileTree(vmpAssetsDir) {
+            include "branch_addr_list.txt"
+            include "libdemo_expand.so"
+            include "fun_*.txt"
+            include "fun_*.bin"
+        })
+
+        copy {
+            from(vmpOutputDir) {
+                include "branch_addr_list.txt"
+                include "libdemo_expand.so"
+                include "fun_*.txt"
+                include "fun_*.bin"
+            }
+            into(vmpAssetsDir)
+        }
+        println("[VMP] protected host so generated: ${hostSo}")
+        println("[VMP] updated assets dir: ${vmpAssetsDir}")
+    }
+}
+
 android {
     namespace 'com.example.vmengine'
     compileSdk 34
@@ -42,6 +240,12 @@ android {
             // route4 需要保留 libvmengine.so 尾部附加 payload，禁止打包阶段 strip 该库。
             keepDebugSymbols += ['**/libvmengine.so']
         }
+    }
+}
+
+tasks.configureEach { t ->
+    if (t.name == "mergeDebugNativeLibs" || t.name == "mergeDebugAssets") {
+        t.dependsOn("runVmProtectPipelineDebug")
     }
 }
 

@@ -10,6 +10,19 @@ expanded_so = libdemo_expand.so
 shared_branch_file = branch_addr_list.txt
 coverage_report = coverage_report.md
 
+# Optional stage3 output:
+# host_so   : host so to embed payload into (e.g. VmEngine .../libvmengine.so)
+# final_so  : final protected so output path (default overwrite host_so)
+# host_so =
+# final_so =
+
+# Optional stage3 patchbay:
+# patch_donor_so = libdemo.so
+# patch_impl_symbol = z_takeover_dispatch_by_id
+# patch_tool_exe = cmake-build-debug/VmProtectPatchbay.exe
+# patch_all_exports = false
+# patch_allow_validate_fail = true
+
 # true: only generate coverage board, skip export.
 coverage_only = false
 

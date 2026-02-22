@@ -9,6 +9,7 @@
 #include <cctype>
 #include <cinttypes>
 #include <cstring>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -51,6 +52,20 @@ struct VmProtectPolicy {
     bool analyze_all_functions = false;
     // 是否仅出覆盖率报告，不导出 payload。
     bool coverage_only = false;
+    // 需要被写回 route4 嵌入 payload 的宿主 so（通常是 libvmengine.so）。
+    std::string host_so;
+    // 产出的最终 so 路径。为空时默认覆盖 host_so。
+    std::string final_so;
+    // donor so（用于 patchbay 导出补全）。
+    std::string patch_donor_so;
+    // patchbay 导出统一指向的实现符号。
+    std::string patch_impl_symbol = "z_takeover_dispatch_by_id";
+    // patch 工具可执行文件路径。
+    std::string patch_tool_exe;
+    // true: donor 所有导出都补齐；false: 仅补 fun_* 与 Java_*。
+    bool patch_all_exports = false;
+    // patchbay 失败时是否放宽 validate。
+    bool patch_allow_validate_fail = true;
 };
 
 struct CliOverrides {
@@ -68,6 +83,15 @@ struct CliOverrides {
     bool coverage_only = false;
     bool analyze_all_set = false;
     bool analyze_all = false;
+    std::string host_so;
+    std::string final_so;
+    std::string patch_donor_so;
+    std::string patch_impl_symbol;
+    std::string patch_tool_exe;
+    bool patch_all_exports_set = false;
+    bool patch_all_exports = false;
+    bool patch_allow_validate_fail_set = false;
+    bool patch_allow_validate_fail = true;
 };
 
 struct FunctionCoverageRow {
@@ -267,6 +291,16 @@ bool loadPolicyFile(const std::string& policy_path, VmProtectPolicy& policy) {
             policy.output_dir = resolvePath(base_dir, value);
         } else if (key == "expanded_so") {
             policy.expanded_so = value;
+        } else if (key == "host_so") {
+            policy.host_so = resolvePath(base_dir, value);
+        } else if (key == "final_so") {
+            policy.final_so = resolvePath(base_dir, value);
+        } else if (key == "patch_donor_so") {
+            policy.patch_donor_so = resolvePath(base_dir, value);
+        } else if (key == "patch_impl_symbol") {
+            policy.patch_impl_symbol = value;
+        } else if (key == "patch_tool_exe") {
+            policy.patch_tool_exe = resolvePath(base_dir, value);
         } else if (key == "shared_branch_file") {
             policy.shared_branch_file = value;
         } else if (key == "coverage_report") {
@@ -285,6 +319,20 @@ bool loadPolicyFile(const std::string& policy_path, VmProtectPolicy& policy) {
                 return false;
             }
             policy.analyze_all_functions = parsed;
+        } else if (key == "patch_all_exports") {
+            bool parsed = false;
+            if (!parseBoolValue(value, parsed)) {
+                LOGE("invalid bool for patch_all_exports at line %zu", line_no);
+                return false;
+            }
+            policy.patch_all_exports = parsed;
+        } else if (key == "patch_allow_validate_fail") {
+            bool parsed = false;
+            if (!parseBoolValue(value, parsed)) {
+                LOGE("invalid bool for patch_allow_validate_fail at line %zu", line_no);
+                return false;
+            }
+            policy.patch_allow_validate_fail = parsed;
         } else if (key == "functions") {
             std::vector<std::string> list = parseFunctionList(value);
             policy.functions.insert(policy.functions.end(), list.begin(), list.end());
@@ -346,12 +394,47 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             cli.shared_branch_file = argv[++i];
             continue;
         }
+        if (arg == "--host-so" && i + 1 < argc) {
+            cli.host_so = argv[++i];
+            continue;
+        }
+        if (arg == "--final-so" && i + 1 < argc) {
+            cli.final_so = argv[++i];
+            continue;
+        }
+        if (arg == "--patch-donor-so" && i + 1 < argc) {
+            cli.patch_donor_so = argv[++i];
+            continue;
+        }
+        if (arg == "--patch-impl-symbol" && i + 1 < argc) {
+            cli.patch_impl_symbol = argv[++i];
+            continue;
+        }
+        if (arg == "--patch-tool-exe" && i + 1 < argc) {
+            cli.patch_tool_exe = argv[++i];
+            continue;
+        }
         if (arg == "--coverage-report" && i + 1 < argc) {
             cli.coverage_report = argv[++i];
             continue;
         }
         if (arg == "--function" && i + 1 < argc) {
             cli.functions.emplace_back(argv[++i]);
+            continue;
+        }
+        if (arg == "--patch-all-exports") {
+            cli.patch_all_exports_set = true;
+            cli.patch_all_exports = true;
+            continue;
+        }
+        if (arg == "--patch-no-allow-validate-fail") {
+            cli.patch_allow_validate_fail_set = true;
+            cli.patch_allow_validate_fail = false;
+            continue;
+        }
+        if (arg == "--patch-allow-validate-fail") {
+            cli.patch_allow_validate_fail_set = true;
+            cli.patch_allow_validate_fail = true;
             continue;
         }
         if (arg == "--coverage-only") {
@@ -383,6 +466,13 @@ void printUsage() {
         << "  --input-so <file>            Input arm64 so path\n"
         << "  --output-dir <dir>           Output directory for txt/bin/report\n"
         << "  --expanded-so <file>         Expanded so output file name\n"
+        << "  --host-so <file>             Host so for embed/patch output (e.g. libvmengine.so)\n"
+        << "  --final-so <file>            Final protected so path (default overwrite host-so)\n"
+        << "  --patch-donor-so <file>      Donor so for patchbay export fill\n"
+        << "  --patch-impl-symbol <name>   Impl symbol used by export_alias_from_patchbay\n"
+        << "  --patch-tool-exe <file>      Patch tool executable path\n"
+        << "  --patch-all-exports          Patch all donor exports (default: only fun_* and Java_*)\n"
+        << "  --patch-no-allow-validate-fail Disable --allow-validate-fail during patch\n"
         << "  --shared-branch-file <file>  Shared branch list output file name\n"
         << "  --coverage-report <file>     Coverage report output file name\n"
         << "  --function <name>            Protected function (repeatable)\n"
@@ -435,6 +525,307 @@ bool readFileBytes(const char* path, std::vector<uint8_t>& out) {
                 static_cast<std::streamsize>(out.size()));
     }
     return static_cast<bool>(in);
+}
+
+bool writeFileBytes(const std::string& path, const std::vector<uint8_t>& data) {
+    if (path.empty()) {
+        return false;
+    }
+    std::error_code ec;
+    const fs::path out_path(path);
+    if (out_path.has_parent_path()) {
+        fs::create_directories(out_path.parent_path(), ec);
+        if (ec) {
+            return false;
+        }
+    }
+
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    if (!out) {
+        return false;
+    }
+    if (!data.empty()) {
+        out.write(reinterpret_cast<const char*>(data.data()),
+                  static_cast<std::streamsize>(data.size()));
+    }
+    return static_cast<bool>(out);
+}
+
+uint32_t crc32Ieee(const uint8_t* data, size_t size) {
+    static uint32_t table[256];
+    static bool table_inited = false;
+    if (!table_inited) {
+        for (uint32_t i = 0; i < 256; ++i) {
+            uint32_t c = i;
+            for (int k = 0; k < 8; ++k) {
+                c = (c & 1u) ? (0xEDB88320u ^ (c >> 1u)) : (c >> 1u);
+            }
+            table[i] = c;
+        }
+        table_inited = true;
+    }
+
+    uint32_t c = 0xFFFFFFFFu;
+    for (size_t i = 0; i < size; ++i) {
+        c = table[(c ^ data[i]) & 0xFFu] ^ (c >> 8u);
+    }
+    return c ^ 0xFFFFFFFFu;
+}
+
+#pragma pack(push, 1)
+struct EmbeddedPayloadFooter {
+    uint32_t magic;
+    uint32_t version;
+    uint64_t payload_size;
+    uint32_t payload_crc32;
+    uint32_t reserved;
+};
+#pragma pack(pop)
+
+constexpr uint32_t kEmbeddedPayloadMagic = 0x34454D56U; // 'VME4'
+constexpr uint32_t kEmbeddedPayloadVersion = 1U;
+
+bool parseExistingEmbeddedPayload(const std::vector<uint8_t>& host_bytes,
+                                  size_t* out_base_size,
+                                  size_t* out_old_payload_size) {
+    if (out_base_size == nullptr || out_old_payload_size == nullptr) {
+        return false;
+    }
+    *out_base_size = host_bytes.size();
+    *out_old_payload_size = 0;
+    if (host_bytes.size() < sizeof(EmbeddedPayloadFooter)) {
+        return true;
+    }
+
+    EmbeddedPayloadFooter footer{};
+    const size_t footer_off = host_bytes.size() - sizeof(EmbeddedPayloadFooter);
+    std::memcpy(&footer, host_bytes.data() + footer_off, sizeof(EmbeddedPayloadFooter));
+    if (footer.magic != kEmbeddedPayloadMagic || footer.version != kEmbeddedPayloadVersion) {
+        return true;
+    }
+    if (footer.payload_size == 0 ||
+        footer.payload_size > host_bytes.size() - sizeof(EmbeddedPayloadFooter)) {
+        LOGE("embedded footer invalid payload_size=%llu",
+             static_cast<unsigned long long>(footer.payload_size));
+        return false;
+    }
+
+    const size_t payload_begin = host_bytes.size() -
+                                 sizeof(EmbeddedPayloadFooter) -
+                                 static_cast<size_t>(footer.payload_size);
+    const uint32_t actual_crc =
+        crc32Ieee(host_bytes.data() + payload_begin, static_cast<size_t>(footer.payload_size));
+    if (actual_crc != footer.payload_crc32) {
+        LOGE("embedded footer crc mismatch expected=0x%x actual=0x%x",
+             footer.payload_crc32,
+             actual_crc);
+        return false;
+    }
+
+    *out_base_size = payload_begin;
+    *out_old_payload_size = static_cast<size_t>(footer.payload_size);
+    return true;
+}
+
+bool embedExpandedSoIntoHost(const std::string& host_so,
+                             const std::string& payload_so,
+                             const std::string& final_so) {
+    if (!fileExists(host_so)) {
+        LOGE("host so not found: %s", host_so.c_str());
+        return false;
+    }
+    if (!fileExists(payload_so)) {
+        LOGE("payload so not found: %s", payload_so.c_str());
+        return false;
+    }
+    if (final_so.empty()) {
+        LOGE("final so path is empty");
+        return false;
+    }
+
+    std::vector<uint8_t> host_bytes;
+    if (!readFileBytes(host_so.c_str(), host_bytes)) {
+        LOGE("failed to read host so: %s", host_so.c_str());
+        return false;
+    }
+    std::vector<uint8_t> payload_bytes;
+    if (!readFileBytes(payload_so.c_str(), payload_bytes) || payload_bytes.empty()) {
+        LOGE("failed to read payload so: %s", payload_so.c_str());
+        return false;
+    }
+
+    size_t base_size = host_bytes.size();
+    size_t old_payload_size = 0;
+    if (!parseExistingEmbeddedPayload(host_bytes, &base_size, &old_payload_size)) {
+        LOGE("failed to parse existing embedded payload in host so: %s", host_so.c_str());
+        return false;
+    }
+
+    std::vector<uint8_t> out;
+    out.reserve(base_size + payload_bytes.size() + sizeof(EmbeddedPayloadFooter));
+    out.insert(out.end(), host_bytes.begin(), host_bytes.begin() + static_cast<std::ptrdiff_t>(base_size));
+    out.insert(out.end(), payload_bytes.begin(), payload_bytes.end());
+
+    EmbeddedPayloadFooter footer{};
+    footer.magic = kEmbeddedPayloadMagic;
+    footer.version = kEmbeddedPayloadVersion;
+    footer.payload_size = static_cast<uint64_t>(payload_bytes.size());
+    footer.payload_crc32 = crc32Ieee(payload_bytes.data(), payload_bytes.size());
+    footer.reserved = 0;
+    const uint8_t* footer_bytes = reinterpret_cast<const uint8_t*>(&footer);
+    out.insert(out.end(), footer_bytes, footer_bytes + sizeof(EmbeddedPayloadFooter));
+
+    if (!writeFileBytes(final_so, out)) {
+        LOGE("failed to write final so: %s", final_so.c_str());
+        return false;
+    }
+
+    if (old_payload_size > 0) {
+        LOGI("embed host so: replaced existing payload old=%llu new=%llu output=%s",
+             static_cast<unsigned long long>(old_payload_size),
+             static_cast<unsigned long long>(payload_bytes.size()),
+             final_so.c_str());
+    } else {
+        LOGI("embed host so: appended payload=%llu output=%s",
+             static_cast<unsigned long long>(payload_bytes.size()),
+             final_so.c_str());
+    }
+    return true;
+}
+
+std::string quoteCommandArg(const std::string& arg) {
+    if (arg.find_first_of(" \t\"") == std::string::npos) {
+        return arg;
+    }
+    std::string out = "\"";
+    for (char ch : arg) {
+        if (ch == '"') {
+            out += "\\\"";
+        } else {
+            out.push_back(ch);
+        }
+    }
+    out.push_back('"');
+    return out;
+}
+
+int runCommandLine(const std::vector<std::string>& args) {
+    if (args.empty()) {
+        return -1;
+    }
+    std::ostringstream cmd;
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (i > 0) {
+            cmd << ' ';
+        }
+        cmd << quoteCommandArg(args[i]);
+    }
+    const std::string line = cmd.str();
+    LOGI("run command: %s", line.c_str());
+    return std::system(line.c_str());
+}
+
+bool moveOrReplaceFile(const std::string& from, const std::string& to) {
+    if (from.empty() || to.empty()) {
+        return false;
+    }
+    std::error_code ec;
+    fs::remove(to, ec);
+    ec.clear();
+    fs::rename(from, to, ec);
+    if (!ec) {
+        return true;
+    }
+    ec.clear();
+    fs::copy_file(from, to, fs::copy_options::overwrite_existing, ec);
+    if (ec) {
+        return false;
+    }
+    ec.clear();
+    fs::remove(from, ec);
+    return true;
+}
+
+std::string resolveNeighborExecutable(const std::string& self_exe_path,
+                                      const std::string& neighbor_name) {
+    if (self_exe_path.empty() || neighbor_name.empty()) {
+        return "";
+    }
+    std::error_code ec;
+    fs::path self_path(self_exe_path);
+    if (self_path.is_relative()) {
+        self_path = fs::absolute(self_path, ec);
+        if (ec) {
+            return "";
+        }
+    }
+    const fs::path parent = self_path.parent_path();
+    if (parent.empty()) {
+        return "";
+    }
+    return (parent / neighbor_name).lexically_normal().string();
+}
+
+bool runPatchbayExportFromDonor(const std::string& patch_tool_exe,
+                                const std::string& input_so,
+                                const std::string& donor_so,
+                                const std::string& impl_symbol,
+                                bool patch_all_exports,
+                                bool allow_validate_fail) {
+    if (!fileExists(patch_tool_exe)) {
+        LOGE("patch tool executable not found: %s", patch_tool_exe.c_str());
+        return false;
+    }
+    if (!fileExists(input_so)) {
+        LOGE("patch input so not found: %s", input_so.c_str());
+        return false;
+    }
+    if (!fileExists(donor_so)) {
+        LOGE("patch donor so not found: %s", donor_so.c_str());
+        return false;
+    }
+    if (impl_symbol.empty()) {
+        LOGE("patch impl symbol is empty");
+        return false;
+    }
+
+    const std::string patched_tmp = input_so + ".patchbay.tmp.so";
+    std::vector<std::string> cmd = {
+        patch_tool_exe,
+        "export_alias_from_patchbay",
+        input_so,
+        donor_so,
+        patched_tmp,
+        impl_symbol,
+    };
+    if (allow_validate_fail) {
+        cmd.emplace_back("--allow-validate-fail");
+    }
+    if (!patch_all_exports) {
+        cmd.emplace_back("--only-fun-java");
+    }
+
+    const int rc = runCommandLine(cmd);
+    if (rc != 0) {
+        LOGE("patch tool command failed rc=%d", rc);
+        return false;
+    }
+    if (!fileExists(patched_tmp)) {
+        LOGE("patch output not found: %s", patched_tmp.c_str());
+        return false;
+    }
+    if (!moveOrReplaceFile(patched_tmp, input_so)) {
+        LOGE("failed to replace patched so: %s", input_so.c_str());
+        return false;
+    }
+
+    LOGI("patchbay export completed: tool=%s input=%s donor=%s impl=%s patch_all_exports=%d",
+         patch_tool_exe.c_str(),
+         input_so.c_str(),
+         donor_so.c_str(),
+         impl_symbol.c_str(),
+         patch_all_exports ? 1 : 0);
+    return true;
 }
 
 bool writeSharedBranchAddrList(const char* file_path,
@@ -798,6 +1189,27 @@ int main(int argc, char* argv[]) {
     if (!cli.shared_branch_file.empty()) {
         policy.shared_branch_file = cli.shared_branch_file;
     }
+    if (!cli.host_so.empty()) {
+        policy.host_so = cli.host_so;
+    }
+    if (!cli.final_so.empty()) {
+        policy.final_so = cli.final_so;
+    }
+    if (!cli.patch_donor_so.empty()) {
+        policy.patch_donor_so = cli.patch_donor_so;
+    }
+    if (!cli.patch_impl_symbol.empty()) {
+        policy.patch_impl_symbol = cli.patch_impl_symbol;
+    }
+    if (!cli.patch_tool_exe.empty()) {
+        policy.patch_tool_exe = cli.patch_tool_exe;
+    }
+    if (cli.patch_all_exports_set) {
+        policy.patch_all_exports = cli.patch_all_exports;
+    }
+    if (cli.patch_allow_validate_fail_set) {
+        policy.patch_allow_validate_fail = cli.patch_allow_validate_fail;
+    }
     if (!cli.coverage_report.empty()) {
         policy.coverage_report = cli.coverage_report;
     }
@@ -817,6 +1229,18 @@ int main(int argc, char* argv[]) {
 
     if (!fileExists(policy.input_so)) {
         LOGE("input so not found: %s", policy.input_so.c_str());
+        return 1;
+    }
+    if (!policy.host_so.empty() && !fileExists(policy.host_so)) {
+        LOGE("host so not found: %s", policy.host_so.c_str());
+        return 1;
+    }
+    if ((!policy.patch_donor_so.empty() || !policy.patch_tool_exe.empty()) && policy.host_so.empty()) {
+        LOGE("patch options require host_so (--host-so)");
+        return 1;
+    }
+    if (!policy.patch_donor_so.empty() && !fileExists(policy.patch_donor_so)) {
+        LOGE("patch donor so not found: %s", policy.patch_donor_so.c_str());
         return 1;
     }
     if (!ensureDirectory(policy.output_dir)) {
@@ -884,5 +1308,38 @@ int main(int argc, char* argv[]) {
     if (!exportProtectedPackage(policy, function_names, functions)) {
         return 1;
     }
+
+    if (!policy.host_so.empty()) {
+        const std::string expanded_so_path = joinOutputPath(policy, policy.expanded_so);
+        const std::string final_so_path =
+            policy.final_so.empty() ? policy.host_so : policy.final_so;
+        if (!embedExpandedSoIntoHost(policy.host_so, expanded_so_path, final_so_path)) {
+            return 1;
+        }
+        if (!policy.patch_donor_so.empty() || !policy.patch_tool_exe.empty()) {
+            if (policy.patch_donor_so.empty()) {
+                LOGE("patch requires patch_donor_so");
+                return 1;
+            }
+            std::string patch_tool_exe = policy.patch_tool_exe;
+            if (patch_tool_exe.empty()) {
+                patch_tool_exe = resolveNeighborExecutable(argv[0], "VmProtectPatchbay.exe");
+            }
+            if (patch_tool_exe.empty() || !fileExists(patch_tool_exe)) {
+                LOGE("patch tool executable not found: %s (set --patch-tool-exe explicitly if needed)",
+                     patch_tool_exe.empty() ? "(empty)" : patch_tool_exe.c_str());
+                return 1;
+            }
+            if (!runPatchbayExportFromDonor(patch_tool_exe,
+                                            final_so_path,
+                                            policy.patch_donor_so,
+                                            policy.patch_impl_symbol,
+                                            policy.patch_all_exports,
+                                            policy.patch_allow_validate_fail)) {
+                return 1;
+            }
+        }
+    }
+
     return 0;
 }

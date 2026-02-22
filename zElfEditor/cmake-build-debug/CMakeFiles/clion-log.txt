@@ -1,4 +1,0 @@
-Cannot generate into D:\work\2026\0217_vmp_project\VmpProject\zElfEditor\cmake-build-debug
-It is already used for project Z:\2026\0217_vmp_project\VmpProject\zElfEditor
-
-Please either delete it manually or select another generation directory
