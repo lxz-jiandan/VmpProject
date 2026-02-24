@@ -56,26 +56,30 @@
 2. `assets/*.bin`（编码二进制）
 3. `libdemo_expand.so`（容器承载编码数据）
 
-运行时并不是只测一条路径，而是多路线比对，避免“单路看起来成功”的假阳性。
+运行时默认走 route4（内嵌 payload + 导出接管）单路线校验，历史 route1/2/3 逻辑保留在代码中用于排障和教学，但不参与默认启动链路。
 
 ---
 
 ### 3.3 原理 C：等价性验证不是“是否崩溃”，而是“结果一致”
 
-`VmEngine` 中设计了分层 route 检查（见 `zNativeLib.cpp`）：
+`VmEngine` 中保留了分层 route 能力（见 `zNativeLib.cpp`），但默认启动链路只执行 route4：
+
+- `route4_reference_from_assets`
+- `route_embedded_expand_so`
+- `route_symbol_takeover`
+
+历史/排障路线（默认不调用）：
 
 - `route_unencoded_text`
 - `route_native_vs_vm`
 - `route_encoded_asset_bin`
 - `route_encoded_expand_so`
-- `route_embedded_expand_so`
-- `route_symbol_takeover`
 
 关键思想：
 
-- 先建立基准结果（native 或 route1 基线）。
-- 再比较后续路线结果是否一致。
-- 对有状态函数单独处理，避免用例污染导致误判。
+- route4 启动时先从 `assets/*.txt` 提取函数地址并加载固定期望值，作为 takeover 对照基线。
+- route4 L1/L2 必须同时通过，才能认定当前加固链路健康。
+- 历史路线用于深度排障时再开启，避免默认链路过重。
 
 ---
 
@@ -191,14 +195,11 @@ gradlew.bat installDebug -PvmpEnabled=true
 
 ## 7. 回归判定（不要只看安装成功）
 
-`tools/run_regression.py` 重点检查以下 marker：
+`tools/run_regression.py` 重点检查以下 marker（route4-only）：
 
-- `route_unencoded_text result=1`
-- `route_native_vs_vm result=1`
-- `route_encoded_asset_bin result=1`
-- `route_encoded_expand_so result=1`
+- `route4_reference_from_assets result=1`
+- `route_embedded_expand_so result=1 state=0`
 - `route_symbol_takeover result=1`
-- `route_embedded_expand_so result=1 state=0|1`
 
 只要这些关键结果不成立，就不能算“方案成立”。
 
@@ -218,8 +219,8 @@ gradlew.bat installDebug -PvmpEnabled=true
    - 含义：回归脚本找不到工具二进制。
    - 处理：先构建 `VmProtect`，或修正工具路径。
 
-4. `route_native_vs_vm` 不一致
-   - 含义：语义等价性被破坏。
+4. （排障模式）`route_native_vs_vm` 不一致
+   - 含义：当你手动开启历史路线时，native 与 VM 语义等价性被破坏。
    - 排查优先级：
      1. 看 `fun_*.txt/bin` 是否与函数列表一致。
      2. 看 `branch_addr_list.txt` 是否解析正确。
@@ -253,4 +254,4 @@ gradlew.bat installDebug -PvmpEnabled=true
 
 ## 10. 一句话总结这套方案
 
-先把函数语义离线“数据化”，再通过可控的 embed 与导出接管把执行路径切换到 VM，并用多路线一致性回归来证明不是“碰巧跑通”。
+先把函数语义离线“数据化”，再通过可控的 embed 与导出接管把执行路径切换到 VM，并以 route4 启动回归确保主链路可重复、可验证。

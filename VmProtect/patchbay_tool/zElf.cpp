@@ -49,14 +49,17 @@ bool zElf::save(const char* output_path) {
 }
 
 bool zElf::isLoaded() const {
+    // 既要有字节镜像，也要通过 ELF64+AArch64 头校验才算“已加载”。
     return !file_image_.empty() && header_model_.isElf64AArch64();
 }
 
 size_t zElf::fileImageSize() const {
+    // 返回当前内存镜像大小（可能尚未 save 到磁盘）。
     return file_image_.size();
 }
 
 const uint8_t* zElf::fileImageData() const {
+    // 空镜像返回 nullptr，避免调用方误解为可访问缓冲。
     return file_image_.empty() ? nullptr : file_image_.data();
 }
 
@@ -67,13 +70,19 @@ bool zElf::validate(std::string* error) const {
 
 namespace {
 struct LayoutBlock {
+    // 文件内起始偏移。
     uint64_t start = 0;
+    // 区块大小。
     uint64_t size = 0;
+    // 打印缩进层级。
     int level = 0;
+    // 区块文本标签。
     std::string label;
+    // 子区块（例如 PHT/SHT 的逐条元素）。
     std::vector<LayoutBlock> children;
 };
 
+// 把 PF_R/PF_W/PF_X 转成可读文本。
 static std::string format_ph_flags(uint32_t flags) {
     const char r = (flags & PF_R) ? 'R' : '_';
     const char w = (flags & PF_W) ? 'W' : '_';
@@ -104,6 +113,7 @@ static const char* program_type_desc(uint32_t type) {
     }
 }
 
+// 按统一列宽打印一个布局条目。
 static void print_block_line(const LayoutBlock& block) {
     if (block.size == 0) {
         return;
@@ -128,6 +138,7 @@ void zElf::print_layout() {
 
     std::vector<LayoutBlock> top_blocks;
 
+    // 1) 顶层加入 ELF Header 区块。
     const uint64_t eh_size = header_model_.raw.e_ehsize;
     if (eh_size > 0) {
         LayoutBlock eh;
@@ -137,13 +148,16 @@ void zElf::print_layout() {
         top_blocks.push_back(std::move(eh));
     }
 
+    // 2) 构建 Program Header Table 区块及其子条目。
     if (header_model_.raw.e_phoff != 0 && header_model_.raw.e_phnum > 0 && header_model_.raw.e_phentsize > 0) {
+        // PHT 主块 + 每个 phdr 子块。
         LayoutBlock pht;
         pht.start = header_model_.raw.e_phoff;
         pht.size = (uint64_t)header_model_.raw.e_phnum * header_model_.raw.e_phentsize;
         pht.label = "program_header_table";
         for (size_t idx = 0; idx < ph_table_model_.elements.size(); ++idx) {
             LayoutBlock child;
+            // 第 idx 条 phdr 在 PHT 内的文件偏移位置。
             child.start = header_model_.raw.e_phoff + (uint64_t)idx * header_model_.raw.e_phentsize;
             child.size = header_model_.raw.e_phentsize;
             const auto& ph = ph_table_model_.elements[idx];
@@ -162,11 +176,13 @@ void zElf::print_layout() {
             child.label = buf;
             pht.children.push_back(std::move(child));
         }
+        // 子条目按文件偏移升序打印，便于肉眼扫描布局。
         std::sort(pht.children.begin(), pht.children.end(),
                   [](const LayoutBlock& a, const LayoutBlock& b) { return a.start < b.start; });
         top_blocks.push_back(std::move(pht));
     }
 
+    // 3) 加入每个实际占文件空间的 section 区块（跳过 NOBITS/size=0）。
     for (size_t idx = 0; idx < sh_table_model_.elements.size(); ++idx) {
         const auto& sec = *sh_table_model_.elements[idx];
         if (sec.type == SHT_NOBITS || sec.size == 0) {
@@ -178,6 +194,7 @@ void zElf::print_layout() {
         std::string prefix;
         std::string load_prefix;
         std::string other_prefix;
+        // 给每个 section 生成“所在 segment”前缀，便于快速观察映射关系。
         for (size_t ph_idx = 0; ph_idx < ph_table_model_.elements.size(); ++ph_idx) {
             const auto& ph = ph_table_model_.elements[ph_idx];
             if (ph.filesz == 0) {
@@ -197,11 +214,13 @@ void zElf::print_layout() {
                               flags.c_str(),
                               program_type_desc(ph.type));
                 if (ph.type == PT_LOAD) {
+                    // PT_LOAD 信息优先展示。
                     if (!load_prefix.empty()) {
                         load_prefix.append(" | ");
                     }
                     load_prefix.append(ph_buf);
                 } else {
+                    // 非 LOAD 的覆盖信息（如 PT_DYNAMIC/NOTE）作为补充。
                     if (!other_prefix.empty()) {
                         other_prefix.append(" | ");
                     }
@@ -232,7 +251,9 @@ void zElf::print_layout() {
         top_blocks.push_back(std::move(sec_block));
     }
 
+    // 4) 加入 Section Header Table 区块及其子条目。
     if (header_model_.raw.e_shoff != 0 && header_model_.raw.e_shnum > 0 && header_model_.raw.e_shentsize > 0) {
+        // SHT 主块 + 每个 shdr 子块。
         LayoutBlock sht;
         sht.start = header_model_.raw.e_shoff;
         sht.size = (uint64_t)header_model_.raw.e_shnum * header_model_.raw.e_shentsize;
@@ -242,6 +263,7 @@ void zElf::print_layout() {
             child.start = header_model_.raw.e_shoff + (uint64_t)idx * header_model_.raw.e_shentsize;
             child.size = header_model_.raw.e_shentsize;
             const auto& sec = *sh_table_model_.elements[idx];
+            // 索引 0 按 ELF 规范显示为 SHN_UNDEF。
             const char* name = (idx == 0) ? "SHN_UNDEF" :
                                (sec.resolved_name.empty() ? "<unnamed>" : sec.resolved_name.c_str());
             char buf[128];
@@ -258,11 +280,13 @@ void zElf::print_layout() {
         top_blocks.push_back(std::move(sht));
     }
 
+    // 5) 根据相邻区块间距补齐 [padding] 视图，帮助识别空洞空间。
     std::vector<LayoutBlock> padding_blocks;
     std::vector<LayoutBlock> sorted = top_blocks;
     std::sort(sorted.begin(), sorted.end(),
               [](const LayoutBlock& a, const LayoutBlock& b) { return a.start < b.start; });
     for (size_t i = 0; i + 1 < sorted.size(); ++i) {
+        // 计算相邻块之间的空洞，单独标记 [padding]。
         const uint64_t cur_end = sorted[i].start + sorted[i].size;
         const uint64_t next_start = sorted[i + 1].start;
         if (next_start > cur_end) {
@@ -278,6 +302,7 @@ void zElf::print_layout() {
         top_blocks.push_back(std::move(pad));
     }
 
+    // 顶层条目排序后统一打印。
     std::sort(top_blocks.begin(), top_blocks.end(),
               [](const LayoutBlock& a, const LayoutBlock& b) { return a.start < b.start; });
 
@@ -305,12 +330,14 @@ bool zElf::relocate_and_expand_pht(int extra_entries, const char* output_path) {
     }
 
     const Elf64_Off PAGE_SIZE = (Elf64_Off)infer_runtime_page_size_from_phdrs(ph_table_model_.elements);
+    // 新 PHT 放到当前文件末尾并按页对齐，避免覆盖现有数据。
     const Elf64_Off new_pht_offset = align_up_off((Elf64_Off)currentMaxFileEnd(), PAGE_SIZE);
     header_model_.raw.e_phoff = new_pht_offset;
     header_model_.raw.e_phnum = (Elf64_Half)ph_table_model_.elements.size();
 
     int pt_phdr_idx = ph_table_model_.findFirstByType(PT_PHDR);
     if (pt_phdr_idx >= 0) {
+        // 若原文件有 PT_PHDR，则同步刷新其 offset/vaddr/filesz/memsz。
         auto& pt_phdr = ph_table_model_.elements[pt_phdr_idx];
         pt_phdr.offset = new_pht_offset;
         Elf64_Addr mapped_vaddr = 0;
@@ -318,6 +345,7 @@ bool zElf::relocate_and_expand_pht(int extra_entries, const char* output_path) {
             if (ph.type != PT_LOAD || ph.filesz == 0) {
                 continue;
             }
+            // 找到覆盖新 pht_offset 的 LOAD，用它反推 PT_PHDR 的虚拟地址。
             if (new_pht_offset >= ph.offset && new_pht_offset < ph.offset + ph.filesz) {
                 mapped_vaddr = (Elf64_Addr)(ph.vaddr + (new_pht_offset - ph.offset));
                 break;
@@ -330,11 +358,13 @@ bool zElf::relocate_and_expand_pht(int extra_entries, const char* output_path) {
         pt_phdr.align = PAGE_SIZE;
     }
 
+    // 提交模型变更到 file_image_。
     reconstruction_dirty_ = true;
     if (!Reconstruction()) {
         return false;
     }
 
+    // 做一次全量校验，确保迁移后结构仍合法。
     std::string err;
     if (!validate(&err)) {
         LOGE("relocate_and_expand_pht validation failed: %s", err.c_str());
@@ -343,14 +373,6 @@ bool zElf::relocate_and_expand_pht(int extra_entries, const char* output_path) {
 
     return output_path ? save(output_path) : true;
 }
-
-
-
-// 对外注入入口：委托到注入实现。
-bool zElf::inject_vmp_segments(const char* donor_path, const char* output_path) {
-    return injectImpl(donor_path, output_path);
-}
-
 // Header 模型可写访问。
 zElfHeader& zElf::headerModel() {
     return header_model_;
@@ -382,6 +404,7 @@ const zElfSectionHeaderTable& zElf::sectionHeaderModel() const {
 }
 
 zProgramTableElement* zElf::getProgramHeader(size_t idx) {
+    // 越界保护：调用方收到 nullptr 表示索引非法。
     if (idx >= ph_table_model_.elements.size()) {
         return nullptr;
     }
@@ -396,6 +419,7 @@ const zProgramTableElement* zElf::getProgramHeader(size_t idx) const {
 }
 
 zProgramTableElement* zElf::findFirstProgramHeader(Elf64_Word type) {
+    // 复用 table 模型查找，再返回可写指针。
     const int idx = ph_table_model_.findFirstByType(type);
     return idx >= 0 ? &ph_table_model_.elements[(size_t)idx] : nullptr;
 }
@@ -407,6 +431,7 @@ const zProgramTableElement* zElf::findFirstProgramHeader(Elf64_Word type) const 
 
 std::vector<zProgramTableElement*> zElf::findAllProgramHeaders(Elf64_Word type) {
     std::vector<zProgramTableElement*> result;
+    // 过滤掉模型与索引列表之间的潜在越界。
     for (int idx : ph_table_model_.findAllByType(type)) {
         if (idx >= 0 && (size_t)idx < ph_table_model_.elements.size()) {
             result.push_back(&ph_table_model_.elements[(size_t)idx]);
@@ -426,6 +451,7 @@ std::vector<const zProgramTableElement*> zElf::findAllProgramHeaders(Elf64_Word 
 }
 
 zSectionTableElement* zElf::getSection(size_t idx) {
+    // 委托到 section table 的边界检查逻辑。
     return sh_table_model_.get(idx);
 }
 
@@ -434,6 +460,7 @@ const zSectionTableElement* zElf::getSection(size_t idx) const {
 }
 
 zSectionTableElement* zElf::findSectionByName(const std::string& section_name) {
+    // 先拿索引，再取对象，避免重复遍历。
     const int idx = sh_table_model_.findByName(section_name);
     return idx >= 0 ? sh_table_model_.get((size_t)idx) : nullptr;
 }
@@ -444,6 +471,7 @@ const zSectionTableElement* zElf::findSectionByName(const std::string& section_n
 }
 
 bool zElf::addProgramHeader(const zProgramTableElement& ph, size_t* out_index) {
+    // 仅更新模型并标脏；实际写回由 Reconstruction/save 完成。
     ph_table_model_.elements.push_back(ph);
     if (out_index) {
         *out_index = ph_table_model_.elements.size() - 1;
@@ -477,6 +505,7 @@ bool zElf::addSectionSimple(const std::string& name,
     section->resolved_name = name;
     section->name = shstrtab->addString(name);
     if ((flags & SHF_ALLOC) == 0 && type != SHT_NOBITS && !payload.empty()) {
+        // 非 ALLOC 节直接追加到文件尾，尽量不干扰 LOAD 映射。
         auto align_up_local = [](Elf64_Off value, Elf64_Off align) -> Elf64_Off {
             if (align == 0) {
                 return value;
@@ -497,6 +526,7 @@ bool zElf::addSectionSimple(const std::string& name,
 }
 
 bool zElf::addSectionPaddingByName(const std::string& section_name, size_t pad_size) {
+    // 名称接口只是索引接口的薄封装。
     const int idx = sh_table_model_.findByName(section_name);
     if (idx < 0) {
         return false;
@@ -513,8 +543,10 @@ bool zElf::addSectionPaddingByIndex(size_t idx, size_t pad_size) {
         return false;
     }
     if (section->type == SHT_NOBITS) {
+        // NOBITS 扩容只改 size（不产生文件 payload）。
         section->size += (Elf64_Xword)pad_size;
     } else {
+        // 其他节在 payload 尾部补 0。
         section->payload.resize(section->payload.size() + pad_size, 0);
     }
     section->syncHeader();
@@ -530,6 +562,7 @@ bool zElf::addZeroFillToSegment(size_t idx, Elf64_Xword extra_memsz) {
         return true;
     }
     auto& ph = ph_table_model_.elements[idx];
+    // 只扩 memsz，不改 filesz，表示新增的是零填充内存页。
     ph.memsz += extra_memsz;
     if (ph.memsz < ph.filesz) {
         ph.memsz = ph.filesz;
@@ -539,6 +572,7 @@ bool zElf::addZeroFillToSegment(size_t idx, Elf64_Xword extra_memsz) {
 }
 
 static Elf64_Word parse_pf_flags_text(const std::string& flags_text) {
+    // 约定使用三字符文本（例如 "RWX" / "R_X"）。
     if (flags_text.size() < 3) {
         return 0;
     }
@@ -558,12 +592,14 @@ static Elf64_Word parse_pf_flags_text(const std::string& flags_text) {
 bool zElf::add_segment(Elf64_Word type,
                        const std::string& flags_text,
                        size_t* out_index) {
+    // 新段默认放到文件尾/虚拟地址尾，并按页对齐。
     const Elf64_Off page_size = (Elf64_Off)infer_runtime_page_size_from_phdrs(ph_table_model_.elements);
     const Elf64_Off new_off = align_up_off((Elf64_Off)currentMaxFileEnd(), page_size);
     const uint64_t vaddr_base = (uint64_t)align_up_off((Elf64_Off)currentMaxLoadVaddrEnd(), page_size);
     const Elf64_Addr new_vaddr = (Elf64_Addr)(vaddr_base + ((uint64_t)new_off % (uint64_t)page_size));
 
     zProgramTableElement ph;
+    // 新段的文件地址和虚拟地址都从各自末尾对齐后分配。
     ph.type = type;
     ph.flags = parse_pf_flags_text(flags_text);
     ph.offset = new_off;
@@ -603,6 +639,7 @@ bool zElf::add_section(const std::string& name,
     const size_t payload_size = 0x10;
 
     uint64_t next_load_off = std::numeric_limits<uint64_t>::max();
+    // 找到紧随当前 seg 的下一个 LOAD，用于判断文件区间是否会冲突。
     for (const auto& ph : ph_table_model_.elements) {
         if (ph.type != PT_LOAD || ph.offset <= seg.offset) {
             continue;
@@ -626,6 +663,7 @@ bool zElf::add_section(const std::string& name,
         section->addr = (Elf64_Addr)aligned_addr;
         section->offset = (Elf64_Off)(seg.offset + (section->addr - seg.vaddr));
     } else {
+        // 文件空间允许时创建 PROGBITS 并分配零初始化 payload。
         section->type = SHT_PROGBITS;
         section->payload.assign(payload_size, 0);
         section->offset = sec_off;
@@ -640,6 +678,7 @@ bool zElf::add_section(const std::string& name,
     section->syncHeader();
 
     if (seg.memsz < seg.filesz) {
+        // 保证段满足 memsz >= filesz。
         seg.memsz = seg.filesz;
     }
     if (section->type == SHT_NOBITS) {
@@ -660,6 +699,7 @@ bool zElf::add_section(const std::string& name,
 }
 
 bool zElf::add_section(const std::string& name, size_t* out_index) {
+    // 简化接口：默认挂到最后一个 LOAD。
     const int idx = get_last_load_segment();
     if (idx < 0) {
         return false;
@@ -668,6 +708,7 @@ bool zElf::add_section(const std::string& name, size_t* out_index) {
 }
 
 int zElf::get_first_load_segment() const {
+    // 返回第一个 PT_LOAD 索引（不存在则 -1）。
     return ph_table_model_.findFirstByType(PT_LOAD);
 }
 
@@ -682,10 +723,12 @@ int zElf::get_last_load_segment() const {
 }
 
 bool zElf::relocate(const std::string& output_path) {
+    // 兼容旧接口：本质就是 save。
     return save(output_path.c_str());
 }
 
 bool zElf::backup() {
+    // 重新加载源文件，恢复到最初解析状态。
     if (source_path_.empty()) {
         return false;
     }
@@ -693,4 +736,10 @@ bool zElf::backup() {
 }
 
 zElf::~zElf() {
+}
+
+// 完整重构流程已从当前生产链路移除，保留失败返回避免误写文件。
+bool zElf::reconstructionImpl() {
+    LOGE("reconstructionImpl is removed from current patchbay runtime");
+    return false;
 }

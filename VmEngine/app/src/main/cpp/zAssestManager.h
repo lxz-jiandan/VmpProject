@@ -16,7 +16,7 @@
 class zAssetManager {
 public:
     // 通过 ActivityThread.currentApplication() 获取当前 Application 上下文。
-    // 该方法允许在 JNI_OnLoad 等没有显式传入 Context 的场景中访问 assets。
+    // 该方法允许在 vm_init 等没有显式传入 Context 的场景中访问 assets。
     static jobject getCurrentApplicationContext(JNIEnv* env);
 
     // 读取 assets 下的二进制文件（自动获取当前 Application 作为 context）。

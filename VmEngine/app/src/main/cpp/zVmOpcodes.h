@@ -162,6 +162,8 @@ enum ConvertOp : uint32_t {
 // ============================================================================
 // Opcode 处理函数类型
 // ============================================================================
+namespace vm {
+
 typedef void (*OpcodeHandler)(VMContext* ctx);
 
 
@@ -335,6 +337,8 @@ void writeValue(VMRegSlot* addrSlot, zType* type, VMRegSlot* valueSlot);
 
 // 模块基址设置（供 ADRP 语义使用）。
 void setVmModuleBase(uint64_t base);
+
+} // namespace vm
 
 
 #endif // Z_VM_OPCODES_H

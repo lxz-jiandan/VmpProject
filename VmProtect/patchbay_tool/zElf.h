@@ -24,7 +24,6 @@
 
 #include "elf.h"
 
-#include "zElfAddressRewriter.h"
 #include "zElfHeader.h"
 #include "zElfProgramHeaderTable.h"
 #include "zElfSectionHeaderTable.h"
@@ -33,10 +32,8 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -100,15 +97,6 @@ public:
      * @deprecated 请使用 Model View API 进行操作
      */
     bool relocate_and_expand_pht(int extra_entries, const char* output_path);
-
-    /**
-     * @brief 注入 VMP 段（从 donor 文件）
-     * @param donor_path 提供注入数据的文件路径
-     * @param output_path 输出文件路径
-     * @return true 成功，false 失败
-     * @deprecated 请使用 Model View API 进行操作
-     */
-    bool inject_vmp_segments(const char* donor_path, const char* output_path);
 
     /**
      * @brief 重构 ELF 文件
@@ -326,115 +314,7 @@ public:
      */
     bool backup();
 
-    // ========================================================================
-    // 公共方法 - 注入/扩容辅助数据结构
-    // ========================================================================
-
-    /**
-     * @struct LoadMergeState
-     * @brief 单个 PT_LOAD 扩容前后的状态快照
-     */
-    struct LoadMergeState {
-        int idx = -1;
-        Elf64_Off old_offset = 0;
-        Elf64_Addr old_vaddr = 0;
-        Elf64_Addr old_paddr = 0;
-        Elf64_Xword old_filesz = 0;
-        Elf64_Xword old_memsz = 0;
-        Elf64_Off shift = 0;
-        Elf64_Xword new_filesz = 0;
-        Elf64_Xword new_memsz = 0;
-    };
-
-    /**
-     * @struct OldSectionState
-     * @brief Section 扩容前的地址/偏移快照
-     */
-    struct OldSectionState {
-        Elf64_Off offset = 0;
-        Elf64_Addr addr = 0;
-        Elf64_Word type = SHT_NULL;
-        Elf64_Xword flags = 0;
-    };
-
-    /**
-     * @struct SegmentRelocation
-     * @brief donor->target 段迁移映射
-     */
-    struct SegmentRelocation {
-        Elf64_Off donor_offset = 0;
-        Elf64_Xword donor_filesz = 0;
-        Elf64_Off new_offset = 0;
-        Elf64_Addr donor_vaddr = 0;
-        Elf64_Xword donor_memsz = 0;
-        Elf64_Addr new_vaddr = 0;
-    };
-
-    /**
-     * @struct LoadExpansionResult
-     * @brief LOAD 扩容后的汇总结果
-     */
-    struct LoadExpansionResult {
-        std::vector<LoadMergeState> load_states;
-        std::unordered_map<int, size_t> load_state_pos;
-        std::unordered_map<int, std::vector<uint64_t>> donor_base_deltas_for_target;
-        std::vector<zProgramTableElement> old_ph;
-        std::vector<OldSectionState> old_sections;
-    };
-
-    // ========================================================================
-    // 公共方法 - 注入/扩容封装 API
-    // ========================================================================
-
-    /**
-     * @brief 计算 LOAD 扩容计划（不直接修改当前对象）
-     * @param donor_elf donor ELF（用于计算 donor 段插入对齐与大小）
-     * @param target_load_indices target 中可承载注入的 PT_LOAD 索引集合
-     * @param donor_for_target_load target->donor 的 LOAD 配对关系
-     * @param out_result [输出] 扩容结果（位移映射等）
-     */
-    bool buildLoadExpansionPlanForInjection(
-            const zElf& donor_elf,
-            const std::vector<int>& target_load_indices,
-            const std::unordered_map<int, std::vector<int>>& donor_for_target_load,
-            LoadExpansionResult* out_result);
-
-    /**
-     * @brief 按 Section 视角应用扩容（依赖已计算的 LOAD 扩容结果）
-     * @param expansion 扩容结果（包含旧 section 快照与位移映射）
-     */
-    bool expandSectionsForInjection(const LoadExpansionResult& expansion);
-
-    /**
-     * @brief 按 LOAD 视角应用扩容（依赖已计算的 LOAD 扩容结果）
-     * @param expansion 扩容结果（包含旧 PHDR 快照与位移映射）
-     */
-    bool expandLoadSegmentsForInjection(const LoadExpansionResult& expansion);
-
-    /**
-     * @brief 在段尾追加 donor 数据并合并关键 section，同时建立段迁移映射
-     */
-    bool appendLoadDataAndMirrorSections(
-            const zElf& donor_elf,
-            const std::vector<std::pair<int, int>>& donor_target_pairs,
-            const LoadExpansionResult& expansion,
-            std::vector<SegmentRelocation>* segment_relocations,
-            std::unordered_map<uint16_t, uint16_t>* donor_section_index_remap,
-            int* mirrored_text_target_idx,
-            size_t* mirrored_text_blob_idx,
-            size_t* mirrored_text_blob_off,
-            size_t* mirrored_text_size);
-
 private:
-    // ========================================================================
-    // 友元类
-    // ========================================================================
-
-    /**
-     * @brief 地址重写器需要访问私有成员
-     */
-    friend class zElfAddressRewriter;
-
     // ========================================================================
     // 私有数据结构
     // ========================================================================
@@ -503,17 +383,9 @@ private:
     /**
      * @brief 重构实现（内部）
      * @return true 成功，false 失败
-     * @note 执行 10 阶段重构流程，详见 zElfReconstruction.cpp
+     * @note 当前版本已移除完整重构流程，仅保留最小桩实现。
      */
     bool reconstructionImpl();
-
-    /**
-     * @brief 注入实现（内部）
-     * @param donor_path Donor 文件路径
-     * @param output_path 输出文件路径
-     * @return true 成功，false 失败
-     */
-    bool injectImpl(const char* donor_path, const char* output_path);
 
     /**
      * @brief 虚拟地址 → 文件偏移转换

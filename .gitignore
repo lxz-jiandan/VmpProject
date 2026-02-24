@@ -1,0 +1,50 @@
+# =========================
+# Root-level ignore rules
+# =========================
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+**/.idea/
+*.iml
+
+# Python caches
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Android / Gradle build outputs
+**/.gradle/
+**/.android/
+**/.cxx/
+**/.externalNativeBuild/
+**/build/
+**/captures/
+**/local.properties
+
+# Local signing / secrets
+*.jks
+*.keystore
+keystore.properties
+
+# VmProtect CMake outputs
+VmProtect/cmake-build-*/
+VmProtect/build/
+CMakeUserPresets.json
+
+# Tool temporary outputs
+tools/tmp/
+tools/tmp_*/
+tools/*.tmp
+tools/*.bak
+tools/*.orig
+
+# Local helper binaries at repository root
+/llvm-objdump.exe
+/readelf.exe

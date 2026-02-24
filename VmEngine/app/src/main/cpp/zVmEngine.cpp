@@ -64,7 +64,7 @@ zVmEngine& zVmEngine::getInstance() {
 // 构造引擎：初始化 opcode 分发表，并预留函数缓存容量。
 zVmEngine::zVmEngine() {
     // 初始化 opcode 跳转表
-    initOpcodeTable();
+    vm::initOpcodeTable();
     cache_.reserve(256);
 
 }
@@ -188,7 +188,7 @@ uint64_t zVmEngine::executeState(
             LOGE("executeState failed: soinfo not found for %s", soName);
             return 0;
         }
-        setVmModuleBase(soInfo->base);
+        vm::setVmModuleBase(soInfo->base);
         for (uint64_t& addr : branchAddrsList) {
             addr += soInfo->base;
         }
@@ -332,11 +332,11 @@ void zVmEngine::dispatch(VMContext* ctx) {
     uint32_t pc_before = ctx->pc;
 
     // opcode 命中分发表则执行对应处理函数，否则进入未知指令陷阱。
-    if (opcode < OP_MAX && g_opcode_table[opcode]) {
-        g_opcode_table[opcode](ctx);
+    if (opcode < OP_MAX && vm::g_opcode_table[opcode]) {
+        vm::g_opcode_table[opcode](ctx);
     } else {
-        op_unknown(ctx);
+        vm::op_unknown(ctx);
     }
 
-    VM_TRACE_LOGD("pc %u -> %u  %s", pc_before, ctx->pc, getOpcodeName(opcode));
+    VM_TRACE_LOGD("pc %u -> %u  %s", pc_before, ctx->pc, vm::getOpcodeName(opcode));
 }

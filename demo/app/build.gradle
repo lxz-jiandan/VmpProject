@@ -19,6 +19,10 @@ def resolveProtectedVmengineSo = {
     def cxxDebugRoot = file("${vmpProjectRoot}/VmEngine/app/build/intermediates/cxx/Debug")
     if (cxxDebugRoot.exists()) {
         cxxDebugRoot.eachDir { dir ->
+            def patchSo = new File(dir, "obj/arm64-v8a/libvmengine_patch.so")
+            if (patchSo.exists()) {
+                candidates.add(patchSo)
+            }
             def so = new File(dir, "obj/arm64-v8a/libvmengine.so")
             if (so.exists()) {
                 candidates.add(so)
@@ -26,6 +30,10 @@ def resolveProtectedVmengineSo = {
         }
     }
 
+    def cmakePatchFallback = file("${vmpProjectRoot}/VmEngine/app/build/intermediates/cmake/debug/obj/arm64-v8a/libvmengine_patch.so")
+    if (cmakePatchFallback.exists()) {
+        candidates.add(cmakePatchFallback)
+    }
     def cmakeFallback = file("${vmpProjectRoot}/VmEngine/app/build/intermediates/cmake/debug/obj/arm64-v8a/libvmengine.so")
     if (cmakeFallback.exists()) {
         candidates.add(cmakeFallback)

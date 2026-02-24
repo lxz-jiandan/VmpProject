@@ -47,24 +47,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;cf.advertisement.text.has.clang-format&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/work/2026/0217_vmp_project/VmpProject/zElfEditor&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;CMakeSettings&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "cf.advertisement.text.has.clang-format": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "last_opened_file_path": "D:/work/2026/0217_vmp_project/VmpProject/zElfEditor",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.editor"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\work\2026\0202_my_vmp\VmProtect" />
@@ -80,7 +80,7 @@
         <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
-    <configuration name="VmProtect" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="--input-so ../libdemo.so --function fun_add --function fun_for" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="VmProtect" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="VmProtect" RUN_TARGET_NAME="VmProtect">
+    <configuration name="VmProtect" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="export_alias_from_patchbay Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\cxx\Debug\2z4j1d3z\obj\arm64-v8a\libvmengine.so Z:\2026\0217_vmp_project\VmpProject\VmProtect\libdemo.so Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\cxx\Debug\2z4j1d3z\obj\arm64-v8a\libvmengine.patched.so vm_takeover_slot_0000 --allow-validate-fail --only-fun-java" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="VmProtect" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="VmProtect" RUN_TARGET_NAME="VmProtect">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -118,7 +118,7 @@
       <workItem from="1771690913027" duration="3053000" />
       <workItem from="1771719182997" duration="469000" />
       <workItem from="1771784668522" duration="127000" />
-      <workItem from="1771784811100" duration="3109000" />
+      <workItem from="1771784811100" duration="19015000" />
     </task>
     <servers />
   </component>
@@ -150,18 +150,23 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/main.cpp</url>
-          <line>493</line>
+          <line>554</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/main.cpp</url>
-          <line>871</line>
-          <option name="timeStamp" value="2" />
+          <line>1061</line>
+          <option name="timeStamp" value="7" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/main.cpp</url>
-          <line>944</line>
-          <option name="timeStamp" value="3" />
+          <url>file://$PROJECT_DIR$/patchbay_tool/main.cpp</url>
+          <line>1595</line>
+          <option name="timeStamp" value="18" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/patchbay_tool/main.cpp</url>
+          <line>1609</line>
+          <option name="timeStamp" value="20" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -35,11 +35,7 @@ set(PATCHBAY_SOURCES
     ${PATCHBAY_TOOL_DIR}/zElfSectionHeaderTable.cpp
     ${PATCHBAY_TOOL_DIR}/zElfUtils.cpp
     ${PATCHBAY_TOOL_DIR}/zElfValidator.cpp
-    ${PATCHBAY_TOOL_DIR}/zElfReconstruction.cpp
-    ${PATCHBAY_TOOL_DIR}/zElfInject.cpp
     ${PATCHBAY_TOOL_DIR}/zElfLoader.cpp
-    ${PATCHBAY_TOOL_DIR}/zElfAddressRewriter.cpp
-    ${PATCHBAY_TOOL_DIR}/zElfPcRelativePatcher.cpp
 )
 
 # Compile patchbay implementation into VmProtect and rename its zElf class

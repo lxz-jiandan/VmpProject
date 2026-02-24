@@ -87,6 +87,6 @@ struct zPatchBayImage {
 };
 
 // 导出运行时可见入口，便于 JNI/测试脚本读取 patch bay 元数据。
-extern "C" const zPatchBayHeader* zGetPatchBayHeader();
+extern "C" const zPatchBayHeader* vm_get_patch_bay_header();
 
 #endif  // VMPROJECT_VMENGINE_ZPATCHBAY_H

@@ -49,14 +49,17 @@ struct VmProtectConfig {
     bool analyze_all_functions = false;
     // 是否仅出覆盖率报告，不导出 payload。
     bool coverage_only = false;
-    // 需要被写回 route4 嵌入 payload 的宿主 so（通常是 libvmengine.so）。
+    // route4 宿主 so 输入（通常是 libvmengine.so）。
     std::string host_so;
-    // 产出的最终 so 路径。为空时默认覆盖 host_so。
+    // 产出的最终 so 路径。
+    // 为空时：
+    // - 仅 embed：默认覆盖 host_so；
+    // - embed + patch：默认输出 host 同目录下的 libvmengine_patch.so。
     std::string final_so;
     // donor so（用于 patchbay 导出补全）。
     std::string patch_donor_so;
-    // patchbay 导出统一指向的实现符号。
-    std::string patch_impl_symbol = "z_takeover_dispatch_by_id";
+    // patchbay 导出默认走“通用槽位模式”（按 donor 导出顺序映射到 vm_takeover_slot_xxxx）。
+    std::string patch_impl_symbol = "vm_takeover_slot_0000";
     // true: donor 所有导出都补齐；false: 仅补 fun_* 与 Java_*。
     bool patch_all_exports = false;
     // patchbay 失败时是否放宽 validate。
@@ -132,84 +135,115 @@ const std::vector<std::string> kDefaultFunctions = {
 };
 
 bool fileExists(const std::string& path) {
+    // error_code 版本避免 filesystem 抛异常，便于统一返回 false。
     std::error_code ec;
+    // 条件顺序：
+    // 1) 路径非空；
+    // 2) 路径存在；
+    // 3) 路径是常规文件（非目录）。
     return !path.empty() && fs::exists(path, ec) && fs::is_regular_file(path, ec);
 }
 
 bool ensureDirectory(const std::string& path) {
+    // 使用 error_code 版本减少异常路径复杂度。
     std::error_code ec;
+    // 空路径视为非法目录。
     if (path.empty()) {
         return false;
     }
+    // 已存在时仅当它是目录才算成功。
     if (fs::exists(path, ec)) {
         return fs::is_directory(path, ec);
     }
+    // 不存在时递归创建目录。
     return fs::create_directories(path, ec);
 }
 
 void deduplicateKeepOrder(std::vector<std::string>& values) {
+    // seen 用于 O(1) 去重判断。
     std::unordered_set<std::string> seen;
+    // dedup 保存“首次出现顺序”。
     std::vector<std::string> dedup;
+    // 预留容量减少扩容开销。
     dedup.reserve(values.size());
+    // 顺序遍历原列表。
     for (const std::string& value : values) {
+        // insert(...).second 为 true 代表首次出现。
         if (seen.insert(value).second) {
             dedup.push_back(value);
         }
     }
+    // 原地替换为去重结果。
     values.swap(dedup);
 }
 
 bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& error) {
     // 统一 CLI：函数名必须通过 --function 显式传入，避免位置参数歧义。
+    // 从 argv[1] 开始，argv[0] 是程序名。
     for (int i = 1; i < argc; ++i) {
+        // 防御性转换：空指针转空串。
         const std::string arg = argv[i] ? argv[i] : "";
+        // 空参数跳过。
         if (arg.empty()) {
             continue;
         }
+        // 帮助参数：只设置标志位，不立即退出（交给 main 统一处理）。
         if (arg == "-h" || arg == "--help") {
             cli.show_help = true;
             continue;
         }
+        // 下面这组参数都要求“带一个值”，因此都检查 i+1 < argc。
         if (arg == "--input-so" && i + 1 < argc) {
+            // 消费下一个参数作为 input_so。
             cli.input_so = argv[++i];
             continue;
         }
         if (arg == "--output-dir" && i + 1 < argc) {
+            // 消费下一个参数作为输出目录。
             cli.output_dir = argv[++i];
             continue;
         }
         if (arg == "--expanded-so" && i + 1 < argc) {
+            // 消费下一个参数作为 expanded so 文件名。
             cli.expanded_so = argv[++i];
             continue;
         }
         if (arg == "--shared-branch-file" && i + 1 < argc) {
+            // 消费下一个参数作为共享 branch 文件名。
             cli.shared_branch_file = argv[++i];
             continue;
         }
         if (arg == "--host-so" && i + 1 < argc) {
+            // 消费下一个参数作为宿主 so。
             cli.host_so = argv[++i];
             continue;
         }
         if (arg == "--final-so" && i + 1 < argc) {
+            // 消费下一个参数作为最终输出 so。
             cli.final_so = argv[++i];
             continue;
         }
         if (arg == "--patch-donor-so" && i + 1 < argc) {
+            // 消费下一个参数作为 donor so。
             cli.patch_donor_so = argv[++i];
             continue;
         }
         if (arg == "--patch-impl-symbol" && i + 1 < argc) {
+            // 消费下一个参数作为 patch 实现符号名。
             cli.patch_impl_symbol = argv[++i];
             continue;
         }
         if (arg == "--coverage-report" && i + 1 < argc) {
+            // 消费下一个参数作为覆盖率报告文件名。
             cli.coverage_report = argv[++i];
             continue;
         }
         if (arg == "--function" && i + 1 < argc) {
+            // 可重复参数：每出现一次追加一个目标函数。
             cli.functions.emplace_back(argv[++i]);
             continue;
         }
+        // 下面是无值布尔开关，出现即置位。
         if (arg == "--patch-all-exports") {
             cli.patch_all_exports_set = true;
             cli.patch_all_exports = true;
@@ -230,17 +264,21 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             cli.analyze_all = true;
             continue;
         }
+        // 以 '-' 开头但未命中任何已知参数：判定为未知选项。
         if (!arg.empty() && arg[0] == '-') {
             error = "unknown option: " + arg;
             return false;
         }
+        // 非 '-' 开头参数不再允许位置参数，统一要求 --function 显式传入。
         error = "unexpected positional argument: " + arg + " (use --function <name>)";
         return false;
     }
+    // 全量扫描成功。
     return true;
 }
 
 void printUsage() {
+    // CLI 帮助文本统一在这里维护，避免参数说明分散在各处。
     std::cout
         << "Usage:\n"
         << "  VmProtect.exe [options]\n\n"
@@ -249,7 +287,8 @@ void printUsage() {
         << "  --output-dir <dir>           Output directory for txt/bin/report\n"
         << "  --expanded-so <file>         Expanded so output file name\n"
         << "  --host-so <file>             Host so for embed/patch output (e.g. libvmengine.so)\n"
-        << "  --final-so <file>            Final protected so path (default overwrite host-so)\n"
+        << "  --final-so <file>            Final protected so path "
+           "(default: host-so; with patch -> libvmengine_patch.so)\n"
         << "  --patch-donor-so <file>      Donor so for patchbay export fill\n"
         << "  --patch-impl-symbol <name>   Impl symbol used by export_alias_from_patchbay\n"
         << "  --patch-all-exports          Patch all donor exports (default: only fun_* and Java_*)\n"
@@ -263,6 +302,7 @@ void printUsage() {
 }
 
 std::string joinOutputPath(const VmProtectConfig& config, const std::string& file_name) {
+    // 绝对路径原样使用；相对路径拼到 output_dir 下，保持产物集中。
     fs::path p(file_name);
     if (p.is_absolute()) {
         return p.lexically_normal().string();
@@ -273,6 +313,7 @@ std::string joinOutputPath(const VmProtectConfig& config, const std::string& fil
 // Read file bytes into memory for payload packing.
 bool readFileBytes(const char* path, std::vector<uint8_t>& out) {
     out.clear();
+    // 入参必须是非空 C 字符串。
     if (!path || path[0] == '\0') {
         return false;
     }
@@ -282,6 +323,7 @@ bool readFileBytes(const char* path, std::vector<uint8_t>& out) {
     }
     in.seekg(0, std::ios::end);
     const std::streamoff size = in.tellg();
+    // tellg 失败会返回负值。
     if (size < 0) {
         return false;
     }
@@ -295,12 +337,14 @@ bool readFileBytes(const char* path, std::vector<uint8_t>& out) {
 }
 
 bool writeFileBytes(const std::string& path, const std::vector<uint8_t>& data) {
+    // 输出路径为空视为调用方错误。
     if (path.empty()) {
         return false;
     }
     std::error_code ec;
     const fs::path out_path(path);
     if (out_path.has_parent_path()) {
+        // 先确保父目录存在，再打开文件。
         fs::create_directories(out_path.parent_path(), ec);
         if (ec) {
             return false;
@@ -319,6 +363,7 @@ bool writeFileBytes(const std::string& path, const std::vector<uint8_t>& data) {
 }
 
 uint32_t crc32Ieee(const uint8_t* data, size_t size) {
+    // 运行时懒构建 CRC32 查表，避免每次重复初始化。
     static uint32_t table[256];
     static bool table_inited = false;
     if (!table_inited) {
@@ -341,10 +386,15 @@ uint32_t crc32Ieee(const uint8_t* data, size_t size) {
 
 #pragma pack(push, 1)
 struct EmbeddedPayloadFooter {
+    // 固定魔数，用于识别“尾部附加 payload”格式。
     uint32_t magic;
+    // 结构版本，支持未来协议升级。
     uint32_t version;
+    // payload 字节长度。
     uint64_t payload_size;
+    // payload 的 CRC32 校验值。
     uint32_t payload_crc32;
+    // 预留位，当前写 0。
     uint32_t reserved;
 };
 #pragma pack(pop)
@@ -355,12 +405,16 @@ constexpr uint32_t kEmbeddedPayloadVersion = 1U;
 bool parseExistingEmbeddedPayload(const std::vector<uint8_t>& host_bytes,
                                   size_t* out_base_size,
                                   size_t* out_old_payload_size) {
+    // 返回值语义：
+    // - true: 解析成功（包括“没有旧 payload”这种正常情况）；
+    // - false: 识别到 footer 但结构不合法或校验失败。
     if (out_base_size == nullptr || out_old_payload_size == nullptr) {
         return false;
     }
     *out_base_size = host_bytes.size();
     *out_old_payload_size = 0;
     if (host_bytes.size() < sizeof(EmbeddedPayloadFooter)) {
+        // 文件比 footer 还短，不可能含旧 payload，按“无旧 payload”处理。
         return true;
     }
 
@@ -368,6 +422,7 @@ bool parseExistingEmbeddedPayload(const std::vector<uint8_t>& host_bytes,
     const size_t footer_off = host_bytes.size() - sizeof(EmbeddedPayloadFooter);
     std::memcpy(&footer, host_bytes.data() + footer_off, sizeof(EmbeddedPayloadFooter));
     if (footer.magic != kEmbeddedPayloadMagic || footer.version != kEmbeddedPayloadVersion) {
+        // 不是我们的尾部格式，按“无旧 payload”处理。
         return true;
     }
     if (footer.payload_size == 0 ||
@@ -380,6 +435,7 @@ bool parseExistingEmbeddedPayload(const std::vector<uint8_t>& host_bytes,
     const size_t payload_begin = host_bytes.size() -
                                  sizeof(EmbeddedPayloadFooter) -
                                  static_cast<size_t>(footer.payload_size);
+    // 校验旧 payload CRC，防止把损坏文件继续当作基线。
     const uint32_t actual_crc =
         crc32Ieee(host_bytes.data() + payload_begin, static_cast<size_t>(footer.payload_size));
     if (actual_crc != footer.payload_crc32) {
@@ -397,6 +453,11 @@ bool parseExistingEmbeddedPayload(const std::vector<uint8_t>& host_bytes,
 bool embedExpandedSoIntoHost(const std::string& host_so,
                              const std::string& payload_so,
                              const std::string& final_so) {
+    // route4 嵌入流程：
+    // 1) 读取 host/payload；
+    // 2) 若 host 已含旧 payload 则剥离；
+    // 3) 追加新 payload + footer；
+    // 4) 写出 final_so。
     if (!fileExists(host_so)) {
         LOGE("host so not found: %s", host_so.c_str());
         return false;
@@ -423,12 +484,14 @@ bool embedExpandedSoIntoHost(const std::string& host_so,
 
     size_t base_size = host_bytes.size();
     size_t old_payload_size = 0;
+    // base_size 指“宿主原始主体”长度（不含旧 payload）。
     if (!parseExistingEmbeddedPayload(host_bytes, &base_size, &old_payload_size)) {
         LOGE("failed to parse existing embedded payload in host so: %s", host_so.c_str());
         return false;
     }
 
     std::vector<uint8_t> out;
+    // 预留最终容量，减少多次扩容拷贝。
     out.reserve(base_size + payload_bytes.size() + sizeof(EmbeddedPayloadFooter));
     out.insert(out.end(), host_bytes.begin(), host_bytes.begin() + static_cast<std::ptrdiff_t>(base_size));
     out.insert(out.end(), payload_bytes.begin(), payload_bytes.end());
@@ -461,6 +524,7 @@ bool embedExpandedSoIntoHost(const std::string& host_so,
 }
 
 int runPatchbayCommandInProcess(const std::vector<std::string>& args) {
+    // 通过进程内入口调用 patchbay，避免额外拉起子进程。
     if (args.empty()) {
         return -1;
     }
@@ -472,34 +536,38 @@ int runPatchbayCommandInProcess(const std::vector<std::string>& args) {
     return vmprotect_patchbay_entry(static_cast<int>(argv.size()), argv.data());
 }
 
-bool moveOrReplaceFile(const std::string& from, const std::string& to) {
-    if (from.empty() || to.empty()) {
-        return false;
+std::string buildPatchSoDefaultPath(const std::string& host_so_path) {
+    // 把 libvmengine.so 映射为 libvmengine_patch.so；
+    // 其它文件名统一追加 "_patch.so" 后缀，避免覆盖原文件。
+    fs::path host_path(host_so_path);
+    fs::path parent = host_path.parent_path();
+    const std::string stem = host_path.stem().string();
+    const std::string ext = host_path.extension().string();
+    std::string patch_name;
+    if (!stem.empty() && ext == ".so") {
+        patch_name = stem + "_patch.so";
+    } else if (!host_path.filename().string().empty()) {
+        patch_name = host_path.filename().string() + "_patch.so";
+    } else {
+        patch_name = "libvmengine_patch.so";
     }
-    std::error_code ec;
-    fs::remove(to, ec);
-    ec.clear();
-    fs::rename(from, to, ec);
-    if (!ec) {
-        return true;
-    }
-    ec.clear();
-    fs::copy_file(from, to, fs::copy_options::overwrite_existing, ec);
-    if (ec) {
-        return false;
-    }
-    ec.clear();
-    fs::remove(from, ec);
-    return true;
+    return (parent / patch_name).lexically_normal().string();
 }
 
 bool runPatchbayExportFromDonor(const std::string& input_so,
+                                const std::string& output_so,
                                 const std::string& donor_so,
                                 const std::string& impl_symbol,
                                 bool patch_all_exports,
                                 bool allow_validate_fail) {
+    // patchbay 主路径：
+    // input_so + donor_so -> output_so（独立产物，不覆盖 input_so）。
     if (!fileExists(input_so)) {
         LOGE("patch input so not found: %s", input_so.c_str());
+        return false;
+    }
+    if (output_so.empty()) {
+        LOGE("patch output so is empty");
         return false;
     }
     if (!fileExists(donor_so)) {
@@ -511,17 +579,16 @@ bool runPatchbayExportFromDonor(const std::string& input_so,
         return false;
     }
 
-    const std::string patched_tmp = input_so + ".patchbay.tmp.so";
-
     std::vector<std::string> cmd = {
         "VmProtect.exe",
         "export_alias_from_patchbay",
         input_so,
         donor_so,
-        patched_tmp,
+        output_so,
         impl_symbol,
     };
     if (allow_validate_fail) {
+        // 兼容历史样本：允许校验放宽，优先保证流程可继续。
         cmd.emplace_back("--allow-validate-fail");
     }
     if (!patch_all_exports) {
@@ -533,17 +600,14 @@ bool runPatchbayExportFromDonor(const std::string& input_so,
         LOGE("patchbay command failed rc=%d", rc);
         return false;
     }
-    if (!fileExists(patched_tmp)) {
-        LOGE("patch output not found: %s", patched_tmp.c_str());
-        return false;
-    }
-    if (!moveOrReplaceFile(patched_tmp, input_so)) {
-        LOGE("failed to replace patched so: %s", input_so.c_str());
+    if (!fileExists(output_so)) {
+        LOGE("patch output not found: %s", output_so.c_str());
         return false;
     }
 
-    LOGI("patchbay export completed: tool=embedded input=%s donor=%s impl=%s patch_all_exports=%d",
+    LOGI("patchbay export completed: tool=embedded input=%s output=%s donor=%s impl=%s patch_all_exports=%d",
          input_so.c_str(),
+         output_so.c_str(),
          donor_so.c_str(),
          impl_symbol.c_str(),
          patch_all_exports ? 1 : 0);
@@ -552,6 +616,7 @@ bool runPatchbayExportFromDonor(const std::string& input_so,
 
 bool writeSharedBranchAddrList(const char* file_path,
                                const std::vector<uint64_t>& branch_addrs) {
+    // 生成 C 风格静态数组，供 VmEngine 侧直接 include/编译。
     if (file_path == nullptr || file_path[0] == '\0') {
         return false;
     }
@@ -578,6 +643,7 @@ bool writeSharedBranchAddrList(const char* file_path,
 void appendUniqueBranchAddrs(const std::vector<uint64_t>& local_addrs,
                              std::unordered_set<uint64_t>& seen_addrs,
                              std::vector<uint64_t>& out_shared) {
+    // 汇总多个函数的 BL 目标地址并去重，保留首次出现顺序。
     for (uint64_t addr : local_addrs) {
         if (seen_addrs.insert(addr).second) {
             out_shared.push_back(addr);
@@ -586,6 +652,7 @@ void appendUniqueBranchAddrs(const std::vector<uint64_t>& local_addrs,
 }
 
 std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
+    // 覆盖率看板“已支持指令”白名单。
     std::unordered_set<unsigned int> ids = {
         ARM64_INS_ADD,
         ARM64_INS_ADRP,
@@ -631,6 +698,7 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
 }
 
 bool isSupportedByFallbackMnemonic(const char* mnemonic) {
+    // 某些 Capstone 版本指令 ID 会漂移，提供 mnemonic 级兜底判定。
     if (mnemonic == nullptr) {
         return false;
     }
@@ -646,6 +714,7 @@ bool isSupportedByFallbackMnemonic(const char* mnemonic) {
 bool isInstructionSupported(const std::unordered_set<unsigned int>& supported_ids,
                             unsigned int insn_id,
                             const char* mnemonic) {
+    // 优先 ID 精确匹配，失败再走 mnemonic 兜底。
     if (supported_ids.find(insn_id) != supported_ids.end()) {
         return true;
     }
@@ -653,6 +722,7 @@ bool isInstructionSupported(const std::unordered_set<unsigned int>& supported_id
 }
 
 std::string buildInstructionLabel(csh handle, unsigned int insn_id, const char* mnemonic) {
+    // 统一标签格式：name(id)，便于 Markdown 统计汇总。
     const char* cap_name = cs_insn_name(handle, insn_id);
     std::string name;
     if (cap_name != nullptr && cap_name[0] != '\0') {
@@ -668,6 +738,7 @@ std::string buildInstructionLabel(csh handle, unsigned int insn_id, const char* 
 }
 
 std::string markdownSafe(std::string value) {
+    // Markdown 表格中 '|' 会破坏列结构，这里统一替换为 '/'。
     for (char& ch : value) {
         if (ch == '|') {
             ch = '/';
@@ -681,6 +752,10 @@ void analyzeCoverageForFunction(csh handle,
                                 zFunction* function,
                                 FunctionCoverageRow& row,
                                 CoverageBoard& board) {
+    // 单函数覆盖率流程：
+    // 1) 先做翻译预校验；
+    // 2) 反汇编统计支持/不支持指令数；
+    // 3) 回填 row 与全局 board。
     row.translate_ok = function->prepareTranslation(&row.translate_error);
     row.translate_error = markdownSafe(row.translate_error);
 
@@ -716,6 +791,7 @@ void analyzeCoverageForFunction(csh handle,
 }
 
 bool writeCoverageReport(const std::string& report_path, const CoverageBoard& board) {
+    // 输出 Markdown 报告，便于 CI 与人工阅读双用。
     std::ofstream out(report_path, std::ios::trunc);
     if (!out) {
         return false;
@@ -744,6 +820,7 @@ bool writeCoverageReport(const std::string& report_path, const CoverageBoard& bo
 
     auto dumpHistogram = [&out](const std::string& title,
                                 const std::map<std::string, uint64_t>& hist) {
+        // 频次优先降序，频次相同按名称升序，保证输出稳定。
         out << "## " << title << "\n\n";
         out << "| Instruction | Count |\n";
         out << "| --- | ---: |\n";
@@ -869,6 +946,7 @@ bool exportProtectedPackage(const VmProtectConfig& config,
 } // namespace
 
 int main(int argc, char* argv[]) {
+    // 兼容 patchbay 子命令入口：若命中则直接转发，不走 VmProtect 主流程。
     if (argc >= 2 && vmprotect_is_patchbay_command(argv[1])) {
         return vmprotect_patchbay_entry(argc, argv);
     }
@@ -880,20 +958,25 @@ int main(int argc, char* argv[]) {
     // 4) (可选) 导出加固产物。
     CliOverrides cli;
     std::string cli_error;
+    // 解析 CLI，失败时打印错误与 usage。
     if (!parseCommandLine(argc, argv, cli, cli_error)) {
         std::cerr << cli_error << "\n";
         printUsage();
         return 1;
     }
+    // 命中 help 直接输出 usage 并正常退出。
     if (cli.show_help) {
         printUsage();
         return 0;
     }
 
+    // 构建默认配置：先填默认函数，再由 CLI 覆盖。
     VmProtectConfig config;
     config.functions = kDefaultFunctions;
+    // 默认列表先去重，确保后续行为稳定。
     deduplicateKeepOrder(config.functions);
 
+    // 逐项应用 CLI 覆盖。
     if (!cli.input_so.empty()) {
         config.input_so = cli.input_so;
     }
@@ -937,110 +1020,155 @@ int main(int argc, char* argv[]) {
         config.analyze_all_functions = cli.analyze_all;
     }
 
+    // 最终函数列表再去重一次（含 CLI 重复项）。
     deduplicateKeepOrder(config.functions);
+    // 输入 so 是硬性必需参数。
     if (config.input_so.empty()) {
         LOGE("input so is empty (use --input-so)");
         return 1;
     }
+    // 校验 input so 文件存在。
     if (!fileExists(config.input_so)) {
         LOGE("input so not found: %s", config.input_so.c_str());
         return 1;
     }
+    // host_so 提供时必须存在。
     if (!config.host_so.empty() && !fileExists(config.host_so)) {
         LOGE("host so not found: %s", config.host_so.c_str());
         return 1;
     }
+    // 开启 patch 功能必须同时提供 host_so。
     if (!config.patch_donor_so.empty() && config.host_so.empty()) {
         LOGE("patch options require host_so (--host-so)");
         return 1;
     }
+    // donor_so 提供时必须存在。
     if (!config.patch_donor_so.empty() && !fileExists(config.patch_donor_so)) {
         LOGE("patch donor so not found: %s", config.patch_donor_so.c_str());
         return 1;
     }
+    // 确保输出目录可用（存在或可创建）。
     if (!ensureDirectory(config.output_dir)) {
         LOGE("failed to create output dir: %s", config.output_dir.c_str());
         return 1;
     }
 
+    // 加载输入 ELF，后续解析函数信息。
     zElf elf(config.input_so.c_str());
 
+    // 解析目标函数名列表。
     std::vector<std::string> function_names;
+    // --analyze-all 时从 ELF 提取所有具名函数。
     if (config.analyze_all_functions) {
         const std::vector<zFunction>& list = elf.getFunctionList();
         function_names.reserve(list.size());
         for (const zFunction& function : list) {
+            // 过滤空函数名。
             if (!function.name().empty()) {
                 function_names.push_back(function.name());
             }
         }
     } else {
+        // 默认路径：使用配置中的函数白名单。
         function_names = config.functions;
     }
+    // 去重并保持顺序稳定。
     deduplicateKeepOrder(function_names);
+    // 最终目标函数不能为空。
     if (function_names.empty()) {
         LOGE("function list is empty");
         return 1;
     }
 
+    // 把函数名解析成 zFunction* 指针集合。
     std::vector<zFunction*> functions;
     if (!collectFunctions(elf, function_names, functions)) {
         return 1;
     }
 
+    // 覆盖率看板对象。
     CoverageBoard board;
     {
         // 覆盖率统计使用 capstone 反汇编原始函数，并结合支持指令集合做统计。
         csh handle = 0;
+        // 打开 capstone AArch64 反汇编句柄。
         if (cs_open(CS_ARCH_AARCH64, CS_MODE_ARM, &handle) != CS_ERR_OK) {
             LOGE("coverage failed: capstone cs_open failed");
             return 1;
         }
+        // 构建“已支持指令 ID”集合。
         const std::unordered_set<unsigned int> supported_ids = buildSupportedInsnIdSet();
+        // 预留函数行容量。
         board.function_rows.reserve(functions.size());
+        // 逐函数做覆盖率统计并写入 board。
         for (size_t i = 0; i < functions.size(); ++i) {
             FunctionCoverageRow row;
             row.function_name = function_names[i];
             analyzeCoverageForFunction(handle, supported_ids, functions[i], row, board);
             board.function_rows.push_back(std::move(row));
         }
+        // 关闭 capstone 句柄。
         cs_close(&handle);
     }
 
+    // 计算 coverage 报告输出路径。
     const std::string coverage_report_path = joinOutputPath(config, config.coverage_report);
+    // 写覆盖率报告文件。
     if (!writeCoverageReport(coverage_report_path, board)) {
         LOGE("failed to write coverage report: %s", coverage_report_path.c_str());
         return 1;
     }
+    // 输出覆盖率报告路径日志。
     LOGI("coverage report written: %s", coverage_report_path.c_str());
 
+    // 看板模式只产出覆盖率报告，不做导出。
     if (config.coverage_only) {
         // 仅看板模式：用于“翻译覆盖看板”快速迭代。
         LOGI("coverage-only mode enabled, export skipped");
         return 0;
     }
 
+    // 执行离线导出：txt/bin + shared branch + expanded so。
     if (!exportProtectedPackage(config, function_names, functions)) {
         return 1;
     }
 
+    // 若提供 host_so，则继续执行 embed + patch 链路。
     if (!config.host_so.empty()) {
+        // 计算 expanded so 完整路径。
         const std::string expanded_so_path = joinOutputPath(config, config.expanded_so);
-        const std::string final_so_path =
-            config.final_so.empty() ? config.host_so : config.final_so;
-        if (!embedExpandedSoIntoHost(config.host_so, expanded_so_path, final_so_path)) {
-            return 1;
-        }
-        if (!config.patch_donor_so.empty()) {
-            if (!runPatchbayExportFromDonor(final_so_path,
+        // embed-only：默认仍覆盖 host；embed+patch：默认写独立 libvmengine_patch.so。
+        if (config.patch_donor_so.empty()) {
+            const std::string final_so_path =
+                config.final_so.empty() ? config.host_so : config.final_so;
+            if (!embedExpandedSoIntoHost(config.host_so, expanded_so_path, final_so_path)) {
+                return 1;
+            }
+        } else {
+            // patch 输入先落到临时 embed 产物，随后输出独立 patch so。
+            const std::string final_so_path =
+                config.final_so.empty() ? buildPatchSoDefaultPath(config.host_so) : config.final_so;
+            const std::string embed_tmp_so_path = final_so_path + ".embed.tmp.so";
+            if (!embedExpandedSoIntoHost(config.host_so, expanded_so_path, embed_tmp_so_path)) {
+                return 1;
+            }
+            if (!runPatchbayExportFromDonor(embed_tmp_so_path,
+                                            final_so_path,
                                             config.patch_donor_so,
                                             config.patch_impl_symbol,
                                             config.patch_all_exports,
                                             config.patch_allow_validate_fail)) {
                 return 1;
             }
+            // 清理 embed 临时文件，保留最终 patch so。
+            std::error_code ec;
+            fs::remove(embed_tmp_so_path, ec);
+            if (ec) {
+                LOGW("remove embed tmp so failed: %s", embed_tmp_so_path.c_str());
+            }
         }
     }
 
+    // 全流程成功。
     return 0;
 }

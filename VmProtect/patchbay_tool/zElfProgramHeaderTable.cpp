@@ -5,6 +5,7 @@ void zElfProgramHeaderTable::fromRaw(const Elf64_Phdr* raw, size_t count) {
     elements.clear();
     elements.reserve(count);
     for (size_t idx = 0; idx < count; ++idx) {
+        // 逐条转换为内部可读写模型，便于后续重构修改。
         elements.push_back(zProgramTableElement::fromPhdr(raw[idx]));
     }
 }
@@ -14,6 +15,7 @@ std::vector<Elf64_Phdr> zElfProgramHeaderTable::toRaw() const {
     std::vector<Elf64_Phdr> out;
     out.reserve(elements.size());
     for (const auto& element : elements) {
+        // 序列化回标准 phdr 结构，供写回文件镜像。
         out.push_back(element.toPhdr());
     }
     return out;
@@ -26,6 +28,7 @@ int zElfProgramHeaderTable::findFirstByType(Elf64_Word type) const {
             return (int)idx;
         }
     }
+    // 未找到目标类型。
     return -1;
 }
 
@@ -37,5 +40,6 @@ std::vector<int> zElfProgramHeaderTable::findAllByType(Elf64_Word type) const {
             out.push_back((int)idx);
         }
     }
+    // 允许返回空数组，表示当前表不存在该类型段。
     return out;
 }

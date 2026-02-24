@@ -14,7 +14,7 @@ def vmProtectBuildDir = file("${vmProtectProjectDir}/cmake-build-debug")
 def vmpPatchDonorSo = file((project.findProperty("vmpPatchDonorSo")
         ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
 def vmpPatchImplSymbol = (project.findProperty("vmpPatchImplSymbol")
-        ?: "z_takeover_dispatch_by_id").toString()
+        ?: "vm_takeover_slot_0000").toString()
 def vmpPatchAllExports = ((project.findProperty("vmpPatchAllExports") ?: "false").toString().toBoolean())
 def vmpFunctionsRaw = (project.findProperty("vmpFunctions") ?: "").toString().trim()
 def vmpOutputDir = file("$buildDir/generated/vmprotectOut")
@@ -105,7 +105,7 @@ tasks.register("buildVmProtectTool") {
 
 tasks.register("runVmProtectPipelineDebug") {
     group = "vmp"
-    description = "Run VmProtect.exe to export assets and produce final protected libvmengine.so (debug)."
+    description = "Run VmProtect.exe to export assets and produce final protected libvmengine_patch.so (debug)."
     dependsOn("externalNativeBuildDebug", "buildVmProtectTool")
     outputs.dir(vmpOutputDir)
     outputs.dir(vmpAssetsDir)
@@ -116,6 +116,8 @@ tasks.register("runVmProtectPipelineDebug") {
         if (hostSo == null || !hostSo.exists()) {
             throw new GradleException("debug libvmengine.so not found under app/build/intermediates")
         }
+        // 约定 patch 产物固定输出为 libvmengine_patch.so，避免覆盖原始 libvmengine.so。
+        def protectedHostSo = new File(hostSo.parentFile, "libvmengine_patch.so")
         if (!vmpToolExe.exists()) {
             throw new GradleException(
                     "VmProtect.exe not found: ${vmpToolExe}. " +
@@ -142,7 +144,7 @@ tasks.register("runVmProtectPipelineDebug") {
                 "--shared-branch-file", "branch_addr_list.txt",
                 "--coverage-report", "coverage_report.md",
                 "--host-so", hostSo.absolutePath,
-                "--final-so", hostSo.absolutePath,
+                "--final-so", protectedHostSo.absolutePath,
                 "--patch-donor-so", vmpPatchDonorSo.absolutePath,
                 "--patch-impl-symbol", vmpPatchImplSymbol,
         ]
@@ -154,6 +156,8 @@ tasks.register("runVmProtectPipelineDebug") {
         }
 
         println("[VMP] running: ${cmd.join(' ')}")
+
+        System.println("cmd:" + cmd)
         exec {
             commandLine cmd
             workingDir vmpProjectRoot
@@ -175,7 +179,8 @@ tasks.register("runVmProtectPipelineDebug") {
             }
             into(vmpAssetsDir)
         }
-        println("[VMP] protected host so generated: ${hostSo}")
+        println("[VMP] protected host so generated: ${protectedHostSo}")
+        println("[VMP] original host so kept clean: ${hostSo}")
         println("[VMP] updated assets dir: ${vmpAssetsDir}")
     }
 }

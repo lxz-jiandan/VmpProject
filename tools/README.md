@@ -74,13 +74,9 @@ Manifest example (`tools/takeover_symbols.json`):
 - The host must provide a Python interpreter (`python` in PATH).
 - The script auto-detects `adb` from `VmEngine/local.properties` (`sdk.dir`).
 - `VmEngine` Debug native build now auto-runs route4 embedding (`VMENGINE_ROUTE4_EMBED_PAYLOAD=ON` by default).
-- The script checks these route markers:
-  - `route_unencoded_text result=1`
-  - `route_native_vs_vm result=1`
-  - `route_encoded_asset_bin result=1`
-  - `route_encoded_expand_so result=1`
+- The script checks these route4-only markers:
+  - `route_embedded_expand_so result=1 state=0`
   - `route_symbol_takeover result=1`
-- `route_embedded_expand_so` is added for route4 L1:
+- `route_embedded_expand_so` state policy:
   - `state=0` pass (embedded payload executed)
-  - `state=1` skip (vmengine has no embedded payload yet)
-  - `state=2` fail
+  - `result=0` fail

@@ -1,0 +1,6 @@
+{
+    global:
+        vm_*;
+    local:
+        *;
+};

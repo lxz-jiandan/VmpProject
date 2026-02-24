@@ -14,14 +14,18 @@
 // 根据 PT_LOAD 的 p_align 推断运行时页大小（默认 4KB）。
 uint64_t infer_runtime_page_size_from_phdrs(
         const std::vector<zProgramTableElement>& phs) {
+    // 默认 4KB；若观测到更大合法对齐（如 16KB）再提升。
     uint64_t page_size = 0x1000ULL;
     for (const auto& ph : phs) {
+        // 仅 PT_LOAD 的 p_align 对运行时页大小有参考意义。
         if (ph.type != PT_LOAD || ph.align == 0) {
             continue;
         }
+        // align 必须是 2 的幂，非幂值视为噪声数据忽略。
         if ((ph.align & (ph.align - 1ULL)) != 0) {
             continue;
         }
+        // 只接受常见页大小上限（<=64KB），防止异常值污染推断结果。
         if (ph.align > page_size && ph.align <= 0x10000ULL) {
             page_size = ph.align;
         }
@@ -33,15 +37,19 @@ uint64_t infer_runtime_page_size_from_phdrs(
 bool load_segment_matches_section_flags(
         const zProgramTableElement& ph,
         const zSectionTableElement& section) {
+    // section 只能映射到 PT_LOAD 段。
     if (ph.type != PT_LOAD) {
         return false;
     }
+    // 可执行节必须落到可执行段。
     if ((section.flags & SHF_EXECINSTR) != 0 && (ph.flags & PF_X) == 0) {
         return false;
     }
+    // 可写节必须落到可写段。
     if ((section.flags & SHF_WRITE) != 0 && (ph.flags & PF_W) == 0) {
         return false;
     }
+    // 读权限默认可被接受（多数 LOAD 至少具备 PF_R）。
     return true;
 }
 
@@ -91,9 +99,11 @@ bool read_dynamic_entries_from_phdr(
     if (out_entries) {
         out_entries->clear();
     }
+    // 从当前 file_image_ 读 PT_DYNAMIC 的原始字节视图。
     const uint8_t* file_data = elf.fileImageData();
     const size_t file_size = elf.fileImageSize();
     for (const auto& ph : elf.programHeaderModel().elements) {
+        // 锁定第一个有效 PT_DYNAMIC。
         if (ph.type != PT_DYNAMIC || ph.filesz == 0) {
             continue;
         }
@@ -120,6 +130,7 @@ bool read_dynamic_entries_from_phdr(
             return false;
         }
         if (out_entries) {
+            // 直接按结构体数组复制，后续由调用方按 d_tag/d_val 解析。
             out_entries->resize(count);
             std::memcpy(out_entries->data(), file_data + ph.offset,
                         count * sizeof(Elf64_Dyn));
@@ -132,6 +143,7 @@ bool read_dynamic_entries_from_phdr(
         }
         return true;
     }
+    // 没有 PT_DYNAMIC 视作“无可读动态表”，由上层决定是否报错。
     return false;
 }
 
@@ -146,6 +158,9 @@ bool collect_dynamic_tags(
     }
     tags->clear();
 
+    // 统一的 entries -> map 收集逻辑：
+    // - 同一 tag 只保留首个值；
+    // - 遇到 DT_NULL 提前结束。
     auto collect_from_entries = [tags](const Elf64_Dyn* entries, size_t count) {
         if (!entries || count == 0) {
             return;
@@ -170,6 +185,7 @@ bool collect_dynamic_tags(
             continue;
         }
 
+        // 期望 SHT_DYNAMIC 被解析为 zDynamicSection 派生类。
         const auto* dynamic_sec = dynamic_cast<const zDynamicSection*>(sec);
         if (!dynamic_sec) {
             if (error) {
@@ -187,6 +203,7 @@ bool collect_dynamic_tags(
         }
 
         collect_from_entries(dynamic_sec->entries.data(), dynamic_sec->entries.size());
+        // 找到并处理第一个 SHT_DYNAMIC 后即可返回。
         return true;
     }
 
@@ -197,6 +214,7 @@ bool collect_dynamic_tags(
     const bool got_pt_dynamic = read_dynamic_entries_from_phdr(
             elf, &phdr_entries, nullptr, nullptr, &has_pt_dynamic, &pt_dynamic_error);
     if (has_pt_dynamic && !got_pt_dynamic) {
+        // 文件声明了 PT_DYNAMIC，但无法读取，属于结构错误。
         if (error) {
             *error = pt_dynamic_error.empty()
                      ? "PT_DYNAMIC exists but dynamic table is not mapped/parsed"
@@ -205,6 +223,7 @@ bool collect_dynamic_tags(
         return false;
     }
     if (got_pt_dynamic) {
+        // 成功回退读取后继续按同一规则收集标签。
         collect_from_entries(phdr_entries.data(), phdr_entries.size());
     }
     return true;

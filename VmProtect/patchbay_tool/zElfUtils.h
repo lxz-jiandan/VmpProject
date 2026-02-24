@@ -26,16 +26,16 @@ class zSectionTableElement;
 // 常量：内核 elf.h 中未定义的动态标签
 // ============================================================================
 
-constexpr Elf64_Sxword DT_INIT_ARRAY_TAG      = 25;
-constexpr Elf64_Sxword DT_FINI_ARRAY_TAG      = 26;
-constexpr Elf64_Sxword DT_PREINIT_ARRAY_TAG   = 32;
-constexpr Elf64_Sxword DT_RELRSZ_TAG          = 35;
-constexpr Elf64_Sxword DT_RELR_TAG            = 36;
-constexpr Elf64_Sxword DT_RELRENT_TAG         = 37;
-constexpr Elf64_Sxword DT_ANDROID_REL_TAG     = 0x6000000f;
-constexpr Elf64_Sxword DT_ANDROID_RELSZ_TAG   = 0x60000010;
-constexpr Elf64_Sxword DT_ANDROID_RELA_TAG    = 0x60000011;
-constexpr Elf64_Sxword DT_ANDROID_RELASZ_TAG  = 0x60000012;
+constexpr Elf64_Sxword DT_INIT_ARRAY_TAG      = 25;         // .init_array 起始地址
+constexpr Elf64_Sxword DT_FINI_ARRAY_TAG      = 26;         // .fini_array 起始地址
+constexpr Elf64_Sxword DT_PREINIT_ARRAY_TAG   = 32;         // .preinit_array 起始地址
+constexpr Elf64_Sxword DT_RELRSZ_TAG          = 35;         // DT_RELR 总字节数
+constexpr Elf64_Sxword DT_RELR_TAG            = 36;         // DT_RELR 表地址
+constexpr Elf64_Sxword DT_RELRENT_TAG         = 37;         // DT_RELR 单项大小
+constexpr Elf64_Sxword DT_ANDROID_REL_TAG     = 0x6000000f; // Android packed REL 地址
+constexpr Elf64_Sxword DT_ANDROID_RELSZ_TAG   = 0x60000010; // Android packed REL 大小
+constexpr Elf64_Sxword DT_ANDROID_RELA_TAG    = 0x60000011; // Android packed RELA 地址
+constexpr Elf64_Sxword DT_ANDROID_RELASZ_TAG  = 0x60000012; // Android packed RELA 大小
 
 // ============================================================================
 // 纯工具函数（inline，无外部类型依赖）
@@ -44,8 +44,10 @@ constexpr Elf64_Sxword DT_ANDROID_RELASZ_TAG  = 0x60000012;
 // 通用向上对齐工具。
 inline uint64_t align_up_u64(uint64_t value, uint64_t align) {
     if (align == 0) {
+        // align=0 视作“不对齐”，直接返回原值。
         return value;
     }
+    // 整数上取整到 align 的倍数。
     return ((value + align - 1) / align) * align;
 }
 
@@ -72,9 +74,11 @@ inline bool add_u64_checked(uint64_t a, uint64_t b, uint64_t* out) {
 // 判断两个区间是否重叠。
 inline bool ranges_overlap_u64(uint64_t a_begin, uint64_t a_size,
                                uint64_t b_begin, uint64_t b_size) {
+    // 空区间与任何区间都不重叠。
     if (a_size == 0 || b_size == 0) {
         return false;
     }
+    // 任一区间在计算 end 前发生溢出则视为非法输入，不判重叠。
     if (a_begin > std::numeric_limits<uint64_t>::max() - a_size) {
         return false;
     }
@@ -83,6 +87,7 @@ inline bool ranges_overlap_u64(uint64_t a_begin, uint64_t a_size,
     }
     uint64_t a_end = a_begin + a_size;
     uint64_t b_end = b_begin + b_size;
+    // 半开区间相交判定：[a_begin, a_end) 与 [b_begin, b_end)。
     return a_begin < b_end && b_begin < a_end;
 }
 
@@ -97,12 +102,14 @@ inline bool contains_addr_range_u64(uint64_t base, uint64_t size,
         return false;
     }
     if (addr_size == 0) {
+        // 0 长度时退化为“点是否落在区间端点内”。
         return addr >= base && addr <= end;
     }
     uint64_t addr_end = 0;
     if (!add_u64_checked(addr, addr_size, &addr_end)) {
         return false;
     }
+    // 要求 [addr, addr_end) 完整落入 [base, end]。
     return addr >= base && addr_end <= end;
 }
 
@@ -113,9 +120,11 @@ inline bool is_power_of_two_u64(uint64_t value) {
 
 // 判断是否为保留/特殊节索引。
 inline bool is_special_shndx(uint16_t shndx) {
+    // 常见特殊索引：UNDEF/ABS/COMMON。
     if (shndx == SHN_UNDEF || shndx == SHN_ABS || shndx == SHN_COMMON) {
         return true;
     }
+    // 保留区间索引也视为特殊索引。
     return shndx >= SHN_LORESERVE && shndx <= SHN_HIRESERVE;
 }
 
@@ -125,6 +134,7 @@ inline bool read_u32_le_bytes(const std::vector<uint8_t>& bytes,
     if (!out || off + 4 > bytes.size()) {
         return false;
     }
+    // 按 little-endian 组合 4 字节。
     *out = (uint32_t)bytes[off] |
            ((uint32_t)bytes[off + 1] << 8) |
            ((uint32_t)bytes[off + 2] << 16) |
@@ -138,6 +148,7 @@ inline bool write_u32_le_bytes(std::vector<uint8_t>* bytes,
     if (!bytes || off + 4 > bytes->size()) {
         return false;
     }
+    // 按 little-endian 拆分并写回 4 字节。
     (*bytes)[off] = (uint8_t)(value & 0xff);
     (*bytes)[off + 1] = (uint8_t)((value >> 8) & 0xff);
     (*bytes)[off + 2] = (uint8_t)((value >> 16) & 0xff);

@@ -29,6 +29,8 @@
 #define VM_DEBUG_HOOK 0
 #endif
 
+namespace vm {
+
 // GCC/Clang 原子操作封装：统一提供 32/64 位原子原语，供 VM 指令实现复用。
 // 32 位原子加：返回加之前的旧值。
 inline uint32_t atomic_fetch_add(uint32_t* ptr, uint32_t val) {
@@ -1981,6 +1983,8 @@ void op_unknown(VMContext* ctx) {
     std::cerr << "[VM WARNING] Unknown opcode " << opcode << " at pc=" << ctx->pc << std::endl;
     ctx->running = false;
 }
+
+} // namespace vm
 
 
 

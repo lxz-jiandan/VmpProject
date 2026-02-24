@@ -26,6 +26,7 @@
 namespace {
 
 enum : uint32_t {
+    // VM 指令主操作码定义（离线翻译输出使用）。
     OP_END = 0, OP_BINARY = 1, OP_TYPE_CONVERT = 2, OP_LOAD_CONST = 3, OP_STORE_CONST = 4,
     OP_GET_ELEMENT = 5, OP_ALLOC_RETURN = 6, OP_STORE = 7, OP_LOAD_CONST64 = 8, OP_NOP = 9,
     OP_COPY = 10, OP_GET_FIELD = 11, OP_CMP = 12, OP_SET_FIELD = 13, OP_RESTORE_REG = 14,
@@ -41,17 +42,20 @@ enum : uint32_t {
 };
 
 enum : uint32_t {
+    // OP_BINARY / OP_BINARY_IMM 的子操作码定义。
     BIN_XOR = 0, BIN_SUB = 1, BIN_ASR = 2, BIN_DIV = 3, BIN_ADD = 4, BIN_OR = 5,
     BIN_MOD = 6, BIN_IDIV = 7, BIN_FMOD = 8, BIN_MUL = 9, BIN_LSR = 0xA, BIN_SHL = 0xB, BIN_AND = 0xC,
 };
 
 enum : uint32_t {
+    // 运行时类型标签（当前仅使用少量整型标签）。
     TYPE_TAG_INT32_SIGNED_2 = 4,
     TYPE_TAG_INT8_UNSIGNED = 0x15,
     TYPE_TAG_INT64_SIGNED = 0xE,
 };
 
 struct zUnencodedBytecode {
+    // 未编码中间表示：既可导出 txt/bin，也可作为翻译缓存。
     uint32_t registerCount = 0;
     std::vector<uint32_t> regList;
     uint32_t typeCount = 0;
@@ -68,6 +72,7 @@ struct zUnencodedBytecode {
 };
 
 struct zUnencodedBinHeader {
+    // unencoded 二进制头，描述后续各段数量信息。
     uint32_t magic = 0;
     uint32_t version = 0;
     uint32_t registerCount = 0;
@@ -84,6 +89,7 @@ static constexpr uint32_t Z_UNENCODED_BIN_MAGIC = 0x4642555A;
 static constexpr uint32_t Z_UNENCODED_BIN_VERSION = 2;
 
 static const char* getOpcodeName(uint32_t op) {
+    // 仅用于 dump 注释可读性，不参与执行语义。
     switch (op) {
         case 0: return "OP_END";
         case 1: return "OP_BINARY";
@@ -206,6 +212,7 @@ static std::string formatInstructionLine(
 }
 
 static uint32_t arm64_capstone_to_arch_index(unsigned int reg) {
+    // 把 Capstone 寄存器枚举映射到 VM 侧统一索引。
     if (reg == AARCH64_REG_SP || reg == AARCH64_REG_WSP) return 31;
     if (reg == AARCH64_REG_FP || reg == AARCH64_REG_X29) return 29;
     if (reg == AARCH64_REG_LR || reg == AARCH64_REG_X30) return 30;
@@ -215,6 +222,7 @@ static uint32_t arm64_capstone_to_arch_index(unsigned int reg) {
 }
 
 static uint32_t getOrAddReg(std::vector<uint32_t>& reg_id_list, uint32_t reg) {
+    // 返回寄存器在 reg_id_list 中的索引，不存在则追加。
     for (size_t k = 0; k < reg_id_list.size(); k++) {
         if (reg_id_list[k] == reg) return static_cast<uint32_t>(k);
     }
@@ -223,11 +231,13 @@ static uint32_t getOrAddReg(std::vector<uint32_t>& reg_id_list, uint32_t reg) {
 }
 
 static bool is_arm64_w_reg(unsigned int reg) {
+    // 判断是否 32 位通用寄存器（w0-w30/wsp/wzr）。
     return (reg >= AARCH64_REG_W0 && reg <= AARCH64_REG_W30) ||
            reg == AARCH64_REG_WSP || reg == AARCH64_REG_WZR;
 }
 
 static bool is_arm64_gp_reg(unsigned int reg) {
+    // 判断是否通用寄存器（含 sp/fp/lr/零寄存器）。
     if (reg == AARCH64_REG_SP || reg == AARCH64_REG_WSP ||
         reg == AARCH64_REG_FP || reg == AARCH64_REG_X29 ||
         reg == AARCH64_REG_LR || reg == AARCH64_REG_X30 ||
@@ -260,6 +270,7 @@ static bool tryEmitMovLike(
     unsigned int dst_reg,
     const cs_arm64_op& src_op
 ) {
+    // 统一处理 mov/orr alias 等“搬运”语义指令。
     if (!is_arm64_gp_reg(dst_reg) || dst_reg == AARCH64_REG_WZR || dst_reg == AARCH64_REG_XZR) {
         return false;
     }
@@ -278,6 +289,7 @@ static bool tryEmitMovLike(
         return true;
     }
     if (src_op.type == AARCH64_OP_IMM) {
+        // 立即数路径：支持 LSL 移位并按目标寄存器宽度截断。
         uint64_t imm = static_cast<uint64_t>(src_op.imm);
         if (src_op.shift.type == AARCH64_SFT_LSL && src_op.shift.value != 0) {
             imm <<= src_op.shift.value;
@@ -321,6 +333,7 @@ static bool appendAssignRegOrZero(
 }
 
 static uint32_t getOrAddTypeTag(std::vector<uint32_t>& type_id_list, uint32_t type_tag) {
+    // 返回类型标签在 type_id_list 中的索引，不存在则追加。
     for (size_t k = 0; k < type_id_list.size(); k++) {
         if (type_id_list[k] == type_tag) return static_cast<uint32_t>(k);
     }
@@ -329,11 +342,13 @@ static uint32_t getOrAddTypeTag(std::vector<uint32_t>& type_id_list, uint32_t ty
 }
 
 static uint32_t getOrAddTypeTagForRegWidth(std::vector<uint32_t>& type_id_list, unsigned int reg) {
+    // 32 位寄存器映射到 int32 标签，其余走 int64 标签。
     const bool is_wide32 = is_arm64_w_reg(reg);
     return getOrAddTypeTag(type_id_list, is_wide32 ? TYPE_TAG_INT32_SIGNED_2 : TYPE_TAG_INT64_SIGNED);
 }
 
 static uint32_t getOrAddBranch(std::vector<uint64_t>& branch_id_list, uint64_t target_arm_addr) {
+    // 分支目标地址去重并返回索引，供 OP_BRANCH/OP_BRANCH_IF_CC 复用。
     for (size_t k = 0; k < branch_id_list.size(); k++) {
         if (branch_id_list[k] == target_arm_addr) return static_cast<uint32_t>(k);
     }
@@ -369,6 +384,8 @@ static bool buildEncodedDataFromUnencoded(const zUnencodedBytecode& unencoded, z
 }
 
 static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* code, size_t size, uint64_t base_addr) {
+    // Capstone 翻译主流程：
+    // ARM64 指令流 -> 未编码 VM opcode（按地址分组）。
     zUnencodedBytecode unencoded;
     unencoded.initValueCount = 0;
     unencoded.branchCount = 0;
@@ -418,6 +435,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
 
         switch (id) {
             case ARM64_INS_SUB: {
+                // SUB: dst = lhs - rhs/imm
                 if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));
@@ -432,6 +450,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_STR: {
+                // STR: 映射为 OP_SET_FIELD(base + offset <- value)。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
                     uint32_t value_reg_idx = (ops[0].reg == AARCH64_REG_WZR || ops[0].reg == AARCH64_REG_XZR)
@@ -464,6 +483,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_LDR: {
+                // LDR: 映射为 OP_GET_FIELD(dst <- *(base+offset))。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
                     opcode_list = {
@@ -490,6 +510,7 @@ static zUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint8_t* co
                 break;
             }
             case ARM64_INS_ADD: {
+                // ADD: dst = lhs + rhs/imm
                 if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[0].reg));
                     uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64_capstone_to_arch_index(ops[1].reg));

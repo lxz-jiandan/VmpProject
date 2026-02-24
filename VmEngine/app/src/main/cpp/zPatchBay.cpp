@@ -34,7 +34,7 @@ constexpr uint64_t kTakeoverSlotBitmapHi = (kTakeoverSlotTotal > 64U)
 // 2) 地址稳定，后处理工具可以按 section 定位并原位写入；
 // 3) 避免改动 text/data 主体布局。
 extern "C" __attribute__((used, section(".vmp_patchbay"), visibility("default")))
-zPatchBayImage g_patch_bay = {
+zPatchBayImage vm_patch_bay = {
         {
                 kPatchBayMagic,
                 kPatchBayVersion,
@@ -72,7 +72,7 @@ zPatchBayImage g_patch_bay = {
 };
 
 extern "C" __attribute__((visibility("default")))
-const zPatchBayHeader* zGetPatchBayHeader() {
+const zPatchBayHeader* vm_get_patch_bay_header() {
     // 只读访问入口：工具侧可通过 dlsym 调用并打印当前 patch bay 状态。
-    return &g_patch_bay.header;
+    return &vm_patch_bay.header;
 }
