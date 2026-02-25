@@ -36,24 +36,61 @@ else ()
     message(WARNING "Route4 takeover generator unavailable, using existing generated files.")
 endif ()
 
-# vmengine 为 JNI 入口动态库：
-# Java 层通过 System.loadLibrary("vmengine") 加载它，
-# vm_init 构造期会初始化 VM 执行链路。
-add_library(${CMAKE_PROJECT_NAME} SHARED
-        zNativeLib.cpp
+# L0 基础层：日志、资产读取、动态符号解析。
+set(VM_L0_FOUNDATION_SOURCES
+        zLog.cpp
+        zAssetManager.cpp
         zLinker.cpp
+        zFileBytes.cpp)
+
+# L1 格式与解析层：函数模型、bundle、ELF payload/patchbay 元信息。
+set(VM_L1_FORMAT_SOURCES
+        zFunction.cpp
+        zFunctionData.cpp
+        zSoBinBundle.cpp
         zEmbeddedPayload.cpp
-        zPatchBay.cpp
+        zElfTakeoverDynsym.cpp
+        zPatchBay.cpp)
+
+# L2 领域能力层：VM 执行、指令集、类型系统、导出接管。
+set(VM_L2_DOMAIN_SOURCES
         zTypeManager.cpp
         zVmEngine.cpp
         zVmOpcodes.cpp
-        zSymbolTakeover.cpp
-        ${TAKEOVER_STUB_ASM}
-        zFunctionData.cpp
-        zAssetManager.cpp
-        zFunction.cpp
-        zSoBinBundle.cpp
-        zLog.cpp)
+        zSymbolTakeover.cpp)
+
+# L3 流程编排层：route4 初始化与 JNI 入口。
+set(VM_L3_PIPELINE_SOURCES
+        zPipelineConfig.cpp
+        zVmInitCore.cpp
+        zVmInitLifecycle.cpp
+        ${TAKEOVER_STUB_ASM})
+
+add_library(vm_l0_foundation OBJECT ${VM_L0_FOUNDATION_SOURCES})
+add_library(vm_l1_format OBJECT ${VM_L1_FORMAT_SOURCES})
+add_library(vm_l2_domain OBJECT ${VM_L2_DOMAIN_SOURCES})
+add_library(vm_l3_pipeline OBJECT ${VM_L3_PIPELINE_SOURCES})
+
+foreach (layer_target
+        vm_l0_foundation
+        vm_l1_format
+        vm_l2_domain
+        vm_l3_pipeline)
+    target_include_directories(${layer_target} PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR})
+    target_compile_definitions(${layer_target} PRIVATE
+            $<$<BOOL:${VM_TRACE}>:VM_TRACE=1>
+            $<$<NOT:$<BOOL:${VM_TRACE}>>:VM_TRACE=0>
+            $<$<CONFIG:Release>:CURRENT_LOG_LEVEL=LOG_LEVEL_INFO>)
+    set_target_properties(${layer_target} PROPERTIES
+            POSITION_INDEPENDENT_CODE ON)
+endforeach ()
+
+add_library(${CMAKE_PROJECT_NAME} SHARED
+        $<TARGET_OBJECTS:vm_l0_foundation>
+        $<TARGET_OBJECTS:vm_l1_format>
+        $<TARGET_OBJECTS:vm_l2_domain>
+        $<TARGET_OBJECTS:vm_l3_pipeline>)
 
 # 对 vmengine 采用默认隐藏导出策略：
 # 1) 业务内部 C/C++ 符号默认不进动态导出表；
@@ -67,10 +104,6 @@ target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
         "-Wl,--exclude-libs,ALL"
         "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/vmengine.exports.map")
 
-# 当前目录头文件作为私有 include，供本模块内部源码互相引用。
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR})
-
 # Android NDK 依赖：
 # - android: AAssetManager 等 NDK Android API
 # - dl: dlopen/dlsym（zLinker 兜底符号解析）
@@ -79,16 +112,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         android
         dl
         log)
-
-if (VM_TRACE)
-    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE VM_TRACE=1)
-else ()
-    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE VM_TRACE=0)
-endif ()
-
-# Release 版本强制降级日志级别，避免 DEBUG 日志触发格式化和分配开销。
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-        $<$<CONFIG:Release>:CURRENT_LOG_LEVEL=LOG_LEVEL_INFO>)
 
 if (VMENGINE_ROUTE4_EMBED_PAYLOAD)
     set(EMBED_SCRIPT "${VMPROJECT_ROOT}/tools/embed_expand_into_vmengine.py")

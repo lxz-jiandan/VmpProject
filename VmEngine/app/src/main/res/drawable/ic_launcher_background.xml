@@ -4,164 +4,200 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- 底色块。 -->
     <path
         android:fillColor="#3DDC84"
         android:pathData="M0,0h108v108h-108z" />
+    <!-- 纵向网格线。 -->
+    <!-- x=9 垂直线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M9,0L9,108"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- x=19 垂直线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M19,0L19,108"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- x=29 垂直线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M29,0L29,108"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- x=39 垂直线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M39,0L39,108"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- x=49 垂直线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M49,0L49,108"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- x=59 垂直线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M59,0L59,108"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- x=69 垂直线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M69,0L69,108"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- x=79 垂直线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M79,0L79,108"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- x=89 垂直线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M89,0L89,108"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- x=99 垂直线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M99,0L99,108"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 横向网格线。 -->
+    <!-- y=9 水平线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M0,9L108,9"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- y=19 水平线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M0,19L108,19"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- y=29 水平线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M0,29L108,29"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- y=39 水平线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M0,39L108,39"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- y=49 水平线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M0,49L108,49"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- y=59 水平线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M0,59L108,59"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- y=69 水平线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M0,69L108,69"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- y=79 水平线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M0,79L108,79"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- y=89 水平线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M0,89L108,89"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- y=99 水平线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M0,99L108,99"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央强化网格（提升图标层次感）。 -->
+    <!-- 中央区 y=29 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M19,29L89,29"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 y=39 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M19,39L89,39"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 y=49 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M19,49L89,49"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 y=59 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M19,59L89,59"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 y=69 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M19,69L89,69"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 y=79 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M19,79L89,79"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 x=29 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M29,19L29,89"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 x=39 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M39,19L39,89"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 x=49 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M49,19L49,89"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 x=59 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M59,19L59,89"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 x=69 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M69,19L69,89"
         android:strokeWidth="0.8"
         android:strokeColor="#33FFFFFF" />
+    <!-- 中央区 x=79 强化线。 -->
     <path
         android:fillColor="#00000000"
         android:pathData="M79,19L79,89"

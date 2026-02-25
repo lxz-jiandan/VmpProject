@@ -1,16 +1,16 @@
 /*
  * [VMP_FLOW_NOTE] 文件级流程注释
  * - 运行时 expand so 尾部 bundle 读取器。
- * - 加固链路位置：route3/route4 payload 加载。
+ * - 加固链路位置：route4 payload 加载。
  * - 输入：expand so 路径。
  * - 输出：函数 payload 列表与共享 branch 地址。
  */
 #include "zSoBinBundle.h"
 
+#include "zFileBytes.h"
 #include "zLog.h"
 
 #include <cstring>
-#include <fstream>
 #include <unordered_set>
 
 namespace {
@@ -52,51 +52,6 @@ constexpr uint32_t kSoBinBundleFooterMagic = 0x46424D56; // 'VMBF'
 // 当前支持的 bundle 版本。
 constexpr uint32_t kSoBinBundleVersion = 1;
 
-bool readFileBytes(const std::string& path, std::vector<uint8_t>& out) {
-    // 每次读取前清空输出。
-    out.clear();
-    // 路径为空直接失败。
-    if (path.empty()) {
-        return false;
-    }
-
-    // 二进制方式打开文件。
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
-        return false;
-    }
-
-    // 先定位到末尾获取总长度。
-    in.seekg(0, std::ios::end);
-    const std::streamoff size = in.tellg();
-    // 获取长度失败直接返回。
-    if (size < 0) {
-        return false;
-    }
-    // 回到文件起点准备读取。
-    in.seekg(0, std::ios::beg);
-
-    // 按文件长度分配缓冲。
-    out.resize(static_cast<size_t>(size));
-    // 非空文件时执行读取。
-    if (!out.empty()) {
-        in.read(reinterpret_cast<char*>(out.data()), static_cast<std::streamsize>(out.size()));
-    }
-    // 返回读取状态。
-    return static_cast<bool>(in);
-}
-
-template <typename T>
-bool readPodAt(const std::vector<uint8_t>& bytes, size_t offset, T& out) {
-    // 校验 offset 与读取长度都在范围内。
-    if (offset > bytes.size() || bytes.size() - offset < sizeof(T)) {
-        return false;
-    }
-    // 直接按 POD 字节复制。
-    std::memcpy(&out, bytes.data() + offset, sizeof(T));
-    return true;
-}
-
 } // namespace
 
 bool zSoBinBundleReader::readFromExpandedSo(
@@ -110,7 +65,7 @@ bool zSoBinBundleReader::readFromExpandedSo(
 
     // 读取整个 so 文件到内存。
     std::vector<uint8_t> file_bytes;
-    if (!readFileBytes(so_path, file_bytes)) {
+    if (!zFileBytes::readFileBytes(so_path, file_bytes)) {
         LOGE("readFromExpandedSo failed to read file: %s", so_path.c_str());
         return false;
     }
@@ -123,7 +78,7 @@ bool zSoBinBundleReader::readFromExpandedSo(
     // 从文件尾部解析 footer。
     SoBinBundleFooter footer{};
     const size_t footer_offset = file_bytes.size() - sizeof(SoBinBundleFooter);
-    if (!readPodAt(file_bytes, footer_offset, footer)) {
+    if (!zFileBytes::readPodAt(file_bytes, footer_offset, footer)) {
         LOGE("readFromExpandedSo failed to read footer");
         return false;
     }
@@ -147,7 +102,7 @@ bool zSoBinBundleReader::readFromExpandedSo(
     const size_t bundle_start = file_bytes.size() - static_cast<size_t>(footer.bundle_size);
     SoBinBundleHeader header{};
     // 读取头部。
-    if (!readPodAt(file_bytes, bundle_start, header)) {
+    if (!zFileBytes::readPodAt(file_bytes, bundle_start, header)) {
         LOGE("readFromExpandedSo failed to read header");
         return false;
     }
@@ -192,7 +147,7 @@ bool zSoBinBundleReader::readFromExpandedSo(
     for (uint32_t i = 0; i < header.branch_addr_count; ++i) {
         uint64_t branch_addr = 0;
         const size_t branch_addr_offset = branch_addr_table_offset + static_cast<size_t>(i) * sizeof(uint64_t);
-        if (!readPodAt(file_bytes, branch_addr_offset, branch_addr)) {
+        if (!zFileBytes::readPodAt(file_bytes, branch_addr_offset, branch_addr)) {
             LOGE("readFromExpandedSo failed to read branch_addr index=%u", i);
             return false;
         }
@@ -203,7 +158,7 @@ bool zSoBinBundleReader::readFromExpandedSo(
     for (uint32_t i = 0; i < header.payload_count; ++i) {
         SoBinBundleEntry raw_entry{};
         const size_t entry_offset = entry_table_offset + static_cast<size_t>(i) * sizeof(SoBinBundleEntry);
-        if (!readPodAt(file_bytes, entry_offset, raw_entry)) {
+        if (!zFileBytes::readPodAt(file_bytes, entry_offset, raw_entry)) {
             LOGE("readFromExpandedSo failed to read entry index=%u", i);
             return false;
         }

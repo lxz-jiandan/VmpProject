@@ -11,7 +11,17 @@
   </component>
   <component name="CMakeRunConfigurationManager">
     <generated>
+      <config projectName="VmProtect" targetName="patchbay_app_obj" />
+      <config projectName="VmProtect" targetName="vmprotect_elfkit" />
+      <config projectName="VmProtect" targetName="vmprotect_pipeline" />
+      <config projectName="VmProtect" targetName="patchbay_domain_obj" />
+      <config projectName="VmProtect" targetName="vmprotect_base" />
       <config projectName="VmProtect" targetName="VmProtect" />
+      <config projectName="VmProtect" targetName="vmprotect_foundation" />
+      <config projectName="VmProtect" targetName="patchbay_foundation_obj" />
+      <config projectName="VmProtect" targetName="patchbay_format_obj" />
+      <config projectName="VmProtect" targetName="vmp_patchbay" />
+      <config projectName="VmProtect" targetName="vmprotect_format" />
     </generated>
   </component>
   <component name="CMakeSettings">
@@ -47,24 +57,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "cf.advertisement.text.has.clang-format": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "last_opened_file_path": "D:/work/2026/0217_vmp_project/VmpProject/zElfEditor",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.editor"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;cf.advertisement.text.has.clang-format&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/work/2026/0217_vmp_project/VmpProject/zElfEditor&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.editor&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\work\2026\0202_my_vmp\VmProtect" />
@@ -74,17 +84,80 @@
       <recent name="D:\work\2026\0202_my_vmp\VmProtect\VmProtect - 副本" />
     </key>
   </component>
-  <component name="RunManager">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="VmProtect" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="export_alias_from_patchbay Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\cxx\Debug\2z4j1d3z\obj\arm64-v8a\libvmengine.so Z:\2026\0217_vmp_project\VmpProject\VmProtect\libdemo.so Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\cxx\Debug\2z4j1d3z\obj\arm64-v8a\libvmengine.patched.so vm_takeover_slot_0000 --allow-validate-fail --only-fun-java" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="VmProtect" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="VmProtect" RUN_TARGET_NAME="VmProtect">
+  <component name="RunManager" selected="CMake Application.VmProtect">
+    <configuration name="VmProtect" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="--input-so ..\libdemo.so --function fun_add --function fun_for" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="VmProtect" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="VmProtect" RUN_TARGET_NAME="VmProtect">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="patchbay_app_obj" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="patchbay_app_obj" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="patchbay_domain_obj" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="patchbay_domain_obj" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="patchbay_format_obj" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="patchbay_format_obj" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="patchbay_foundation_obj" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="patchbay_foundation_obj" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="vmp_patchbay" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="vmp_patchbay" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="vmprotect_base" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="vmprotect_base" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="vmprotect_elfkit" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="vmprotect_elfkit" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="vmprotect_format" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="vmprotect_format" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="vmprotect_foundation" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="vmprotect_foundation" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="vmprotect_pipeline" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="vmprotect_pipeline" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="CMake Application.patchbay_app_obj" />
+      <item itemvalue="CMake Application.patchbay_domain_obj" />
+      <item itemvalue="CMake Application.patchbay_format_obj" />
+      <item itemvalue="CMake Application.patchbay_foundation_obj" />
+      <item itemvalue="CMake Application.vmp_patchbay" />
+      <item itemvalue="CMake Application.VmProtect" />
+      <item itemvalue="CMake Application.vmprotect_base" />
+      <item itemvalue="CMake Application.vmprotect_elfkit" />
+      <item itemvalue="CMake Application.vmprotect_format" />
+      <item itemvalue="CMake Application.vmprotect_foundation" />
+      <item itemvalue="CMake Application.vmprotect_pipeline" />
+    </list>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -118,7 +191,8 @@
       <workItem from="1771690913027" duration="3053000" />
       <workItem from="1771719182997" duration="469000" />
       <workItem from="1771784668522" duration="127000" />
-      <workItem from="1771784811100" duration="19015000" />
+      <workItem from="1771784811100" duration="23688000" />
+      <workItem from="1771970634366" duration="7295000" />
     </task>
     <servers />
   </component>
@@ -144,31 +218,5 @@
       <path value="$PROJECT_DIR$/ELFIO" />
       <path value="$PROJECT_DIR$/cmake-build-debug/_deps/capstone-src" />
     </ignored-roots>
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/main.cpp</url>
-          <line>554</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/main.cpp</url>
-          <line>1061</line>
-          <option name="timeStamp" value="7" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/patchbay_tool/main.cpp</url>
-          <line>1595</line>
-          <option name="timeStamp" value="18" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/patchbay_tool/main.cpp</url>
-          <line>1609</line>
-          <option name="timeStamp" value="20" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>

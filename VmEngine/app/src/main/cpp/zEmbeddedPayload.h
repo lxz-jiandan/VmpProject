@@ -33,9 +33,9 @@ public:
     // - true: 读取流程执行成功（包含 kNotFound）；
     // - false: 文件读取失败或 footer/校验非法。
     static bool readEmbeddedPayloadFromHostSo(
-        const std::string& host_so_path,
-        std::vector<uint8_t>& out_payload,
-        zEmbeddedPayloadReadStatus* out_status
+        const std::string& hostSoPath,
+        std::vector<uint8_t>& outPayload,
+        zEmbeddedPayloadReadStatus* outStatus
     );
 
     // 对外暴露 CRC32，便于脚本/工具与运行时统一校验逻辑。
@@ -43,4 +43,3 @@ public:
 };
 
 #endif // Z_EMBEDDED_PAYLOAD_H
-

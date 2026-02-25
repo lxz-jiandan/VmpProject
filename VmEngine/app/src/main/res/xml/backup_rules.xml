@@ -1,13 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older that API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  自动备份规则：
+  - 该文件仅在较新 Android 版本中生效；
+  - 当前保持“示例占位”状态，未启用具体 include/exclude。
 -->
 <full-backup-content>
     <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+      如需开启共享偏好备份，可按需放开以下示例：
+      <include domain="sharedpref" path="."/>
+      <exclude domain="sharedpref" path="device.xml"/>
+    -->
 </full-backup-content>

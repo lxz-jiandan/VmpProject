@@ -41,174 +41,681 @@ include CMakeFiles/rules.ninja
 
 cmake_ninja_workdir = Z$:/2026/0217_vmp_project/VmpProject/VmProtect/cmake-build-debug/
 # =============================================================================
+# Object build statements for STATIC_LIBRARY target vmprotect_base
+
+
+#############################################
+# Order-only phony target for vmprotect_base
+
+build cmake_object_order_depends_target_vmprotect_base: phony || CMakeFiles/vmprotect_base.dir
+
+build CMakeFiles/vmprotect_base.dir/modules/base/core/zIo.cpp.obj: CXX_COMPILER__vmprotect_base_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core/zIo.cpp || cmake_object_order_depends_target_vmprotect_base
+  DEP_FILE = CMakeFiles\vmprotect_base.dir\modules\base\core\zIo.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core
+  OBJECT_DIR = CMakeFiles\vmprotect_base.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_base.dir\modules\base\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_base.dir\vmprotect_base.pdb
+  TARGET_PDB = libvmprotect_base.pdb
+
+build CMakeFiles/vmprotect_base.dir/modules/base/core/zChecksum.cpp.obj: CXX_COMPILER__vmprotect_base_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core/zChecksum.cpp || cmake_object_order_depends_target_vmprotect_base
+  DEP_FILE = CMakeFiles\vmprotect_base.dir\modules\base\core\zChecksum.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core
+  OBJECT_DIR = CMakeFiles\vmprotect_base.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_base.dir\modules\base\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_base.dir\vmprotect_base.pdb
+  TARGET_PDB = libvmprotect_base.pdb
+
+build CMakeFiles/vmprotect_base.dir/modules/base/core/zCodec.cpp.obj: CXX_COMPILER__vmprotect_base_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core/zCodec.cpp || cmake_object_order_depends_target_vmprotect_base
+  DEP_FILE = CMakeFiles\vmprotect_base.dir\modules\base\core\zCodec.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core
+  OBJECT_DIR = CMakeFiles\vmprotect_base.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_base.dir\modules\base\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_base.dir\vmprotect_base.pdb
+  TARGET_PDB = libvmprotect_base.pdb
+
+build CMakeFiles/vmprotect_base.dir/modules/base/core/zBitCodec.cpp.obj: CXX_COMPILER__vmprotect_base_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core/zBitCodec.cpp || cmake_object_order_depends_target_vmprotect_base
+  DEP_FILE = CMakeFiles\vmprotect_base.dir\modules\base\core\zBitCodec.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core
+  OBJECT_DIR = CMakeFiles\vmprotect_base.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_base.dir\modules\base\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_base.dir\vmprotect_base.pdb
+  TARGET_PDB = libvmprotect_base.pdb
+
+build CMakeFiles/vmprotect_base.dir/modules/base/core/zBytes.cpp.obj: CXX_COMPILER__vmprotect_base_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core/zBytes.cpp || cmake_object_order_depends_target_vmprotect_base
+  DEP_FILE = CMakeFiles\vmprotect_base.dir\modules\base\core\zBytes.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core
+  OBJECT_DIR = CMakeFiles\vmprotect_base.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_base.dir\modules\base\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_base.dir\vmprotect_base.pdb
+  TARGET_PDB = libvmprotect_base.pdb
+
+build CMakeFiles/vmprotect_base.dir/modules/base/core/zHash.cpp.obj: CXX_COMPILER__vmprotect_base_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core/zHash.cpp || cmake_object_order_depends_target_vmprotect_base
+  DEP_FILE = CMakeFiles\vmprotect_base.dir\modules\base\core\zHash.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core
+  OBJECT_DIR = CMakeFiles\vmprotect_base.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_base.dir\modules\base\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_base.dir\vmprotect_base.pdb
+  TARGET_PDB = libvmprotect_base.pdb
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target vmprotect_base
+
+
+#############################################
+# Link the static library libvmprotect_base.a
+
+build libvmprotect_base.a: CXX_STATIC_LIBRARY_LINKER__vmprotect_base_Debug CMakeFiles/vmprotect_base.dir/modules/base/core/zIo.cpp.obj CMakeFiles/vmprotect_base.dir/modules/base/core/zChecksum.cpp.obj CMakeFiles/vmprotect_base.dir/modules/base/core/zCodec.cpp.obj CMakeFiles/vmprotect_base.dir/modules/base/core/zBitCodec.cpp.obj CMakeFiles/vmprotect_base.dir/modules/base/core/zBytes.cpp.obj CMakeFiles/vmprotect_base.dir/modules/base/core/zHash.cpp.obj
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = CMakeFiles\vmprotect_base.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_base.dir\vmprotect_base.pdb
+  TARGET_FILE = libvmprotect_base.a
+  TARGET_PDB = libvmprotect_base.pdb
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target vmprotect_foundation
+
+
+#############################################
+# Order-only phony target for vmprotect_foundation
+
+build cmake_object_order_depends_target_vmprotect_foundation: phony || cmake_object_order_depends_target_vmprotect_base
+
+build CMakeFiles/vmprotect_foundation.dir/modules/foundation/core/zLog.cpp.obj: CXX_COMPILER__vmprotect_foundation_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core/zLog.cpp || cmake_object_order_depends_target_vmprotect_foundation
+  DEP_FILE = CMakeFiles\vmprotect_foundation.dir\modules\foundation\core\zLog.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core
+  OBJECT_DIR = CMakeFiles\vmprotect_foundation.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_foundation.dir\modules\foundation\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_foundation.dir\vmprotect_foundation.pdb
+  TARGET_PDB = libvmprotect_foundation.pdb
+
+build CMakeFiles/vmprotect_foundation.dir/modules/foundation/core/zIoUtils.cpp.obj: CXX_COMPILER__vmprotect_foundation_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core/zIoUtils.cpp || cmake_object_order_depends_target_vmprotect_foundation
+  DEP_FILE = CMakeFiles\vmprotect_foundation.dir\modules\foundation\core\zIoUtils.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core
+  OBJECT_DIR = CMakeFiles\vmprotect_foundation.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_foundation.dir\modules\foundation\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_foundation.dir\vmprotect_foundation.pdb
+  TARGET_PDB = libvmprotect_foundation.pdb
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target vmprotect_foundation
+
+
+#############################################
+# Link the static library libvmprotect_foundation.a
+
+build libvmprotect_foundation.a: CXX_STATIC_LIBRARY_LINKER__vmprotect_foundation_Debug CMakeFiles/vmprotect_foundation.dir/modules/foundation/core/zLog.cpp.obj CMakeFiles/vmprotect_foundation.dir/modules/foundation/core/zIoUtils.cpp.obj || libvmprotect_base.a
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = CMakeFiles\vmprotect_foundation.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_foundation.dir\vmprotect_foundation.pdb
+  TARGET_FILE = libvmprotect_foundation.a
+  TARGET_PDB = libvmprotect_foundation.pdb
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target vmprotect_format
+
+
+#############################################
+# Order-only phony target for vmprotect_format
+
+build cmake_object_order_depends_target_vmprotect_format: phony || cmake_object_order_depends_target_vmprotect_base cmake_object_order_depends_target_vmprotect_foundation
+
+build CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zElf.cpp.obj: CXX_COMPILER__vmprotect_format_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core/zElf.cpp || cmake_object_order_depends_target_vmprotect_format
+  DEP_FILE = CMakeFiles\vmprotect_format.dir\modules\elfkit\core\zElf.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_format.dir\modules\elfkit\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_PDB = libvmprotect_format.pdb
+
+build CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zElfLayout.cpp.obj: CXX_COMPILER__vmprotect_format_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core/zElfLayout.cpp || cmake_object_order_depends_target_vmprotect_format
+  DEP_FILE = CMakeFiles\vmprotect_format.dir\modules\elfkit\core\zElfLayout.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_format.dir\modules\elfkit\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_PDB = libvmprotect_format.pdb
+
+build CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zElfSymbols.cpp.obj: CXX_COMPILER__vmprotect_format_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core/zElfSymbols.cpp || cmake_object_order_depends_target_vmprotect_format
+  DEP_FILE = CMakeFiles\vmprotect_format.dir\modules\elfkit\core\zElfSymbols.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_format.dir\modules\elfkit\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_PDB = libvmprotect_format.pdb
+
+build CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zInst.cpp.obj: CXX_COMPILER__vmprotect_format_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core/zInst.cpp || cmake_object_order_depends_target_vmprotect_format
+  DEP_FILE = CMakeFiles\vmprotect_format.dir\modules\elfkit\core\zInst.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_format.dir\modules\elfkit\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_PDB = libvmprotect_format.pdb
+
+build CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zSoBinBundle.cpp.obj: CXX_COMPILER__vmprotect_format_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core/zSoBinBundle.cpp || cmake_object_order_depends_target_vmprotect_format
+  DEP_FILE = CMakeFiles\vmprotect_format.dir\modules\elfkit\core\zSoBinBundle.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_format.dir\modules\elfkit\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_PDB = libvmprotect_format.pdb
+
+build CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zFunctionData.cpp.obj: CXX_COMPILER__vmprotect_format_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core/zFunctionData.cpp || cmake_object_order_depends_target_vmprotect_format
+  DEP_FILE = CMakeFiles\vmprotect_format.dir\modules\elfkit\core\zFunctionData.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_format.dir\modules\elfkit\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_PDB = libvmprotect_format.pdb
+
+build CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zFunction.cpp.obj: CXX_COMPILER__vmprotect_format_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core/zFunction.cpp || cmake_object_order_depends_target_vmprotect_format
+  DEP_FILE = CMakeFiles\vmprotect_format.dir\modules\elfkit\core\zFunction.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_format.dir\modules\elfkit\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_PDB = libvmprotect_format.pdb
+
+build CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zFunctionAsm.cpp.obj: CXX_COMPILER__vmprotect_format_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core/zFunctionAsm.cpp || cmake_object_order_depends_target_vmprotect_format
+  DEP_FILE = CMakeFiles\vmprotect_format.dir\modules\elfkit\core\zFunctionAsm.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_format.dir\modules\elfkit\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_PDB = libvmprotect_format.pdb
+
+build CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zFunctionDump.cpp.obj: CXX_COMPILER__vmprotect_format_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core/zFunctionDump.cpp || cmake_object_order_depends_target_vmprotect_format
+  DEP_FILE = CMakeFiles\vmprotect_format.dir\modules\elfkit\core\zFunctionDump.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_format.dir\modules\elfkit\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_PDB = libvmprotect_format.pdb
+
+build CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zFunctionFacade.cpp.obj: CXX_COMPILER__vmprotect_format_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core/zFunctionFacade.cpp || cmake_object_order_depends_target_vmprotect_format
+  DEP_FILE = CMakeFiles\vmprotect_format.dir\modules\elfkit\core\zFunctionFacade.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_format.dir\modules\elfkit\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_PDB = libvmprotect_format.pdb
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target vmprotect_format
+
+
+#############################################
+# Link the static library libvmprotect_format.a
+
+build libvmprotect_format.a: CXX_STATIC_LIBRARY_LINKER__vmprotect_format_Debug CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zElf.cpp.obj CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zElfLayout.cpp.obj CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zElfSymbols.cpp.obj CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zInst.cpp.obj CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zSoBinBundle.cpp.obj CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zFunctionData.cpp.obj CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zFunction.cpp.obj CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zFunctionAsm.cpp.obj CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zFunctionDump.cpp.obj CMakeFiles/vmprotect_format.dir/modules/elfkit/core/zFunctionFacade.cpp.obj || libvmprotect_base.a libvmprotect_foundation.a
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = CMakeFiles\vmprotect_format.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_format.dir\vmprotect_format.pdb
+  TARGET_FILE = libvmprotect_format.a
+  TARGET_PDB = libvmprotect_format.pdb
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target vmprotect_elfkit
+
+
+#############################################
+# Order-only phony target for vmprotect_elfkit
+
+build cmake_object_order_depends_target_vmprotect_elfkit: phony || cmake_object_order_depends_target_vmprotect_base cmake_object_order_depends_target_vmprotect_format cmake_object_order_depends_target_vmprotect_foundation
+
+build CMakeFiles/vmprotect_elfkit.dir/modules/elfkit/api/zElfKit.cpp.obj: CXX_COMPILER__vmprotect_elfkit_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api/zElfKit.cpp || cmake_object_order_depends_target_vmprotect_elfkit
+  DEP_FILE = CMakeFiles\vmprotect_elfkit.dir\modules\elfkit\api\zElfKit.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_elfkit.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_elfkit.dir\modules\elfkit\api
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_elfkit.dir\vmprotect_elfkit.pdb
+  TARGET_PDB = libvmprotect_elfkit.pdb
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target vmprotect_elfkit
+
+
+#############################################
+# Link the static library libvmprotect_elfkit.a
+
+build libvmprotect_elfkit.a: CXX_STATIC_LIBRARY_LINKER__vmprotect_elfkit_Debug CMakeFiles/vmprotect_elfkit.dir/modules/elfkit/api/zElfKit.cpp.obj || libvmprotect_base.a libvmprotect_format.a libvmprotect_foundation.a
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = CMakeFiles\vmprotect_elfkit.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_elfkit.dir\vmprotect_elfkit.pdb
+  TARGET_FILE = libvmprotect_elfkit.a
+  TARGET_PDB = libvmprotect_elfkit.pdb
+
+# =============================================================================
+# Object build statements for OBJECT_LIBRARY target patchbay_foundation_obj
+
+
+#############################################
+# Order-only phony target for patchbay_foundation_obj
+
+build cmake_object_order_depends_target_patchbay_foundation_obj: phony || CMakeFiles/patchbay_foundation_obj.dir
+
+build CMakeFiles/patchbay_foundation_obj.dir/modules/patchbay/foundation/zPatchbayIo.cpp.obj: CXX_COMPILER__patchbay_foundation_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation/zPatchbayIo.cpp || cmake_object_order_depends_target_patchbay_foundation_obj
+  DEP_FILE = CMakeFiles\patchbay_foundation_obj.dir\modules\patchbay\foundation\zPatchbayIo.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_foundation_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_foundation_obj.dir\modules\patchbay\foundation
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_foundation_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_foundation_obj.dir/modules/patchbay/foundation/zPatchbayCrc.cpp.obj: CXX_COMPILER__patchbay_foundation_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation/zPatchbayCrc.cpp || cmake_object_order_depends_target_patchbay_foundation_obj
+  DEP_FILE = CMakeFiles\patchbay_foundation_obj.dir\modules\patchbay\foundation\zPatchbayCrc.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_foundation_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_foundation_obj.dir\modules\patchbay\foundation
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_foundation_obj.dir\
+  TARGET_PDB = ""
+
+
+
+#############################################
+# Object library patchbay_foundation_obj
+
+build patchbay_foundation_obj: phony CMakeFiles/patchbay_foundation_obj.dir/modules/patchbay/foundation/zPatchbayIo.cpp.obj CMakeFiles/patchbay_foundation_obj.dir/modules/patchbay/foundation/zPatchbayCrc.cpp.obj
+
+# =============================================================================
+# Object build statements for OBJECT_LIBRARY target patchbay_format_obj
+
+
+#############################################
+# Order-only phony target for patchbay_format_obj
+
+build cmake_object_order_depends_target_patchbay_format_obj: phony || CMakeFiles/patchbay_format_obj.dir
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElf.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElf.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElf.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfLayout.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElfLayout.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElfLayout.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfModel.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElfModel.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElfModel.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfHeader.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElfHeader.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElfHeader.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zProgramEntry.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zProgramEntry.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zProgramEntry.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zProgramTable.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zProgramTable.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zProgramTable.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zSectionEntry.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zSectionEntry.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zSectionEntry.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zSectionTable.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zSectionTable.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zSectionTable.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfUtils.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElfUtils.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElfUtils.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidator.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElfValidator.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElfValidator.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorBase.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElfValidatorBase.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElfValidatorBase.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorSegment.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElfValidatorSegment.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElfValidatorSegment.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorSymbol.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElfValidatorSymbol.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElfValidatorSymbol.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorDynamic.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElfValidatorDynamic.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElfValidatorDynamic.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfLoader.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel/zPatchElfLoader.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel\zPatchElfLoader.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\elfkit\patchbayModel
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/patchbay/format/zPatchbayHash.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format/zPatchbayHash.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\patchbay\format\zPatchbayHash.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\patchbay\format
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_format_obj.dir/modules/patchbay/format/zPatchbayLayout.cpp.obj: CXX_COMPILER__patchbay_format_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format/zPatchbayLayout.cpp || cmake_object_order_depends_target_patchbay_format_obj
+  DEP_FILE = CMakeFiles\patchbay_format_obj.dir\modules\patchbay\format\zPatchbayLayout.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_format_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_format_obj.dir\modules\patchbay\format
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_format_obj.dir\
+  TARGET_PDB = ""
+
+
+
+#############################################
+# Object library patchbay_format_obj
+
+build patchbay_format_obj: phony CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElf.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfLayout.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfModel.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfHeader.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zProgramEntry.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zProgramTable.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zSectionEntry.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zSectionTable.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfUtils.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidator.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorBase.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorSegment.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorSymbol.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorDynamic.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfLoader.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/patchbay/format/zPatchbayHash.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/patchbay/format/zPatchbayLayout.cpp.obj
+
+# =============================================================================
+# Object build statements for OBJECT_LIBRARY target patchbay_domain_obj
+
+
+#############################################
+# Order-only phony target for patchbay_domain_obj
+
+build cmake_object_order_depends_target_patchbay_domain_obj: phony || CMakeFiles/patchbay_domain_obj.dir
+
+build CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayAliasTables.cpp.obj: CXX_COMPILER__patchbay_domain_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain/zPatchbayAliasTables.cpp || cmake_object_order_depends_target_patchbay_domain_obj
+  DEP_FILE = CMakeFiles\patchbay_domain_obj.dir\modules\patchbay\domain\zPatchbayAliasTables.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_domain_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_domain_obj.dir\modules\patchbay\domain
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_domain_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_domain_obj.dir/modules/elfkit/api/zPatchbayApi.cpp.obj: CXX_COMPILER__patchbay_domain_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api/zPatchbayApi.cpp || cmake_object_order_depends_target_patchbay_domain_obj
+  DEP_FILE = CMakeFiles\patchbay_domain_obj.dir\modules\elfkit\api\zPatchbayApi.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_domain_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_domain_obj.dir\modules\elfkit\api
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_domain_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayRules.cpp.obj: CXX_COMPILER__patchbay_domain_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain/zPatchbayRules.cpp || cmake_object_order_depends_target_patchbay_domain_obj
+  DEP_FILE = CMakeFiles\patchbay_domain_obj.dir\modules\patchbay\domain\zPatchbayRules.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_domain_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_domain_obj.dir\modules\patchbay\domain
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_domain_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayPatchApply.cpp.obj: CXX_COMPILER__patchbay_domain_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain/zPatchbayPatchApply.cpp || cmake_object_order_depends_target_patchbay_domain_obj
+  DEP_FILE = CMakeFiles\patchbay_domain_obj.dir\modules\patchbay\domain\zPatchbayPatchApply.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_domain_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_domain_obj.dir\modules\patchbay\domain
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_domain_obj.dir\
+  TARGET_PDB = ""
+
+build CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayExport.cpp.obj: CXX_COMPILER__patchbay_domain_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain/zPatchbayExport.cpp || cmake_object_order_depends_target_patchbay_domain_obj
+  DEP_FILE = CMakeFiles\patchbay_domain_obj.dir\modules\patchbay\domain\zPatchbayExport.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_domain_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_domain_obj.dir\modules\patchbay\domain
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_domain_obj.dir\
+  TARGET_PDB = ""
+
+
+
+#############################################
+# Object library patchbay_domain_obj
+
+build patchbay_domain_obj: phony CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayAliasTables.cpp.obj CMakeFiles/patchbay_domain_obj.dir/modules/elfkit/api/zPatchbayApi.cpp.obj CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayRules.cpp.obj CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayPatchApply.cpp.obj CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayExport.cpp.obj
+
+# =============================================================================
+# Object build statements for OBJECT_LIBRARY target patchbay_app_obj
+
+
+#############################################
+# Order-only phony target for patchbay_app_obj
+
+build cmake_object_order_depends_target_patchbay_app_obj: phony || CMakeFiles/patchbay_app_obj.dir
+
+build CMakeFiles/patchbay_app_obj.dir/modules/patchbay/app/zMain.cpp.obj: CXX_COMPILER__patchbay_app_obj_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app/zMain.cpp || cmake_object_order_depends_target_patchbay_app_obj
+  DEP_FILE = CMakeFiles\patchbay_app_obj.dir\modules\patchbay\app\zMain.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation
+  OBJECT_DIR = CMakeFiles\patchbay_app_obj.dir
+  OBJECT_FILE_DIR = CMakeFiles\patchbay_app_obj.dir\modules\patchbay\app
+  TARGET_COMPILE_PDB = CMakeFiles\patchbay_app_obj.dir\
+  TARGET_PDB = ""
+
+
+
+#############################################
+# Object library patchbay_app_obj
+
+build patchbay_app_obj: phony CMakeFiles/patchbay_app_obj.dir/modules/patchbay/app/zMain.cpp.obj
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target vmp_patchbay
+
+
+#############################################
+# Order-only phony target for vmp_patchbay
+
+build cmake_object_order_depends_target_vmp_patchbay: phony || cmake_object_order_depends_target_patchbay_app_obj cmake_object_order_depends_target_patchbay_domain_obj cmake_object_order_depends_target_patchbay_format_obj cmake_object_order_depends_target_patchbay_foundation_obj cmake_object_order_depends_target_vmprotect_base cmake_object_order_depends_target_vmprotect_foundation
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target vmp_patchbay
+
+
+#############################################
+# Link the static library libvmp_patchbay.a
+
+build libvmp_patchbay.a: CXX_STATIC_LIBRARY_LINKER__vmp_patchbay_Debug CMakeFiles/patchbay_foundation_obj.dir/modules/patchbay/foundation/zPatchbayIo.cpp.obj CMakeFiles/patchbay_foundation_obj.dir/modules/patchbay/foundation/zPatchbayCrc.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElf.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfLayout.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfModel.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfHeader.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zProgramEntry.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zProgramTable.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zSectionEntry.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zSectionTable.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfUtils.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidator.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorBase.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorSegment.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorSymbol.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfValidatorDynamic.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/elfkit/patchbayModel/zPatchElfLoader.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/patchbay/format/zPatchbayHash.cpp.obj CMakeFiles/patchbay_format_obj.dir/modules/patchbay/format/zPatchbayLayout.cpp.obj CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayAliasTables.cpp.obj CMakeFiles/patchbay_domain_obj.dir/modules/elfkit/api/zPatchbayApi.cpp.obj CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayRules.cpp.obj CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayPatchApply.cpp.obj CMakeFiles/patchbay_domain_obj.dir/modules/patchbay/domain/zPatchbayExport.cpp.obj CMakeFiles/patchbay_app_obj.dir/modules/patchbay/app/zMain.cpp.obj || libvmprotect_base.a libvmprotect_foundation.a patchbay_app_obj patchbay_domain_obj patchbay_format_obj patchbay_foundation_obj
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = CMakeFiles\vmp_patchbay.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = CMakeFiles\vmp_patchbay.dir\vmp_patchbay.pdb
+  TARGET_FILE = libvmp_patchbay.a
+  TARGET_PDB = libvmp_patchbay.pdb
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target vmprotect_pipeline
+
+
+#############################################
+# Order-only phony target for vmprotect_pipeline
+
+build cmake_object_order_depends_target_vmprotect_pipeline: phony || cmake_object_order_depends_target_vmp_patchbay cmake_object_order_depends_target_vmprotect_base cmake_object_order_depends_target_vmprotect_elfkit cmake_object_order_depends_target_vmprotect_format cmake_object_order_depends_target_vmprotect_foundation
+
+build CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineTypes.cpp.obj: CXX_COMPILER__vmprotect_pipeline_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core/zPipelineTypes.cpp || cmake_object_order_depends_target_vmprotect_pipeline
+  DEP_FILE = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core\zPipelineTypes.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_pipeline.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_pipeline.dir\vmprotect_pipeline.pdb
+  TARGET_PDB = libvmprotect_pipeline.pdb
+
+build CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineCli.cpp.obj: CXX_COMPILER__vmprotect_pipeline_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core/zPipelineCli.cpp || cmake_object_order_depends_target_vmprotect_pipeline
+  DEP_FILE = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core\zPipelineCli.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_pipeline.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_pipeline.dir\vmprotect_pipeline.pdb
+  TARGET_PDB = libvmprotect_pipeline.pdb
+
+build CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelinePatch.cpp.obj: CXX_COMPILER__vmprotect_pipeline_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core/zPipelinePatch.cpp || cmake_object_order_depends_target_vmprotect_pipeline
+  DEP_FILE = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core\zPipelinePatch.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_pipeline.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_pipeline.dir\vmprotect_pipeline.pdb
+  TARGET_PDB = libvmprotect_pipeline.pdb
+
+build CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineCoverage.cpp.obj: CXX_COMPILER__vmprotect_pipeline_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core/zPipelineCoverage.cpp || cmake_object_order_depends_target_vmprotect_pipeline
+  DEP_FILE = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core\zPipelineCoverage.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_pipeline.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_pipeline.dir\vmprotect_pipeline.pdb
+  TARGET_PDB = libvmprotect_pipeline.pdb
+
+build CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineExport.cpp.obj: CXX_COMPILER__vmprotect_pipeline_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core/zPipelineExport.cpp || cmake_object_order_depends_target_vmprotect_pipeline
+  DEP_FILE = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core\zPipelineExport.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_pipeline.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_pipeline.dir\vmprotect_pipeline.pdb
+  TARGET_PDB = libvmprotect_pipeline.pdb
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target vmprotect_pipeline
+
+
+#############################################
+# Link the static library libvmprotect_pipeline.a
+
+build libvmprotect_pipeline.a: CXX_STATIC_LIBRARY_LINKER__vmprotect_pipeline_Debug CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineTypes.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineCli.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelinePatch.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineCoverage.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineExport.cpp.obj || libvmp_patchbay.a libvmprotect_base.a libvmprotect_elfkit.a libvmprotect_format.a libvmprotect_foundation.a
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = CMakeFiles\vmprotect_pipeline.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_pipeline.dir\vmprotect_pipeline.pdb
+  TARGET_FILE = libvmprotect_pipeline.a
+  TARGET_PDB = libvmprotect_pipeline.pdb
+
+# =============================================================================
 # Object build statements for EXECUTABLE target VmProtect
 
 
 #############################################
 # Order-only phony target for VmProtect
 
-build cmake_object_order_depends_target_VmProtect: phony || CMakeFiles/VmProtect.dir
+build cmake_object_order_depends_target_VmProtect: phony || cmake_object_order_depends_target_vmp_patchbay cmake_object_order_depends_target_vmprotect_base cmake_object_order_depends_target_vmprotect_elfkit cmake_object_order_depends_target_vmprotect_format cmake_object_order_depends_target_vmprotect_foundation cmake_object_order_depends_target_vmprotect_pipeline
 
-build CMakeFiles/VmProtect.dir/main.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/main.cpp || cmake_object_order_depends_target_VmProtect
-  DEP_FILE = CMakeFiles\VmProtect.dir\main.cpp.obj.d
+build CMakeFiles/VmProtect.dir/app/zMain.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/app/zMain.cpp || cmake_object_order_depends_target_VmProtect
+  DEP_FILE = CMakeFiles\VmProtect.dir\app\zMain.cpp.obj.d
   FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
   OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/zElf.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zElf.cpp || cmake_object_order_depends_target_VmProtect
-  DEP_FILE = CMakeFiles\VmProtect.dir\zElf.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/zLog.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zLog.cpp || cmake_object_order_depends_target_VmProtect
-  DEP_FILE = CMakeFiles\VmProtect.dir\zLog.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/zInst.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zInst.cpp || cmake_object_order_depends_target_VmProtect
-  DEP_FILE = CMakeFiles\VmProtect.dir\zInst.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zSoBinBundle.cpp || cmake_object_order_depends_target_VmProtect
-  DEP_FILE = CMakeFiles\VmProtect.dir\zSoBinBundle.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zFunctionData.cpp || cmake_object_order_depends_target_VmProtect
-  DEP_FILE = CMakeFiles\VmProtect.dir\zFunctionData.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/zFunction.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/zFunction.cpp || cmake_object_order_depends_target_VmProtect
-  DEP_FILE = CMakeFiles\VmProtect.dir\zFunction.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/patchbay_tool/main.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/main.cpp || cmake_object_order_depends_target_VmProtect
-  DEFINES = -DzElf=PatchbayElf
-  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\main.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/patchbay_tool/zElf.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElf.cpp || cmake_object_order_depends_target_VmProtect
-  DEFINES = -DzElf=PatchbayElf
-  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElf.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/patchbay_tool/zElfHeader.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfHeader.cpp || cmake_object_order_depends_target_VmProtect
-  DEFINES = -DzElf=PatchbayElf
-  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfHeader.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/patchbay_tool/zProgramTableElement.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zProgramTableElement.cpp || cmake_object_order_depends_target_VmProtect
-  DEFINES = -DzElf=PatchbayElf
-  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zProgramTableElement.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/patchbay_tool/zElfProgramHeaderTable.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfProgramHeaderTable.cpp || cmake_object_order_depends_target_VmProtect
-  DEFINES = -DzElf=PatchbayElf
-  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfProgramHeaderTable.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/patchbay_tool/zSectionTableElement.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zSectionTableElement.cpp || cmake_object_order_depends_target_VmProtect
-  DEFINES = -DzElf=PatchbayElf
-  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zSectionTableElement.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/patchbay_tool/zElfSectionHeaderTable.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfSectionHeaderTable.cpp || cmake_object_order_depends_target_VmProtect
-  DEFINES = -DzElf=PatchbayElf
-  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfSectionHeaderTable.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/patchbay_tool/zElfUtils.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfUtils.cpp || cmake_object_order_depends_target_VmProtect
-  DEFINES = -DzElf=PatchbayElf
-  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfUtils.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/patchbay_tool/zElfValidator.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfValidator.cpp || cmake_object_order_depends_target_VmProtect
-  DEFINES = -DzElf=PatchbayElf
-  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfValidator.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
-  TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
-  TARGET_PDB = VmProtect.pdb
-
-build CMakeFiles/VmProtect.dir/patchbay_tool/zElfLoader.cpp.obj: CXX_COMPILER__VmProtect_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool/zElfLoader.cpp || cmake_object_order_depends_target_VmProtect
-  DEFINES = -DzElf=PatchbayElf
-  DEP_FILE = CMakeFiles\VmProtect.dir\patchbay_tool\zElfLoader.cpp.obj.d
-  FLAGS = -g -std=c++17
-  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/patchbay_tool -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
-  OBJECT_DIR = CMakeFiles\VmProtect.dir
-  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\patchbay_tool
+  OBJECT_FILE_DIR = CMakeFiles\VmProtect.dir\app
   TARGET_COMPILE_PDB = CMakeFiles\VmProtect.dir\
   TARGET_PDB = VmProtect.pdb
 
@@ -220,9 +727,9 @@ build CMakeFiles/VmProtect.dir/patchbay_tool/zElfLoader.cpp.obj: CXX_COMPILER__V
 #############################################
 # Link the executable VmProtect.exe
 
-build VmProtect.exe: CXX_EXECUTABLE_LINKER__VmProtect_Debug CMakeFiles/VmProtect.dir/main.cpp.obj CMakeFiles/VmProtect.dir/zElf.cpp.obj CMakeFiles/VmProtect.dir/zLog.cpp.obj CMakeFiles/VmProtect.dir/zInst.cpp.obj CMakeFiles/VmProtect.dir/zSoBinBundle.cpp.obj CMakeFiles/VmProtect.dir/zFunctionData.cpp.obj CMakeFiles/VmProtect.dir/zFunction.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/main.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElf.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfHeader.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zProgramTableElement.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfProgramHeaderTable.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zSectionTableElement.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfSectionHeaderTable.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfUtils.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfValidator.cpp.obj CMakeFiles/VmProtect.dir/patchbay_tool/zElfLoader.cpp.obj | ../capstone_sdk/lib/capstone.lib
+build VmProtect.exe: CXX_EXECUTABLE_LINKER__VmProtect_Debug CMakeFiles/VmProtect.dir/app/zMain.cpp.obj | libvmprotect_pipeline.a libvmprotect_elfkit.a libvmprotect_format.a ../capstone_sdk/lib/capstone.lib libvmp_patchbay.a libvmprotect_foundation.a libvmprotect_base.a || libvmp_patchbay.a libvmprotect_base.a libvmprotect_elfkit.a libvmprotect_format.a libvmprotect_foundation.a libvmprotect_pipeline.a
   FLAGS = -g
-  LINK_LIBRARIES = ../capstone_sdk/lib/capstone.lib  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+  LINK_LIBRARIES = libvmprotect_pipeline.a  libvmprotect_elfkit.a  libvmprotect_format.a  ../capstone_sdk/lib/capstone.lib  libvmp_patchbay.a  libvmprotect_foundation.a  libvmprotect_base.a  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\VmProtect.dir
   POST_BUILD = cd .
   PRE_LINK = cd .
@@ -259,6 +766,18 @@ build rebuild_cache: phony CMakeFiles/rebuild_cache.util
 
 build VmProtect: phony VmProtect.exe
 
+build vmp_patchbay: phony libvmp_patchbay.a
+
+build vmprotect_base: phony libvmprotect_base.a
+
+build vmprotect_elfkit: phony libvmprotect_elfkit.a
+
+build vmprotect_format: phony libvmprotect_format.a
+
+build vmprotect_foundation: phony libvmprotect_foundation.a
+
+build vmprotect_pipeline: phony libvmprotect_pipeline.a
+
 # =============================================================================
 # Folder targets.
 
@@ -267,7 +786,7 @@ build VmProtect: phony VmProtect.exe
 #############################################
 # Folder: Z:/2026/0217_vmp_project/VmpProject/VmProtect/cmake-build-debug
 
-build all: phony VmProtect.exe
+build all: phony libvmprotect_base.a libvmprotect_foundation.a libvmprotect_format.a libvmprotect_elfkit.a patchbay_foundation_obj patchbay_format_obj patchbay_domain_obj patchbay_app_obj libvmp_patchbay.a libvmprotect_pipeline.a VmProtect.exe
 
 # =============================================================================
 # Built-in targets

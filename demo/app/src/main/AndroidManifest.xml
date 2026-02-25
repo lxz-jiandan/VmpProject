@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 业务 demo 应用清单：用于验证被保护函数的运行正确性。 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 应用基础配置。 -->
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -12,12 +14,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Demo"
         tools:targetApi="31">
+        <!-- Demo 主界面。 -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
+            <!-- 启动入口声明。 -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

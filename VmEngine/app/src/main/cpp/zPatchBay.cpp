@@ -6,6 +6,7 @@
  * - 输出：可定位的补丁可写区域。
  */
 #include "zPatchBay.h"
+// 由构建阶段生成的“可接管符号槽位”常量。
 #include "generated/zTakeoverSymbols.generated.h"
 
 namespace {
@@ -13,7 +14,7 @@ namespace {
 constexpr uint32_t kTakeoverSlotTotal = static_cast<uint32_t>(kTakeoverGeneratedSymbolCount);
 
 // 生成低 count 位为 1 的掩码，用于标记“可用接管槽”。
-constexpr uint64_t bitmask_for_count(uint32_t count) {
+constexpr uint64_t bitmaskForCount(uint32_t count) {
     if (count == 0) {
         return 0ULL;
     }
@@ -23,9 +24,10 @@ constexpr uint64_t bitmask_for_count(uint32_t count) {
     return (1ULL << count) - 1ULL;
 }
 
-constexpr uint64_t kTakeoverSlotBitmapLo = bitmask_for_count(kTakeoverSlotTotal);
+constexpr uint64_t kTakeoverSlotBitmapLo = bitmaskForCount(kTakeoverSlotTotal);
+// 超过 64 槽时，高位位图用于表达第 65..128 槽的可用性。
 constexpr uint64_t kTakeoverSlotBitmapHi = (kTakeoverSlotTotal > 64U)
-                                           ? bitmask_for_count(kTakeoverSlotTotal - 64U)
+                                           ? bitmaskForCount(kTakeoverSlotTotal - 64U)
                                            : 0ULL;
 }  // namespace
 
@@ -36,38 +38,52 @@ constexpr uint64_t kTakeoverSlotBitmapHi = (kTakeoverSlotTotal > 64U)
 extern "C" __attribute__((used, section(".vmp_patchbay"), visibility("default")))
 zPatchBayImage vm_patch_bay = {
         {
+                // magic: patch bay 签名。
                 kPatchBayMagic,
+                // version: 头版本。
                 kPatchBayVersion,
+                // flags: 运行时标志，初始 0。
                 0,
+                // totalSize: 整体大小（header + payload）。
                 kPatchBayTotalSize,
+                // headerSize: 头大小。
                 kPatchBayHeaderSize,
+                // payloadSize: 可写负载大小。
                 kPatchBayPayloadSize,
+                // dynsymOffset/dynsymCapacity。
                 kPatchBayDynsymOff,
                 kPatchBayDynsymCap,
+                // dynstrOffset/dynstrCapacity。
                 kPatchBayDynstrOff,
                 kPatchBayDynstrCap,
+                // gnuHashOffset/gnuHashCapacity。
                 kPatchBayGnuHashOff,
                 kPatchBayGnuHashCap,
+                // sysvHashOffset/sysvHashCapacity。
                 kPatchBaySysvHashOff,
                 kPatchBaySysvHashCap,
+                // versymOffset/versymCapacity。
                 kPatchBayVersymOff,
                 kPatchBayVersymCap,
+                // takeoverSlotTotal: 编译期生成槽位总数。
                 kTakeoverSlotTotal,
+                // takeoverSlotUsed: 初始默认全部可用。
                 kTakeoverSlotTotal,
-                0,  // orig_dt_symtab
-                0,  // orig_dt_strtab
-                0,  // orig_dt_gnu_hash
-                0,  // orig_dt_hash
-                0,  // orig_dt_versym
-                0,  // used_dynsym
-                0,  // used_dynstr
-                0,  // used_gnuhash
-                0,  // used_sysvhash
-                0,  // used_versym
+                0,  // originalDtSymtab
+                0,  // originalDtStrtab
+                0,  // originalDtGnuHash
+                0,  // originalDtHash
+                0,  // originalDtVersym
+                0,  // usedDynsym
+                0,  // usedDynstr
+                0,  // usedGnuHash
+                0,  // usedSysvHash
+                0,  // usedVersym
                 kTakeoverSlotBitmapLo,  // 默认允许全部已生成槽位。
                 kTakeoverSlotBitmapHi,  // 高 64 位掩码（槽位 > 64 时生效）。
                 0,  // crc32
         },
+        // payload 初始清零，等待后处理工具写入。
         {0},
 };
 

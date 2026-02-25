@@ -1,23 +1,34 @@
+// Gradle 插件仓库配置。
 pluginManagement {
     repositories {
+        // Android 官方仓库。
         google {
             content {
+                // 仅允许 Android/Google/AndroidX 相关插件组，缩小解析范围。
                 includeGroupByRegex("com\\.android.*")
                 includeGroupByRegex("com\\.google.*")
                 includeGroupByRegex("androidx.*")
             }
         }
+        // Maven Central。
         mavenCentral()
+        // Gradle 插件门户。
         gradlePluginPortal()
     }
 }
+// 依赖解析仓库配置。
 dependencyResolutionManagement {
+    // 禁止子模块私自声明仓库，保证解析一致性。
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        // Android 依赖仓库。
         google()
+        // 通用依赖仓库。
         mavenCentral()
     }
 }
 
+// 根工程名称。
 rootProject.name = "VmEngine"
+// 包含 app 模块。
 include ':app'

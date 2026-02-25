@@ -1,23 +1,34 @@
+// Gradle 插件仓库配置。
 pluginManagement {
     repositories {
+        // Android 官方仓库。
         google {
             content {
+                // 仅保留常用 Android 相关插件组。
                 includeGroupByRegex("com\\.android.*")
                 includeGroupByRegex("com\\.google.*")
                 includeGroupByRegex("androidx.*")
             }
         }
+        // Maven Central。
         mavenCentral()
+        // Gradle 插件门户。
         gradlePluginPortal()
     }
 }
+// 依赖解析仓库配置。
 dependencyResolutionManagement {
+    // 子工程不得再额外声明仓库，避免冲突。
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        // Android 仓库。
         google()
+        // Maven Central 仓库。
         mavenCentral()
     }
 }
 
+// 根工程名称。
 rootProject.name = "demo"
+// 包含 app 模块。
 include ':app'

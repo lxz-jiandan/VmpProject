@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.22.1)
 project("demo")
 
 add_library(demo_jni SHARED
-        vmp-bridge.cpp)
+        zVmpBridge.cpp)
 
 target_link_libraries(demo_jni
         android

@@ -1,20 +1,36 @@
 plugins {
+    // Android 应用模块插件（版本来自 libs.versions.toml）。
     alias(libs.plugins.androidApplication)
 }
 
+// 每次回归可注入构建戳，避免 Windows 下旧目录句柄占用导致清理失败。
+def vmpDemoBuildStamp = project.findProperty("vmpDemoBuildStamp") as String
+if (vmpDemoBuildStamp != null && !vmpDemoBuildStamp.trim().isEmpty()) {
+    // Use per-run build directory to avoid Windows lock contention on apk output cleanup.
+    layout.buildDirectory.set(file("${project.projectDir}/build-vmp-${vmpDemoBuildStamp}"))
+}
+
+// 总工程根目录。
 def vmpProjectRoot = rootProject.projectDir.parentFile
+// 运行时注入 jniLibs 的生成根目录。
 def generatedVmpJniRoot = file("$buildDir/generated/vmpJniLibs/main")
+// arm64 产物目录。
 def generatedVmpArm64Dir = file("$generatedVmpJniRoot/arm64-v8a")
+// demo 实际加载库（由受保护 vmengine so 重命名而来）。
 def generatedVmpDemoSo = file("$generatedVmpArm64Dir/libdemo.so")
+// 参考库（donor）副本，便于 demo 对照调用。
 def generatedVmpDemoRefSo = file("$generatedVmpArm64Dir/libdemo_ref.so")
+// donor so 来源。
 def donorDemoSo = file("${vmpProjectRoot}/VmProtect/libdemo.so")
 
 def resolveProtectedVmengineSo = {
+    // 允许通过 -PprotectedDemoSo 指定输入，便于 CI/离线调试。
     def overridePath = project.findProperty("protectedDemoSo") as String
     if (overridePath != null && !overridePath.trim().isEmpty()) {
         return file(overridePath)
     }
 
+    // 常规路径：从 VmEngine debug native 产物中挑最新库。
     def candidates = []
     def cxxDebugRoot = file("${vmpProjectRoot}/VmEngine/app/build/intermediates/cxx/Debug")
     if (cxxDebugRoot.exists()) {
@@ -23,6 +39,7 @@ def resolveProtectedVmengineSo = {
             if (patchSo.exists()) {
                 candidates.add(patchSo)
             }
+            // 若不存在 patch so，回退原始 so。
             def so = new File(dir, "obj/arm64-v8a/libvmengine.so")
             if (so.exists()) {
                 candidates.add(so)
@@ -39,17 +56,22 @@ def resolveProtectedVmengineSo = {
         candidates.add(cmakeFallback)
     }
 
+    // 完全找不到时返回 null，由调用方抛出更直接错误。
     if (candidates.isEmpty()) {
         return null
     }
+    // 取最新修改时间文件，保证本轮构建优先。
     candidates.sort { a, b -> Long.compare(b.lastModified(), a.lastModified()) }
     return candidates[0]
 }
 
 tasks.register("prepareProtectedDemoSo") {
+    // 产物声明：生成 demo 运行所需两个 so。
     outputs.files(generatedVmpDemoSo, generatedVmpDemoRefSo)
+    // 每次执行都强制刷新。
     outputs.upToDateWhen { false }
     doLast {
+        // 定位输入受保护 so。
         def inputSo = resolveProtectedVmengineSo()
         if (inputSo == null || !inputSo.exists()) {
             throw new GradleException(
@@ -59,17 +81,20 @@ tasks.register("prepareProtectedDemoSo") {
             throw new GradleException("reference demo so not found: ${donorDemoSo}")
         }
 
+        // 清理旧目录，避免旧 so 干扰。
         if (generatedVmpArm64Dir.exists()) {
             delete generatedVmpArm64Dir
         }
         generatedVmpArm64Dir.mkdirs()
 
         copy {
+            // 受保护 so 统一重命名为 libdemo.so，匹配 demo CMake/import 约定。
             from inputSo
             into generatedVmpArm64Dir
             rename { "libdemo.so" }
         }
         copy {
+            // donor so 作为对照库重命名为 libdemo_ref.so。
             from donorDemoSo
             into generatedVmpArm64Dir
             rename { "libdemo_ref.so" }
@@ -80,15 +105,21 @@ tasks.register("prepareProtectedDemoSo") {
 }
 
 android {
+    // demo 包名命名空间。
     namespace 'com.example.demo'
+    // 编译 SDK 版本。
     compileSdk 34
 
     defaultConfig {
+        // 应用 id。
         applicationId "com.example.demo"
+        // 最低支持版本。
         minSdk 26
+        // 目标版本。
         targetSdk 34
         versionCode 1
         versionName "1.0"
+        // 仅支持 arm64，避免与 vmengine 产物 ABI 不一致。
         ndk {
             abiFilters 'arm64-v8a'
         }
@@ -98,36 +129,51 @@ android {
 
     buildTypes {
         release {
+            // release 保持未混淆，便于演示与调试。
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     compileOptions {
+        // Java 8 兼容设置。
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
     externalNativeBuild {
         cmake {
+            // Native 构建入口。
             path file('src/main/cpp/CMakeLists.txt')
             version '3.22.1'
         }
     }
     buildFeatures {
+        // 开启 viewBinding。
         viewBinding true
+    }
+    packagingOptions {
+        jniLibs {
+            // Route4 需要可直接读取当前 so 文件路径以解析尾部 payload。
+            useLegacyPackaging true
+            // 关键：禁止 strip 改写受保护库，避免丢失尾部 embedded payload/footer。
+            keepDebugSymbols += ['**/libdemo.so', '**/libdemo_ref.so']
+        }
     }
     sourceSets {
         main {
+            // 把生成目录加入 jniLibs 源集，参与 APK 打包。
             jniLibs.srcDirs += generatedVmpJniRoot
         }
     }
 }
 
 tasks.named("preBuild").configure {
+    // 确保 Java/Kotlin 编译前，so 已准备好。
     dependsOn("prepareProtectedDemoSo")
 }
 
 dependencies {
 
+    // AndroidX 与测试依赖。
     implementation libs.appcompat
     implementation libs.material
     implementation libs.constraintlayout

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List
 
 
-def emit_mov_w2(slot_id: int) -> List[str]:
+def emitMovW2(slot_id: int) -> List[str]:
     # 生成把 slot_id 写入 w2 的指令序列（w2 作为 dispatch 第三个参数）。
     lo16 = slot_id & 0xFFFF
     hi16 = (slot_id >> 16) & 0xFFFF
@@ -19,12 +19,12 @@ def emit_mov_w2(slot_id: int) -> List[str]:
     return lines
 
 
-def slot_symbol_name(slot_id: int) -> str:
+def slotSymbolName(slot_id: int) -> str:
     # 槽位符号统一命名：vm_takeover_slot_0000。
     return f"vm_takeover_slot_{slot_id:04d}"
 
 
-def generate_asm(slot_count: int, label: str) -> str:
+def generateAsm(slot_count: int, label: str) -> str:
     out = []
     out.append("/* [VMP_FLOW_NOTE] 自动生成文件 */")
     out.append("/* - 由 tools/gen_takeover_stubs.py 生成，定义 ARM64 通用槽位跳板。 */")
@@ -34,18 +34,18 @@ def generate_asm(slot_count: int, label: str) -> str:
     out.append("    .align 2")
     out.append("")
     for slot_id in range(slot_count):
-        symbol_name = slot_symbol_name(slot_id)
+        symbol_name = slotSymbolName(slot_id)
         out.append(f"    .global {symbol_name}")
         out.append(f"    .type {symbol_name}, %function")
         out.append(f"{symbol_name}:")
-        out.extend(emit_mov_w2(slot_id))
+        out.extend(emitMovW2(slot_id))
         out.append("    b vm_takeover_dispatch_by_id")
         out.append(f"    .size {symbol_name}, .-{symbol_name}")
         out.append("")
     return "\n".join(out).rstrip() + "\n"
 
 
-def generate_header(slot_count: int, label: str) -> str:
+def generateHeader(slot_count: int, label: str) -> str:
     out = []
     out.append("// [VMP_FLOW_NOTE] 自动生成文件")
     out.append("// - 由 tools/gen_takeover_stubs.py 生成，维护槽位总数常量。")
@@ -77,8 +77,8 @@ def main() -> int:
     out_header = Path(args.out_header).resolve()
     out_asm.parent.mkdir(parents=True, exist_ok=True)
     out_header.parent.mkdir(parents=True, exist_ok=True)
-    out_asm.write_text(generate_asm(args.slot_count, args.source_label), encoding="utf-8")
-    out_header.write_text(generate_header(args.slot_count, args.source_label), encoding="utf-8")
+    out_asm.write_text(generateAsm(args.slot_count, args.source_label), encoding="utf-8")
+    out_header.write_text(generateHeader(args.slot_count, args.source_label), encoding="utf-8")
     print(f"[OK] generated asm: {out_asm}")
     print(f"[OK] generated header: {out_header}")
     print(f"[OK] slot_count={args.slot_count}")

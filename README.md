@@ -56,30 +56,23 @@
 2. `assets/*.bin`（编码二进制）
 3. `libdemo_expand.so`（容器承载编码数据）
 
-运行时默认走 route4（内嵌 payload + 导出接管）单路线校验，历史 route1/2/3 逻辑保留在代码中用于排障和教学，但不参与默认启动链路。
+运行时仅保留 route4（内嵌 payload + 导出接管）单路线校验，历史 route1/2/3 代码已从主工程移除。
 
 ---
 
 ### 3.3 原理 C：等价性验证不是“是否崩溃”，而是“结果一致”
 
-`VmEngine` 中保留了分层 route 能力（见 `zNativeLib.cpp`），但默认启动链路只执行 route4：
+`VmEngine` 当前仅保留 route4 启动链路：
 
 - `route4_reference_from_assets`
 - `route_embedded_expand_so`
 - `route_symbol_takeover`
 
-历史/排障路线（默认不调用）：
-
-- `route_unencoded_text`
-- `route_native_vs_vm`
-- `route_encoded_asset_bin`
-- `route_encoded_expand_so`
-
 关键思想：
 
 - route4 启动时先从 `assets/*.txt` 提取函数地址并加载固定期望值，作为 takeover 对照基线。
 - route4 L1/L2 必须同时通过，才能认定当前加固链路健康。
-- 历史路线用于深度排障时再开启，避免默认链路过重。
+- 主链路保持单路径，降低分叉逻辑与维护成本。
 
 ---
 
@@ -167,6 +160,12 @@ python tools/run_regression.py --project-root .
 python tools/run_regression.py --project-root . --patch-vmengine-symbols
 ```
 
+如果要做“可交付一键门禁检查”（回归 + demo 冒烟串行）：
+
+```powershell
+python tools/run_delivery_check.py --project-root .
+```
+
 ---
 
 ## 6. 教学实验（建议顺序）
@@ -219,14 +218,7 @@ gradlew.bat installDebug -PvmpEnabled=true
    - 含义：回归脚本找不到工具二进制。
    - 处理：先构建 `VmProtect`，或修正工具路径。
 
-4. （排障模式）`route_native_vs_vm` 不一致
-   - 含义：当你手动开启历史路线时，native 与 VM 语义等价性被破坏。
-   - 排查优先级：
-     1. 看 `fun_*.txt/bin` 是否与函数列表一致。
-     2. 看 `branch_addr_list.txt` 是否解析正确。
-     3. 看是否误把状态函数当作无状态函数做严格比对。
-
-5. `route_symbol_takeover` 不一致
+4. `route_symbol_takeover` 不一致
    - 含义：导出接管后的符号行为与基线不一致。
    - 排查优先级：
      1. donor 导出是否符合预期。
@@ -237,12 +229,14 @@ gradlew.bat installDebug -PvmpEnabled=true
 
 ## 9. 关键代码入口（按原理查）
 
-- `VmProtect/main.cpp`
+- `VmProtect/app/main.cpp`
   - CLI 契约、embed、patchbay 调用。
-- `VmProtect/patchbay_tool/main.cpp`
+- `VmProtect/modules/patchbay/app/main.cpp`
   - patchbay 子命令实现入口。
-- `VmEngine/app/src/main/cpp/zNativeLib.cpp`
-  - 多 route 等价性验证逻辑。
+- `VmEngine/app/src/main/cpp/zVmInitCore.cpp`
+  - route4 初始化主流程（embedded expand + symbol takeover）。
+- `VmEngine/app/src/main/cpp/zVmInitLifecycle.cpp`
+  - 运行时生命周期入口与 `vm_init` 状态机。
 - `VmEngine/app/src/main/cpp/zPatchBay.h`
   - `.vmp_patchbay` 预留区结构定义说明。
 - `VmEngine/app/build.gradle`

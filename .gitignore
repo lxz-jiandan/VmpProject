@@ -25,6 +25,7 @@ Thumbs.db
 **/.cxx/
 **/.externalNativeBuild/
 **/build/
+**/build-vmp-*/
 **/captures/
 **/local.properties
 

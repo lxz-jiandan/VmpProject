@@ -19,14 +19,14 @@ class EmbedError(RuntimeError):
     pass
 
 
-def read_bytes(path: Path) -> bytes:
+def readBytes(path: Path) -> bytes:
     try:
         return path.read_bytes()
     except OSError as exc:
         raise EmbedError(f"failed to read {path}: {exc}") from exc
 
 
-def write_bytes(path: Path, data: bytes) -> None:
+def writeBytes(path: Path, data: bytes) -> None:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
@@ -34,7 +34,7 @@ def write_bytes(path: Path, data: bytes) -> None:
         raise EmbedError(f"failed to write {path}: {exc}") from exc
 
 
-def parse_existing_footer(host: bytes):
+def parseExistingFooter(host: bytes):
     # 若宿主已带历史 payload，先解析并校验，后续会覆盖旧 payload。
     if len(host) < FOOTER_STRUCT.size:
         return None
@@ -61,7 +61,7 @@ def parse_existing_footer(host: bytes):
     return payload_begin, payload_size
 
 
-def build_footer(payload: bytes) -> bytes:
+def buildFooter(payload: bytes) -> bytes:
     # footer 只记录最小必要信息：magic/version/size/crc，便于运行时快速校验。
     payload_crc = zlib.crc32(payload) & 0xFFFFFFFF
     return FOOTER_STRUCT.pack(
@@ -90,12 +90,12 @@ def main():
     payload_path = Path(args.payload_so)
     out_path = Path(args.output_so) if args.output_so else host_path
 
-    host_bytes = read_bytes(host_path)
-    payload_bytes = read_bytes(payload_path)
+    host_bytes = readBytes(host_path)
+    payload_bytes = readBytes(payload_path)
     if not payload_bytes:
         raise EmbedError(f"payload is empty: {payload_path}")
 
-    existing = parse_existing_footer(host_bytes)
+    existing = parseExistingFooter(host_bytes)
     if existing is None:
         base_host = host_bytes
         print("existing embedded payload: none")
@@ -104,9 +104,9 @@ def main():
         base_host = host_bytes[:payload_begin]
         print(f"existing embedded payload: found size={payload_size}, replacing")
 
-    footer = build_footer(payload_bytes)
+    footer = buildFooter(payload_bytes)
     out_bytes = base_host + payload_bytes + footer
-    write_bytes(out_path, out_bytes)
+    writeBytes(out_path, out_bytes)
 
     print(f"host: {host_path}")
     print(f"payload: {payload_path} ({len(payload_bytes)} bytes)")

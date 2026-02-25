@@ -1,3 +1,4 @@
 <resources>
+    <!-- 应用名称（桌面展示）。 -->
     <string name="app_name">demo</string>
 </resources>

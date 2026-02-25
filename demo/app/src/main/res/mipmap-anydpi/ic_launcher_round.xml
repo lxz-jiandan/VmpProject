@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Demo 自适应图标（圆形入口）。 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 背景层。 -->
     <background android:drawable="@drawable/ic_launcher_background" />
+    <!-- 前景层。 -->
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <!-- 单色层。 -->
     <monochrome android:drawable="@drawable/ic_launcher_foreground" />
 </adaptive-icon>

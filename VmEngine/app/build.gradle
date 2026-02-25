@@ -1,35 +1,52 @@
 plugins {
+    // Android 应用模块插件（使用版本目录中的别名）。
     alias(libs.plugins.androidApplication)
 }
 
+// 工程根目录：当前模块在 VmEngine/app，下一级父目录是 VmEngine，再上一级是总工程根。
 def vmpProjectRoot = rootProject.projectDir.parentFile
+// 是否启用 VmProtect 管线（默认关闭，避免普通开发受影响）。
 def vmpEnabled = ((project.findProperty("vmpEnabled") ?: "false").toString().toBoolean())
+// 启用后是否自动构建 VmProtect.exe。
 def vmpAutoBuildTool = ((project.findProperty("vmpAutoBuildTool") ?: "false").toString().toBoolean())
+// VmProtect 工具路径，可被 -PvmpToolExe 覆盖。
 def vmpToolExe = file((project.findProperty("vmpToolExe")
         ?: "${vmpProjectRoot}/VmProtect/cmake-build-debug/VmProtect.exe").toString())
+// 输入 so（通常是 demo donor so）。
 def vmpInputSo = file((project.findProperty("vmpInputSo")
         ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
+// VmProtect CMake 项目目录。
 def vmProtectProjectDir = file("${vmpProjectRoot}/VmProtect")
+// VmProtect 默认构建目录。
 def vmProtectBuildDir = file("${vmProtectProjectDir}/cmake-build-debug")
+// patch donor so：为 patchbay 提供实现符号来源。
 def vmpPatchDonorSo = file((project.findProperty("vmpPatchDonorSo")
         ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
+// patch 注入实现函数名。
 def vmpPatchImplSymbol = (project.findProperty("vmpPatchImplSymbol")
         ?: "vm_takeover_slot_0000").toString()
+// 是否对所有导出符号做 patch（默认 false）。
 def vmpPatchAllExports = ((project.findProperty("vmpPatchAllExports") ?: "false").toString().toBoolean())
+// 用户通过 -PvmpFunctions 传入逗号分隔函数列表。
 def vmpFunctionsRaw = (project.findProperty("vmpFunctions") ?: "").toString().trim()
+// VmProtect 输出目录（中间产物）。
 def vmpOutputDir = file("$buildDir/generated/vmprotectOut")
+// 最终写入 APK 的 assets 目录。
 def vmpAssetsDir = file("src/main/assets")
 
 def parseVmpFunctions = {
+    // 未指定函数时返回空列表，表示走默认策略。
     if (vmpFunctionsRaw.isEmpty()) {
         return []
     }
+    // 解析逗号列表，去空白并去除空项。
     return vmpFunctionsRaw.split(",")
             .collect { it.trim() }
             .findAll { !it.isEmpty() }
 }
 
 def resolveCmakeExe = {
+    // 优先使用团队机器常见安装路径，未命中时回退到 PATH 中的 cmake。
     def candidates = [
             file("C:/Program Files/JetBrains/CLion 2022.2.5/bin/cmake/win/bin/cmake.exe"),
             file("D:/Clion2022/bin/cmake/win/bin/cmake.exe"),
@@ -39,6 +56,7 @@ def resolveCmakeExe = {
 }
 
 def resolveNinjaExe = {
+    // 与 cmake 同理，优先固定路径，回退 PATH。
     def candidates = [
             file("C:/Program Files/JetBrains/CLion 2022.2.5/bin/ninja/win/ninja.exe"),
             file("D:/Clion2022/bin/ninja/win/ninja.exe"),
@@ -48,6 +66,7 @@ def resolveNinjaExe = {
 }
 
 def resolveVmengineSoForDebug = {
+    // 从 AGP 产物目录中定位“最新”的 debug libvmengine.so。
     def candidates = []
     def cxxDebugRoot = file("$buildDir/intermediates/cxx/Debug")
     if (cxxDebugRoot.exists()) {
@@ -62,26 +81,34 @@ def resolveVmengineSoForDebug = {
     if (cmakeFallback.exists()) {
         candidates.add(cmakeFallback)
     }
+    // 找不到产物时返回 null，让调用方抛更明确异常。
     if (candidates.isEmpty()) {
         return null
     }
+    // 取最后修改时间最新的一个，规避多变体并存时选错。
     candidates.sort { a, b -> Long.compare(b.lastModified(), a.lastModified()) }
     return candidates[0]
 }
 
 tasks.register("buildVmProtectTool") {
+    // Gradle 自定义任务：构建主机端 VmProtect.exe。
     group = "vmp"
     description = "Configure and build VmProtect.exe"
+    // 声明输出文件，便于任务可视化。
     outputs.file(vmpToolExe)
+    // 每次都执行，确保拿到最新 C++ 逻辑。
     outputs.upToDateWhen { false }
+    // 仅在启用 vmp 且允许自动构建时执行。
     onlyIf { vmpEnabled && vmpAutoBuildTool }
     doLast {
         def cmakeExe = resolveCmakeExe()
         def ninjaExe = resolveNinjaExe()
+        // 首次构建前确保 build 目录存在。
         if (!vmProtectBuildDir.exists()) {
             vmProtectBuildDir.mkdirs()
         }
         def cmakeCache = file("${vmProtectBuildDir}/CMakeCache.txt")
+        // 首次没有 cache 时先 configure。
         if (!cmakeCache.exists()) {
             exec {
                 commandLine cmakeExe,
@@ -93,6 +120,7 @@ tasks.register("buildVmProtectTool") {
                 workingDir vmProtectProjectDir
             }
         }
+        // 执行 build，目标固定为 VmProtect 可执行文件。
         exec {
             commandLine cmakeExe,
                     "--build", vmProtectBuildDir.absolutePath,
@@ -104,14 +132,17 @@ tasks.register("buildVmProtectTool") {
 }
 
 tasks.register("runVmProtectPipelineDebug") {
+    // Gradle 自定义任务：执行 route4 流程并产出受保护主机库。
     group = "vmp"
     description = "Run VmProtect.exe to export assets and produce final protected libvmengine_patch.so (debug)."
+    // 必须先有 debug native 产物和可执行工具。
     dependsOn("externalNativeBuildDebug", "buildVmProtectTool")
     outputs.dir(vmpOutputDir)
     outputs.dir(vmpAssetsDir)
     outputs.upToDateWhen { false }
     onlyIf { vmpEnabled }
     doLast {
+        // 解析当前最新 debug libvmengine.so 作为 host 输入。
         def hostSo = resolveVmengineSoForDebug()
         if (hostSo == null || !hostSo.exists()) {
             throw new GradleException("debug libvmengine.so not found under app/build/intermediates")
@@ -130,6 +161,7 @@ tasks.register("runVmProtectPipelineDebug") {
             throw new GradleException("vmp donor so not found: ${vmpPatchDonorSo}")
         }
 
+        // 清理并重建输出目录，避免遗留旧文件。
         if (vmpOutputDir.exists()) {
             delete vmpOutputDir
         }
@@ -137,21 +169,29 @@ tasks.register("runVmProtectPipelineDebug") {
         vmpAssetsDir.mkdirs()
 
         def cmd = [
+                // 外部工具路径。
                 vmpToolExe.absolutePath,
+                // route4 必填参数：输入 so 与输出目录。
                 "--input-so", vmpInputSo.absolutePath,
                 "--output-dir", vmpOutputDir.absolutePath,
+                // 输出扩展 so 与分支地址表文件名。
                 "--expanded-so", "libdemo_expand.so",
                 "--shared-branch-file", "branch_addr_list.txt",
+                // 产物报告路径。
                 "--coverage-report", "coverage_report.md",
+                // host so 与最终 patch so。
                 "--host-so", hostSo.absolutePath,
                 "--final-so", protectedHostSo.absolutePath,
+                // patch donor 及实现符号。
                 "--patch-donor-so", vmpPatchDonorSo.absolutePath,
                 "--patch-impl-symbol", vmpPatchImplSymbol,
         ]
         if (vmpPatchAllExports) {
+            // 可选：启用全导出 patch 策略。
             cmd.add("--patch-all-exports")
         }
         parseVmpFunctions().each { fn ->
+            // 可选：仅 patch 指定函数集合。
             cmd.addAll(["--function", fn])
         }
 
@@ -163,6 +203,7 @@ tasks.register("runVmProtectPipelineDebug") {
             workingDir vmpProjectRoot
         }
 
+        // 删除旧 assets 中对应文件，确保拷贝结果是“本轮唯一版本”。
         delete(fileTree(vmpAssetsDir) {
             include "branch_addr_list.txt"
             include "libdemo_expand.so"
@@ -171,6 +212,7 @@ tasks.register("runVmProtectPipelineDebug") {
         })
 
         copy {
+            // 只把运行时需要的路由文件与函数 payload 拷贝到 assets。
             from(vmpOutputDir) {
                 include "branch_addr_list.txt"
                 include "libdemo_expand.so"
@@ -186,15 +228,21 @@ tasks.register("runVmProtectPipelineDebug") {
 }
 
 android {
+    // Android 包名命名空间。
     namespace 'com.example.vmengine'
+    // 编译 SDK 版本。
     compileSdk 34
 
     defaultConfig {
+        // 应用 id。
         applicationId "com.example.vmengine"
+        // 最低支持版本。
         minSdk 26
+        // 目标版本。
         targetSdk 34
         versionCode 1
         versionName "1.0"
+        // 当前只构建 arm64，和 VmProtect 能力范围保持一致。
         ndk{
             abiFilters 'arm64-v8a'
         }
@@ -203,25 +251,32 @@ android {
 
     buildTypes {
         release {
+            // release 当前不做混淆，便于问题定位。
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     compileOptions {
+        // Java 8 语言级别。
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
     externalNativeBuild {
         cmake {
+            // Native 构建脚本入口。
             path file('src/main/cpp/CMakeLists.txt')
             version '3.22.1'
         }
     }
     buildFeatures {
+        // 开启 viewBinding。
         viewBinding true
     }
     packagingOptions {
         jniLibs {
+            // Android 14+ 建议在 Gradle 中显式声明 native packaging 行为。
+            // route4 依赖稳定的 so 原样打包，这里固定 useLegacyPackaging。
+            useLegacyPackaging true
             // route4 需要保留 libvmengine.so 尾部附加 payload，禁止打包阶段 strip 该库。
             keepDebugSymbols += ['**/libvmengine.so']
         }
@@ -229,6 +284,7 @@ android {
 }
 
 tasks.configureEach { t ->
+    // 把 VmProtect 管线插入 debug 打包关键阶段，保证产物实时更新。
     if (t.name == "mergeDebugNativeLibs" || t.name == "mergeDebugAssets") {
         t.dependsOn("runVmProtectPipelineDebug")
     }
@@ -236,6 +292,7 @@ tasks.configureEach { t ->
 
 dependencies {
 
+    // AndroidX 与测试依赖。
     implementation libs.appcompat
     implementation libs.material
     implementation libs.constraintlayout
