@@ -8,10 +8,10 @@
 #include "zPatchbayIo.h"
 // 引入 ELF 布局校验工具。
 #include "zPatchbayLayout.h"
-// 引入节结构定义。
-#include "zSectionEntry.h"
 // 引入日志接口。
 #include "zLog.h"
+// 引入 ELF 只读 facade（用于输出文件复验）。
+#include "zElfReadFacade.h"
 
 // 引入 std::min。
 #include <algorithm>
@@ -191,7 +191,8 @@ bool writePatchbayRegions(std::vector<uint8_t>* fileBytes,
 }
 
 // 根据 patchbay 节位置和 header 偏移关系构建绝对布局。
-PatchLayout buildPatchLayout(const zSectionTableElement& patchbay, const PatchBayHeader& header) {
+PatchLayout buildPatchLayout(const vmp::elfkit::PatchSectionView& patchbay,
+                             const PatchBayHeader& header) {
     PatchLayout layout;
 
     // 计算各表在文件中的绝对偏移。
@@ -265,19 +266,16 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // input/output/dynamic 必须有效。
-    if (inputPath == nullptr || outputPath == nullptr || required.dynamic == nullptr) {
+    if (inputPath == nullptr || outputPath == nullptr || required.dynamic.index < 0) {
         if (error != nullptr) {
             *error = "invalid patchbay arguments";
         }
         return false;
     }
 
-    // 缓存 dynamic 节指针。
-    const auto* dynamicSection = required.dynamic;
-
     // 只有存在 .vmp_patchbay 节时才走该快速路径。
-    const auto* patchbay = required.patchbay;
-    if (patchbay == nullptr) {
+    const vmp::elfkit::PatchSectionView patchbay = required.patchbay;
+    if (!required.hasPatchbay || patchbay.index < 0) {
         // 返回 true 表示“非错误，未处理”，上层可走其他策略。
         return true;
     }
@@ -289,7 +287,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
 
     // [阶段 1] 读取 patchbay header 并校验容量/区间。
     // patchbay 节至少要容纳一个 header。
-    if (patchbay->size < sizeof(PatchBayHeader)) {
+    if (patchbay.size < sizeof(PatchBayHeader)) {
         if (error != nullptr) {
             *error = "patchbay section too small";
         }
@@ -306,8 +304,8 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // patchbay 节范围必须完整落在文件内。
-    if (patchbay->offset > newFile.size() ||
-        patchbay->size > (newFile.size() - static_cast<size_t>(patchbay->offset))) {
+    if (patchbay.offset > newFile.size() ||
+        patchbay.size > (newFile.size() - static_cast<size_t>(patchbay.offset))) {
         if (error != nullptr) {
             *error = "patchbay section range out of file";
         }
@@ -315,7 +313,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // 解释 patchbay header。
-    auto* patchHeader = reinterpret_cast<PatchBayHeader*>(newFile.data() + patchbay->offset);
+    auto* patchHeader = reinterpret_cast<PatchBayHeader*>(newFile.data() + patchbay.offset);
 
     // 校验 magic/version。
     if (patchHeader->magic != kPatchBayMagic || patchHeader->version != kPatchBayVersion) {
@@ -326,7 +324,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // 校验 headerSize 和 totalSize 基本约束。
-    if (patchHeader->headerSize < sizeof(PatchBayHeader) || patchHeader->totalSize > patchbay->size) {
+    if (patchHeader->headerSize < sizeof(PatchBayHeader) || patchHeader->totalSize > patchbay.size) {
         if (error != nullptr) {
             *error = "patchbay header size/capacity invalid";
         }
@@ -351,7 +349,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
 
     // [阶段 2] 回写 patchbay 子区 payload（dynsym/dynstr/hash/versym）。
     if (!writePatchbayRegions(&newFile,
-                              patchbay->offset,
+                              patchbay.offset,
                               *patchHeader,
                               newDynsymBytes,
                               newDynstr,
@@ -363,11 +361,11 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // 计算新表的绝对偏移与虚拟地址。
-    const PatchLayout layout = buildPatchLayout(*patchbay, *patchHeader);
+    const PatchLayout layout = buildPatchLayout(patchbay, *patchHeader);
 
     // [阶段 3] 改写 .dynamic 的 DT_* 指针，指向 patchbay 新表。
     // 拷贝 dynamic 条目到可修改数组。
-    std::vector<Elf64_Dyn> dynEntries = dynamicSection->entries;
+    std::vector<Elf64_Dyn> dynEntries = required.dynamic.entries;
 
     // 读取旧 DT 指针，供 originalDt* 字段留痕。
     Elf64_Xword oldSymtab = 0;
@@ -406,7 +404,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // 校验 .dynamic 回写范围。
-    if (dynamicSection->offset + dynBytes.size() > newFile.size()) {
+    if (required.dynamic.offset + dynBytes.size() > newFile.size()) {
         if (error != nullptr) {
             *error = "dynamic section patch range out of file";
         }
@@ -414,7 +412,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // 回写 .dynamic。
-    std::memcpy(newFile.data() + dynamicSection->offset, dynBytes.data(), dynBytes.size());
+    std::memcpy(newFile.data() + required.dynamic.offset, dynBytes.data(), dynBytes.size());
 
     // [阶段 4] 同步 section headers，保持静态视图一致。
     // 文件长度至少应覆盖 ELF 头。
@@ -443,16 +441,16 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
         auto* shdrs = reinterpret_cast<Elf64_Shdr*>(newFile.data() + ehdr->e_shoff);
 
         // 获取相关节索引。
-        const int dynsymIndex = required.dynsym_index;
-        const int dynstrIndex = required.dynstr_index;
-        const int versymIndex = required.versym_index;
-        const int gnuHashIndex = required.gnu_hash_index;
-        const int hashIndex = required.hash_index;
+        const int dynsymIndex = required.dynsym.index;
+        const int dynstrIndex = required.dynstr.index;
+        const int versymIndex = required.versym.index;
+        const int gnuHashIndex = required.gnuHash.index;
+        const int hashIndex = required.hasHash ? required.hash.index : -1;
 
         // 索引到节头指针的辅助函数。
-        auto patchShdr = [&shdrs](int idx) -> Elf64_Shdr* {
-            // idx<0 表示该节不存在。
-            return idx >= 0 ? &shdrs[idx] : nullptr;
+        auto patchShdr = [&shdrs](int sectionIndex) -> Elf64_Shdr* {
+            // sectionIndex<0 表示该节不存在。
+            return sectionIndex >= 0 ? &shdrs[sectionIndex] : nullptr;
         };
 
         // 更新 .dynsym 节头。
@@ -505,7 +503,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
 
     // [阶段 5] 更新 patchbay header used 字段、slot 位图与 CRC。
     // 重新获取 header 指针，保证引用最新文件缓冲。
-    patchHeader = reinterpret_cast<PatchBayHeader*>(newFile.data() + patchbay->offset);
+    patchHeader = reinterpret_cast<PatchBayHeader*>(newFile.data() + patchbay.offset);
 
     // 首次 patch 时写入 originalDt* 快照。
     if (patchHeader->originalDtSymtab == 0) {
@@ -568,7 +566,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     // 保存重算得到的 CRC。
     uint32_t computedCrc = 0;
     // 基于 header(清零crc)+used 子区计算 CRC。
-    if (!computePatchbayCrcFromFile(newFile, patchbay->offset, *patchHeader, &computedCrc, &layoutError)) {
+    if (!computePatchbayCrcFromFile(newFile, patchbay.offset, *patchHeader, &computedCrc, &layoutError)) {
         if (error != nullptr) {
             *error = layoutError;
         }
@@ -595,8 +593,8 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // 重新加载输出 ELF 并执行模型校验。
-    vmp::elfkit::PatchElfImage patched(outputPath);
-    if (!patched.loaded()) {
+    vmp::elfkit::zElfReadFacade patched(outputPath);
+    if (!patched.isLoaded()) {
         if (error != nullptr) {
             *error = "failed to reload output elf";
         }
@@ -625,4 +623,3 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
          newVersym.size());
     return true;
 }
-

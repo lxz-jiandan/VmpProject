@@ -17,9 +17,9 @@ bool PatchElf::reconstruct() {
 }
 
 // 保存 ELF：若模型有脏数据则先重构，再写出 file_image_。
-bool PatchElf::save(const char* output_path) {
+bool PatchElf::save(const char* outputPath) {
     // 输出路径不能为空。
-    if (!output_path) {
+    if (!outputPath) {
         return false;
     }
     // 模型有脏数据时先重构。
@@ -27,8 +27,8 @@ bool PatchElf::save(const char* output_path) {
         return false;
     }
     // 把 file_image_ 写入目标文件。
-    if (!vmp::base::io::writeFileBytes(output_path, file_image_)) {
-        LOGE("Failed to write output file: %s", output_path);
+    if (!vmp::base::io::writeFileBytes(outputPath, file_image_)) {
+        LOGE("Failed to write output file: %s", outputPath);
         return false;
     }
     return true;
@@ -41,13 +41,13 @@ bool PatchElf::isLoaded() const {
 }
 
 // 返回当前内存镜像大小。
-size_t PatchElf::fileImageSize() const {
+size_t PatchElf::getFileImageSize() const {
     // 可能尚未 save 到磁盘，这里返回内存态大小。
     return file_image_.size();
 }
 
 // 返回当前内存镜像首地址。
-const uint8_t* PatchElf::fileImageData() const {
+const uint8_t* PatchElf::getFileImageData() const {
     // 空镜像返回 nullptr，避免调用方误解为可访问缓冲。
     return file_image_.empty() ? nullptr : file_image_.data();
 }
@@ -67,3 +67,4 @@ bool PatchElf::reconstructionImpl() {
     LOGE("reconstructionImpl is removed from current patchbay runtime");
     return false;
 }
+

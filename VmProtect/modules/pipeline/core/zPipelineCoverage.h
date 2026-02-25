@@ -18,6 +18,20 @@ namespace vmp {
 bool buildCoverageBoard(const std::vector<std::string>& functionNames,
                         const std::vector<elfkit::FunctionView>& functions,
                         CoverageBoard& board);
+// 填充翻译状态（会触发 prepareTranslation）。
+bool fillTranslationStatus(const std::vector<elfkit::FunctionView>& functions,
+                           CoverageBoard& board);
+// 执行覆盖率分析阶段（统计 + 翻译状态采集）。
+bool runCoverageAnalyzeFlow(const std::vector<std::string>& functionNames,
+                            const std::vector<elfkit::FunctionView>& functions,
+                            CoverageBoard& board);
+// 将覆盖率面板写入报告文件。
+bool runCoverageReportFlow(const VmProtectConfig& config, const CoverageBoard& board);
+// 执行完整覆盖率流程（分析 + 报告写出），可选回传 board。
+bool runCoverageFlow(const VmProtectConfig& config,
+                     const std::vector<std::string>& functionNames,
+                     const std::vector<elfkit::FunctionView>& functions,
+                     CoverageBoard* outBoard);
 // 将覆盖率面板输出为 markdown 报告。
 bool writeCoverageReport(const std::string& reportPath, const CoverageBoard& board);
 

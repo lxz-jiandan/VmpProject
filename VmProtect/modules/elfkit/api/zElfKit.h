@@ -1,4 +1,4 @@
-// 防止头文件重复包含。
+﻿// 防止头文件重复包含。
 #pragma once
 
 // 引入 size_t。
@@ -30,30 +30,30 @@ public:
     FunctionView() = default;
 
     // 视图是否指向有效函数对象。
-    bool valid() const;
+    bool isValid() const;
     // 函数名。
-    const std::string& name() const;
+    const std::string& getName() const;
     // 函数文件偏移。
-    uint64_t offset() const;
+    uint64_t getOffset() const;
     // 函数字节长度。
-    size_t size() const;
+    size_t getSize() const;
     // 函数字节数据指针。
-    const uint8_t* data() const;
+    const uint8_t* getData() const;
 
     // 准备翻译中间态。
     bool prepareTranslation(std::string* error = nullptr) const;
     // 按指定模式导出函数内容。
-    bool dump(const char* file_path, DumpMode mode) const;
+    bool dump(const char* filePath, DumpMode mode) const;
     // 获取共享分支地址列表。
-    const std::vector<uint64_t>& sharedBranchAddrs() const;
+    const std::vector<uint64_t>& getSharedBranchAddrs() const;
     // 将 BL 指令重映射到共享分支地址列表。
-    bool remapBlToSharedBranchAddrs(const std::vector<uint64_t>& shared_branch_addrs) const;
+    bool remapBlToSharedBranchAddrs(const std::vector<uint64_t>& sharedBranchAddrs) const;
 
 private:
     // 仅允许 ElfImage 构造有效视图。
     friend class ElfImage;
     // 由内部实现指针构造视图。
-    explicit FunctionView(void* impl_ptr);
+    explicit FunctionView(void* implPtr);
     // 内部实现对象指针（zFunction*）。
     void* impl_ptr_ = nullptr;
 };
@@ -62,7 +62,7 @@ private:
 class ElfImage {
 public:
     // 按路径加载 ELF。
-    explicit ElfImage(const char* elf_path);
+    explicit ElfImage(const char* elfPath);
     // 释放内部资源。
     ~ElfImage();
 
@@ -76,11 +76,11 @@ public:
     ElfImage& operator=(ElfImage&& other) noexcept;
 
     // ELF 是否加载成功。
-    bool loaded() const;
+    bool isLoaded() const;
     // 按符号名查找函数。
-    FunctionView findFunction(const std::string& symbol_name);
+    FunctionView getFunction(const std::string& symbolName);
     // 列举全部函数视图。
-    std::vector<FunctionView> listFunctions();
+    std::vector<FunctionView> getFunctions();
 
 private:
     // pImpl 前置声明。
@@ -91,4 +91,5 @@ private:
 
 // 结束命名空间。
 }  // namespace vmp::elfkit
+
 

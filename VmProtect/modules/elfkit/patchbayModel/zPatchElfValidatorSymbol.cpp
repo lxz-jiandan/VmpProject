@@ -18,7 +18,7 @@ namespace {
 // 判断给定虚拟地址区间是否被任一 PT_LOAD 覆盖。
 bool isLoadMapped(const PatchElf& elf, uint64_t vaddr, uint64_t size) {
     // 遍历所有 Program Header。
-    for (const auto& ph : elf.programHeaderModel().elements) {
+    for (const auto& ph : elf.getProgramHeaderModel().elements) {
         // 非 LOAD 段跳过。
         if (ph.type != PT_LOAD) {
             continue;
@@ -51,7 +51,7 @@ bool hasStringEnd(const std::vector<uint8_t>& strtab, size_t off) {
 // 符号解析校验：符号表、字符串表、节索引与地址可达性。
 bool zElfValidator::validateSymbolResolution(const PatchElf& elf, std::string* error) {
     // 读取 section 列表。
-    const auto& sections = elf.sectionHeaderModel().elements;
+    const auto& sections = elf.getSectionHeaderModel().elements;
 
     // 遍历每一个节。
     for (size_t sec_idx = 0; sec_idx < sections.size(); ++sec_idx) {
@@ -189,3 +189,4 @@ bool zElfValidator::validateSymbolResolution(const PatchElf& elf, std::string* e
     // 全部符号约束检查通过。
     return true;
 }
+

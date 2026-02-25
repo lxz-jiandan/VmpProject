@@ -13,122 +13,124 @@
 #include <vector>
 
 // Header 模型可写访问。
-zElfHeader& PatchElf::headerModel() {
+zElfHeader& PatchElf::getHeaderModel() {
     return header_model_;
 }
 
 // Program Header 模型可写访问。
-zElfProgramHeaderTable& PatchElf::programHeaderModel() {
+zElfProgramHeaderTable& PatchElf::getProgramHeaderModel() {
     return ph_table_model_;
 }
 
 // Section Header 模型可写访问。
-zElfSectionHeaderTable& PatchElf::sectionHeaderModel() {
+zElfSectionHeaderTable& PatchElf::getSectionHeaderModel() {
     return sh_table_model_;
 }
 
 // Header 模型只读访问。
-const zElfHeader& PatchElf::headerModel() const {
+const zElfHeader& PatchElf::getHeaderModel() const {
     return header_model_;
 }
 
 // Program Header 模型只读访问。
-const zElfProgramHeaderTable& PatchElf::programHeaderModel() const {
+const zElfProgramHeaderTable& PatchElf::getProgramHeaderModel() const {
     return ph_table_model_;
 }
 
 // Section Header 模型只读访问。
-const zElfSectionHeaderTable& PatchElf::sectionHeaderModel() const {
+const zElfSectionHeaderTable& PatchElf::getSectionHeaderModel() const {
     return sh_table_model_;
 }
 
 // 按索引获取可写 Program Header。
-zProgramTableElement* PatchElf::getProgramHeader(size_t idx) {
+zProgramTableElement* PatchElf::getProgramHeader(size_t programHeaderIndex) {
     // 越界保护：调用方收到 nullptr 表示索引非法。
-    if (idx >= ph_table_model_.elements.size()) {
+    if (programHeaderIndex >= ph_table_model_.elements.size()) {
         return nullptr;
     }
     // 返回对应元素指针。
-    return &ph_table_model_.elements[idx];
+    return &ph_table_model_.elements[programHeaderIndex];
 }
 
 // 按索引获取只读 Program Header。
-const zProgramTableElement* PatchElf::getProgramHeader(size_t idx) const {
+const zProgramTableElement* PatchElf::getProgramHeader(size_t programHeaderIndex) const {
     // 越界返回空。
-    if (idx >= ph_table_model_.elements.size()) {
+    if (programHeaderIndex >= ph_table_model_.elements.size()) {
         return nullptr;
     }
     // 返回只读指针。
-    return &ph_table_model_.elements[idx];
+    return &ph_table_model_.elements[programHeaderIndex];
 }
 
 // 查找首个指定类型的 Program Header（可写）。
-zProgramTableElement* PatchElf::findFirstProgramHeader(Elf64_Word type) {
+zProgramTableElement* PatchElf::getFirstProgramHeader(Elf64_Word type) {
     // 复用 table 模型查找，再返回可写指针。
-    const int idx = ph_table_model_.findFirstByType(type);
-    return idx >= 0 ? &ph_table_model_.elements[(size_t)idx] : nullptr;
+    const int programHeaderIndex = ph_table_model_.getFirstByType(type);
+    return programHeaderIndex >= 0 ? &ph_table_model_.elements[(size_t)programHeaderIndex] : nullptr;
 }
 
 // 查找首个指定类型的 Program Header（只读）。
-const zProgramTableElement* PatchElf::findFirstProgramHeader(Elf64_Word type) const {
-    const int idx = ph_table_model_.findFirstByType(type);
-    return idx >= 0 ? &ph_table_model_.elements[(size_t)idx] : nullptr;
+const zProgramTableElement* PatchElf::getFirstProgramHeader(Elf64_Word type) const {
+    const int programHeaderIndex = ph_table_model_.getFirstByType(type);
+    return programHeaderIndex >= 0 ? &ph_table_model_.elements[(size_t)programHeaderIndex] : nullptr;
 }
 
 // 查找全部指定类型 Program Header（可写）。
-std::vector<zProgramTableElement*> PatchElf::findAllProgramHeaders(Elf64_Word type) {
+std::vector<zProgramTableElement*> PatchElf::getAllProgramHeaders(Elf64_Word type) {
     std::vector<zProgramTableElement*> result;
     // 过滤掉模型与索引列表之间的潜在越界。
-    for (int idx : ph_table_model_.findAllByType(type)) {
-        if (idx >= 0 && (size_t)idx < ph_table_model_.elements.size()) {
-            result.push_back(&ph_table_model_.elements[(size_t)idx]);
+    for (int programHeaderIndex : ph_table_model_.getAllByType(type)) {
+        if (programHeaderIndex >= 0 &&
+            (size_t)programHeaderIndex < ph_table_model_.elements.size()) {
+            result.push_back(&ph_table_model_.elements[(size_t)programHeaderIndex]);
         }
     }
     return result;
 }
 
 // 查找全部指定类型 Program Header（只读）。
-std::vector<const zProgramTableElement*> PatchElf::findAllProgramHeaders(Elf64_Word type) const {
+std::vector<const zProgramTableElement*> PatchElf::getAllProgramHeaders(Elf64_Word type) const {
     std::vector<const zProgramTableElement*> result;
-    for (int idx : ph_table_model_.findAllByType(type)) {
-        if (idx >= 0 && (size_t)idx < ph_table_model_.elements.size()) {
-            result.push_back(&ph_table_model_.elements[(size_t)idx]);
+    for (int programHeaderIndex : ph_table_model_.getAllByType(type)) {
+        if (programHeaderIndex >= 0 &&
+            (size_t)programHeaderIndex < ph_table_model_.elements.size()) {
+            result.push_back(&ph_table_model_.elements[(size_t)programHeaderIndex]);
         }
     }
     return result;
 }
 
 // 按索引获取可写 Section。
-zSectionTableElement* PatchElf::getSection(size_t idx) {
+zSectionTableElement* PatchElf::getSection(size_t sectionIndex) {
     // 委托到 section table 的边界检查逻辑。
-    return sh_table_model_.get(idx);
+    return sh_table_model_.get(sectionIndex);
 }
 
 // 按索引获取只读 Section。
-const zSectionTableElement* PatchElf::getSection(size_t idx) const {
-    return sh_table_model_.get(idx);
+const zSectionTableElement* PatchElf::getSection(size_t sectionIndex) const {
+    return sh_table_model_.get(sectionIndex);
 }
 
 // 按名称查找可写 Section。
-zSectionTableElement* PatchElf::findSectionByName(const std::string& section_name) {
+zSectionTableElement* PatchElf::getSectionByName(const std::string& sectionName) {
     // 先拿索引，再取对象，避免重复遍历。
-    const int idx = sh_table_model_.findByName(section_name);
-    return idx >= 0 ? sh_table_model_.get((size_t)idx) : nullptr;
+    const int sectionIndex = sh_table_model_.getByName(sectionName);
+    return sectionIndex >= 0 ? sh_table_model_.get((size_t)sectionIndex) : nullptr;
 }
 
 // 按名称查找只读 Section。
-const zSectionTableElement* PatchElf::findSectionByName(const std::string& section_name) const {
-    const int idx = sh_table_model_.findByName(section_name);
-    return idx >= 0 ? sh_table_model_.get((size_t)idx) : nullptr;
+const zSectionTableElement* PatchElf::getSectionByName(const std::string& sectionName) const {
+    const int sectionIndex = sh_table_model_.getByName(sectionName);
+    return sectionIndex >= 0 ? sh_table_model_.get((size_t)sectionIndex) : nullptr;
 }
 
 // 追加 Program Header 到模型。
-bool PatchElf::addProgramHeader(const zProgramTableElement& ph, size_t* out_index) {
+bool PatchElf::addProgramHeader(const zProgramTableElement& ph, size_t* outIndex) {
     // 仅更新模型并标脏；实际写回由 reconstruct/save 完成。
     ph_table_model_.elements.push_back(ph);
     // 回传新索引（可选）。
-    if (out_index) {
-        *out_index = ph_table_model_.elements.size() - 1;
+    if (outIndex) {
+        *outIndex = ph_table_model_.elements.size() - 1;
     }
     // 标记需要重构。
     reconstruction_dirty_ = true;
@@ -137,11 +139,11 @@ bool PatchElf::addProgramHeader(const zProgramTableElement& ph, size_t* out_inde
 
 // 简单追加 Section：按输入参数快速构造一个节对象。
 bool PatchElf::addSectionSimple(const std::string& name,
-                            Elf64_Word type,
-                            Elf64_Xword flags,
-                            Elf64_Xword addralign,
-                            const std::vector<uint8_t>& payload,
-                            size_t* out_index) {
+                                Elf64_Word type,
+                                Elf64_Xword flags,
+                                Elf64_Xword addralign,
+                                const std::vector<uint8_t>& payload,
+                                size_t* outIndex) {
     // 名称不能为空。
     if (name.empty()) {
         return false;
@@ -179,7 +181,7 @@ bool PatchElf::addSectionSimple(const std::string& name,
             }
             return ((value + align - 1) / align) * align;
         };
-        section->offset = alignUp((Elf64_Off)currentMaxFileEnd(), (Elf64_Off)section->addralign);
+        section->offset = alignUp((Elf64_Off)getMaxFileEnd(), (Elf64_Off)section->addralign);
     }
     // 同步 section header 字段。
     section->syncHeader();
@@ -189,8 +191,8 @@ bool PatchElf::addSectionSimple(const std::string& name,
     // 插入节对象。
     sh_table_model_.elements.push_back(std::move(section));
     // 回传索引（可选）。
-    if (out_index) {
-        *out_index = new_index;
+    if (outIndex) {
+        *outIndex = new_index;
     }
     // 标记需要重构。
     reconstruction_dirty_ = true;
@@ -198,32 +200,32 @@ bool PatchElf::addSectionSimple(const std::string& name,
 }
 
 // 按节名给节尾补 padding。
-bool PatchElf::addSectionPaddingByName(const std::string& section_name, size_t pad_size) {
+bool PatchElf::addSectionPaddingByName(const std::string& sectionName, size_t padSize) {
     // 名称接口只是索引接口的薄封装。
-    const int idx = sh_table_model_.findByName(section_name);
-    if (idx < 0) {
+    const int sectionIndex = sh_table_model_.getByName(sectionName);
+    if (sectionIndex < 0) {
         return false;
     }
-    return addSectionPaddingByIndex((size_t)idx, pad_size);
+    return addSectionPaddingByIndex((size_t)sectionIndex, padSize);
 }
 
 // 按节索引给节尾补 padding。
-bool PatchElf::addSectionPaddingByIndex(size_t idx, size_t pad_size) {
+bool PatchElf::addSectionPaddingByIndex(size_t sectionIndex, size_t padSize) {
     // 补 0 字节视为成功无操作。
-    if (pad_size == 0) {
+    if (padSize == 0) {
         return true;
     }
     // 获取目标节。
-    auto* section = sh_table_model_.get(idx);
+    auto* section = sh_table_model_.get(sectionIndex);
     if (!section) {
         return false;
     }
     // NOBITS 扩容只改 size（不产生文件 payload）。
     if (section->type == SHT_NOBITS) {
-        section->size += (Elf64_Xword)pad_size;
+        section->size += (Elf64_Xword)padSize;
     } else {
         // 其他节在 payload 尾部补 0。
-        section->payload.resize(section->payload.size() + pad_size, 0);
+        section->payload.resize(section->payload.size() + padSize, 0);
     }
     // 同步头字段。
     section->syncHeader();
@@ -233,19 +235,19 @@ bool PatchElf::addSectionPaddingByIndex(size_t idx, size_t pad_size) {
 }
 
 // 仅扩大段 memsz（不改 filesz），用于零填充内存扩容。
-bool PatchElf::addZeroFillToSegment(size_t idx, Elf64_Xword extra_memsz) {
+bool PatchElf::addZeroFillToSegment(size_t segmentIndex, Elf64_Xword extraMemsz) {
     // 索引越界。
-    if (idx >= ph_table_model_.elements.size()) {
+    if (segmentIndex >= ph_table_model_.elements.size()) {
         return false;
     }
     // 扩容为 0 视为成功无操作。
-    if (extra_memsz == 0) {
+    if (extraMemsz == 0) {
         return true;
     }
     // 取可写段引用。
-    auto& ph = ph_table_model_.elements[idx];
+    auto& ph = ph_table_model_.elements[segmentIndex];
     // 只扩 memsz，不改 filesz，表示新增的是零填充内存页。
-    ph.memsz += extra_memsz;
+    ph.memsz += extraMemsz;
     // 兜底保证 memsz >= filesz。
     if (ph.memsz < ph.filesz) {
         ph.memsz = ph.filesz;
@@ -258,23 +260,23 @@ bool PatchElf::addZeroFillToSegment(size_t idx, Elf64_Xword extra_memsz) {
 namespace {
 
 // 解析三字符权限文本（例如 "RWX" / "R_X"）到 PF_* 位掩码。
-Elf64_Word parsePfFlagsText(const std::string& flags_text) {
+Elf64_Word parsePfFlagsText(const std::string& flagsText) {
     // 长度不足三位直接返回 0。
-    if (flags_text.size() < 3) {
+    if (flagsText.size() < 3) {
         return 0;
     }
     // 初始权限值。
     Elf64_Word flags = 0;
     // 读权限。
-    if (flags_text[0] == 'R') {
+    if (flagsText[0] == 'R') {
         flags |= PF_R;
     }
     // 写权限。
-    if (flags_text[1] == 'W') {
+    if (flagsText[1] == 'W') {
         flags |= PF_W;
     }
     // 执行权限。
-    if (flags_text[2] == 'X') {
+    if (flagsText[2] == 'X') {
         flags |= PF_X;
     }
     return flags;
@@ -284,14 +286,14 @@ Elf64_Word parsePfFlagsText(const std::string& flags_text) {
 
 // 追加一个新段（初始 filesz/memsz 为 0）。
 bool PatchElf::addSegment(Elf64_Word type,
-                       const std::string& flags_text,
-                       size_t* out_index) {
+                          const std::string& flagsText,
+                          size_t* outIndex) {
     // 新段默认放到文件尾/虚拟地址尾，并按页对齐。
     const Elf64_Off page_size = (Elf64_Off)inferRuntimePageSizeFromPhdrs(ph_table_model_.elements);
     // 文件偏移按页对齐。
-    const Elf64_Off new_off = alignUpOff((Elf64_Off)currentMaxFileEnd(), page_size);
+    const Elf64_Off new_off = alignUpOff((Elf64_Off)getMaxFileEnd(), page_size);
     // 虚拟地址基准按页对齐。
-    const uint64_t vaddr_base = (uint64_t)alignUpOff((Elf64_Off)currentMaxLoadVaddrEnd(), page_size);
+    const uint64_t vaddr_base = (uint64_t)alignUpOff((Elf64_Off)getMaxLoadVaddrEnd(), page_size);
     // 兼容 p_vaddr%page == p_offset%page 的同余关系。
     const Elf64_Addr new_vaddr = (Elf64_Addr)(vaddr_base + ((uint64_t)new_off % (uint64_t)page_size));
 
@@ -300,7 +302,7 @@ bool PatchElf::addSegment(Elf64_Word type,
     // 新段的文件地址和虚拟地址都从各自末尾对齐后分配。
     ph.type = type;
     // 解析权限文本。
-    ph.flags = parsePfFlagsText(flags_text);
+    ph.flags = parsePfFlagsText(flagsText);
     // 文件偏移。
     ph.offset = new_off;
     // 虚拟地址。
@@ -317,8 +319,8 @@ bool PatchElf::addSegment(Elf64_Word type,
     // 追加到段表。
     ph_table_model_.elements.push_back(ph);
     // 回传索引（可选）。
-    if (out_index) {
-        *out_index = ph_table_model_.elements.size() - 1;
+    if (outIndex) {
+        *outIndex = ph_table_model_.elements.size() - 1;
     }
     // 标记需要重构。
     reconstruction_dirty_ = true;
@@ -327,14 +329,14 @@ bool PatchElf::addSegment(Elf64_Word type,
 
 // 在指定 LOAD 段上追加一个简单节。
 bool PatchElf::addSection(const std::string& name,
-                       size_t load_segment_idx,
-                       size_t* out_index) {
+                          size_t loadSegmentIndex,
+                          size_t* outIndex) {
     // 段索引越界。
-    if (load_segment_idx >= ph_table_model_.elements.size()) {
+    if (loadSegmentIndex >= ph_table_model_.elements.size()) {
         return false;
     }
     // 取目标段引用。
-    auto& seg = ph_table_model_.elements[load_segment_idx];
+    auto& seg = ph_table_model_.elements[loadSegmentIndex];
     // 只允许挂在 PT_LOAD 上。
     if (seg.type != PT_LOAD) {
         return false;
@@ -424,8 +426,8 @@ bool PatchElf::addSection(const std::string& name,
     // 插入新节。
     sh_table_model_.elements.push_back(std::move(section));
     // 回传索引（可选）。
-    if (out_index) {
-        *out_index = new_index;
+    if (outIndex) {
+        *outIndex = new_index;
     }
     // 标记需要重构。
     reconstruction_dirty_ = true;
@@ -433,36 +435,36 @@ bool PatchElf::addSection(const std::string& name,
 }
 
 // 追加节的简化接口：默认挂到最后一个 LOAD。
-bool PatchElf::addSection(const std::string& name, size_t* out_index) {
+bool PatchElf::addSection(const std::string& name, size_t* outIndex) {
     // 简化接口：默认挂到最后一个 LOAD。
-    const int idx = getLastLoadSegment();
-    if (idx < 0) {
+    const int lastLoadIndex = getLastLoadSegment();
+    if (lastLoadIndex < 0) {
         return false;
     }
-    return addSection(name, (size_t)idx, out_index);
+    return addSection(name, (size_t)lastLoadIndex, outIndex);
 }
 
 // 获取首个 PT_LOAD 索引。
 int PatchElf::getFirstLoadSegment() const {
     // 返回第一个 PT_LOAD 索引（不存在则 -1）。
-    return ph_table_model_.findFirstByType(PT_LOAD);
+    return ph_table_model_.getFirstByType(PT_LOAD);
 }
 
 // 获取最后一个 PT_LOAD 索引。
 int PatchElf::getLastLoadSegment() const {
     int last = -1;
-    for (int idx : ph_table_model_.findAllByType(PT_LOAD)) {
-        if (idx > last) {
-            last = idx;
+    for (int loadIndex : ph_table_model_.getAllByType(PT_LOAD)) {
+        if (loadIndex > last) {
+            last = loadIndex;
         }
     }
     return last;
 }
 
 // 兼容旧接口：relocate 实际等价于 save。
-bool PatchElf::relocate(const std::string& output_path) {
+bool PatchElf::relocate(const std::string& outputPath) {
     // 兼容旧接口：本质就是 save。
-    return save(output_path.c_str());
+    return save(outputPath.c_str());
 }
 
 // 回滚到源文件初始状态。
@@ -473,3 +475,4 @@ bool PatchElf::backup() {
     }
     return loadElfFile(source_path_.c_str());
 }
+

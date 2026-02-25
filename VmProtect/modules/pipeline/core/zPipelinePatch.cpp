@@ -19,6 +19,10 @@
 #include "zIoUtils.h"
 // 引入日志能力。
 #include "zLog.h"
+// 引入输出路径拼接工具。
+#include "zPipelineCli.h"
+// 引入流程配置结构。
+#include "zPipelineTypes.h"
 
 // 简化 std::filesystem 命名引用。
 namespace fs = std::filesystem;
@@ -51,8 +55,8 @@ constexpr uint32_t kEmbeddedPayloadMagic = 0x34454D56U;  // 'VME4'
 // 当前嵌入协议版本。
 constexpr uint32_t kEmbeddedPayloadVersion = 1U;
 
-// 解析 host so 末尾是否已存在旧 payload，并给出基础体大小。
-bool parseExistingEmbeddedPayload(const std::vector<uint8_t>& hostBytes,
+// 解析 vmengine so 末尾是否已存在旧 payload，并给出基础体大小。
+bool parseExistingEmbeddedPayload(const std::vector<uint8_t>& vmengineBytes,
                                   size_t* outBaseSize,
                                   size_t* outOldPayloadSize) {
     // 输出参数必须有效。
@@ -60,36 +64,36 @@ bool parseExistingEmbeddedPayload(const std::vector<uint8_t>& hostBytes,
         return false;
     }
     // 默认假设“无历史 payload”，基础体就是整文件。
-    *outBaseSize = hostBytes.size();
+    *outBaseSize = vmengineBytes.size();
     *outOldPayloadSize = 0;
     // 文件长度不足一个 footer，说明不可能有嵌入块。
-    if (hostBytes.size() < sizeof(EmbeddedPayloadFooter)) {
+    if (vmengineBytes.size() < sizeof(EmbeddedPayloadFooter)) {
         return true;
     }
 
     // 从文件尾部拷贝 footer。
     EmbeddedPayloadFooter footer{};
-    const size_t footerOff = hostBytes.size() - sizeof(EmbeddedPayloadFooter);
-    std::memcpy(&footer, hostBytes.data() + footerOff, sizeof(EmbeddedPayloadFooter));
+    const size_t footerOff = vmengineBytes.size() - sizeof(EmbeddedPayloadFooter);
+    std::memcpy(&footer, vmengineBytes.data() + footerOff, sizeof(EmbeddedPayloadFooter));
     // 魔数/版本不匹配时，按“无嵌入块”处理，不视为错误。
     if (footer.magic != kEmbeddedPayloadMagic || footer.version != kEmbeddedPayloadVersion) {
         return true;
     }
     // 校验 payloadSize 合法性，防止越界。
     if (footer.payloadSize == 0 ||
-        footer.payloadSize > hostBytes.size() - sizeof(EmbeddedPayloadFooter)) {
+        footer.payloadSize > vmengineBytes.size() - sizeof(EmbeddedPayloadFooter)) {
         LOGE("embedded footer invalid payloadSize=%llu",
              static_cast<unsigned long long>(footer.payloadSize));
         return false;
     }
 
     // 计算 payload 起始偏移。
-    const size_t payloadBegin = hostBytes.size() -
+    const size_t payloadBegin = vmengineBytes.size() -
                                  sizeof(EmbeddedPayloadFooter) -
                                  static_cast<size_t>(footer.payloadSize);
     // 对 payload 重新计算 CRC32。
     const uint32_t actualCrc = base::checksum::crc32Ieee(
-        hostBytes.data() + payloadBegin,
+        vmengineBytes.data() + payloadBegin,
         static_cast<size_t>(footer.payloadSize));
     // CRC 不一致说明文件损坏或协议不匹配。
     if (actualCrc != footer.payloadCrc32) {
@@ -125,39 +129,13 @@ int runPatchbayCommandInProcess(const std::vector<std::string>& args) {
 // 结束匿名命名空间。
 }  // namespace
 
-// 基于 host so 路径生成默认 patch so 路径。
-std::string buildPatchSoDefaultPath(const std::string& hostSoPath) {
-    // 解析 host so 路径。
-    fs::path hostPath(hostSoPath);
-    // 获取父目录。
-    fs::path parent = hostPath.parent_path();
-    // 获取主文件名（不含扩展名）。
-    const std::string stem = hostPath.stem().string();
-    // 获取扩展名。
-    const std::string ext = hostPath.extension().string();
-    // 保存生成后的 patch 文件名。
-    std::string patchName;
-    // 标准 .so 文件时沿用 stem 并追加 _patch。
-    if (!stem.empty() && ext == ".so") {
-        patchName = stem + "_patch.so";
-    // 非标准扩展名但有文件名时，直接在文件名后追加。
-    } else if (!hostPath.filename().string().empty()) {
-        patchName = hostPath.filename().string() + "_patch.so";
-    // 路径异常时给出兜底默认名。
-    } else {
-        patchName = "libvmengine_patch.so";
-    }
-    // 返回规范化后的目标路径。
-    return (parent / patchName).lexically_normal().string();
-}
-
-// 把 expanded so 嵌入 host so，输出最终可发布 so。
-bool embedExpandedSoIntoHost(const std::string& hostSo,
-                             const std::string& payloadSo,
-                             const std::string& finalSo) {
-    // 校验 host so 是否存在。
-    if (!fileExists(hostSo)) {
-        LOGE("host so not found: %s", hostSo.c_str());
+// 把 expanded so 嵌入 vmengine so，输出最终可发布 so。
+bool embedExpandedSoIntoVmengine(const std::string& vmengineSo,
+                                 const std::string& payloadSo,
+                                 const std::string& outputSo) {
+    // 校验 vmengine so 是否存在。
+    if (!fileExists(vmengineSo)) {
+        LOGE("vmengine so not found: %s", vmengineSo.c_str());
         return false;
     }
     // 校验 payload so 是否存在。
@@ -166,15 +144,15 @@ bool embedExpandedSoIntoHost(const std::string& hostSo,
         return false;
     }
     // 校验输出路径非空。
-    if (finalSo.empty()) {
-        LOGE("final so path is empty");
+    if (outputSo.empty()) {
+        LOGE("output so path is empty");
         return false;
     }
 
-    // 读取 host so 全量字节。
-    std::vector<uint8_t> hostBytes;
-    if (!readFileBytes(hostSo.c_str(), hostBytes)) {
-        LOGE("failed to read host so: %s", hostSo.c_str());
+    // 读取 vmengine so 全量字节。
+    std::vector<uint8_t> vmengineBytes;
+    if (!readFileBytes(vmengineSo.c_str(), vmengineBytes)) {
+        LOGE("failed to read vmengine so: %s", vmengineSo.c_str());
         return false;
     }
     // 读取 payload so 全量字节。
@@ -184,18 +162,20 @@ bool embedExpandedSoIntoHost(const std::string& hostSo,
         return false;
     }
 
-    // 解析 host so 是否已有旧嵌入 payload。
-    size_t baseSize = hostBytes.size();
+    // 解析 vmengine so 是否已有旧嵌入 payload。
+    size_t baseSize = vmengineBytes.size();
     size_t oldPayloadSize = 0;
-    if (!parseExistingEmbeddedPayload(hostBytes, &baseSize, &oldPayloadSize)) {
-        LOGE("failed to parse existing embedded payload in host so: %s", hostSo.c_str());
+    if (!parseExistingEmbeddedPayload(vmengineBytes, &baseSize, &oldPayloadSize)) {
+        LOGE("failed to parse existing embedded payload in vmengine so: %s", vmengineSo.c_str());
         return false;
     }
 
     // 组装输出字节：基础体 + 新 payload + 新 footer。
     std::vector<uint8_t> out;
     out.reserve(baseSize + payloadBytes.size() + sizeof(EmbeddedPayloadFooter));
-    out.insert(out.end(), hostBytes.begin(), hostBytes.begin() + static_cast<std::ptrdiff_t>(baseSize));
+    out.insert(out.end(),
+               vmengineBytes.begin(),
+               vmengineBytes.begin() + static_cast<std::ptrdiff_t>(baseSize));
     out.insert(out.end(), payloadBytes.begin(), payloadBytes.end());
 
     // 填充 footer 字段。
@@ -210,21 +190,21 @@ bool embedExpandedSoIntoHost(const std::string& hostSo,
     out.insert(out.end(), footerBytes, footerBytes + sizeof(EmbeddedPayloadFooter));
 
     // 写出最终 so 文件。
-    if (!writeFileBytes(finalSo, out)) {
-        LOGE("failed to write final so: %s", finalSo.c_str());
+    if (!writeFileBytes(outputSo, out)) {
+        LOGE("failed to write output so: %s", outputSo.c_str());
         return false;
     }
 
     // 根据是否替换旧 payload 输出不同日志语义。
     if (oldPayloadSize > 0) {
-        LOGI("embed host so: replaced existing payload old=%llu new=%llu output=%s",
+        LOGI("embed vmengine so: replaced existing payload old=%llu new=%llu output=%s",
              static_cast<unsigned long long>(oldPayloadSize),
              static_cast<unsigned long long>(payloadBytes.size()),
-             finalSo.c_str());
+             outputSo.c_str());
     } else {
-        LOGI("embed host so: appended payload=%llu output=%s",
+        LOGI("embed vmengine so: appended payload=%llu output=%s",
              static_cast<unsigned long long>(payloadBytes.size()),
-             finalSo.c_str());
+             outputSo.c_str());
     }
     return true;
 }
@@ -295,6 +275,48 @@ bool runPatchbayExportFromDonor(const std::string& inputSo,
          donorSo.c_str(),
          implSymbol.c_str(),
          patchAllExports ? 1 : 0);
+    return true;
+}
+
+// 执行 vmengine 保护流程（可选）。
+bool runVmengineProtectFlow(const VmProtectConfig& config) {
+    // 未指定 vmengine 时直接跳过。
+    if (config.vmengineSo.empty()) {
+        return true;
+    }
+
+    // expanded so 的完整路径。
+    const std::string expandedSoPath = joinOutputPath(config, config.expandedSo);
+    // 未指定 donor：仅做 embed。
+    if (config.patchDonorSo.empty()) {
+        // outputSo 在加固路线下必须显式传入，直接执行 embed。
+        return embedExpandedSoIntoVmengine(config.vmengineSo, expandedSoPath, config.outputSo);
+    }
+
+    // 指定 donor：走 embed + patchbay 导出流程。
+    const std::string outputSoPath = config.outputSo;
+    // patch 前临时文件路径。
+    const std::string embedTmpSoPath = outputSoPath + ".embed.tmp.so";
+    // 先把 expanded so 注入临时 so。
+    if (!embedExpandedSoIntoVmengine(config.vmengineSo, expandedSoPath, embedTmpSoPath)) {
+        return false;
+    }
+    // 再执行 patchbay donor 导出流程。
+    if (!runPatchbayExportFromDonor(embedTmpSoPath,
+                                    outputSoPath,
+                                    config.patchDonorSo,
+                                    config.patchImplSymbol,
+                                    config.patchAllExports,
+                                    config.patchAllowValidateFail)) {
+        return false;
+    }
+
+    // 清理临时文件（失败仅告警不阻断）。
+    std::error_code ec;
+    fs::remove(embedTmpSoPath, ec);
+    if (ec) {
+        LOGW("remove embed tmp so failed: %s", embedTmpSoPath.c_str());
+    }
     return true;
 }
 

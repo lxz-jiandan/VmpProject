@@ -1,4 +1,4 @@
-#include "zPipelineExport.h"
+﻿#include "zPipelineExport.h"
 
 // 引入文件流用于写中间产物。
 #include <fstream>
@@ -48,12 +48,12 @@ bool writeSharedBranchAddrList(const char* filePath,
     }
     // 非空时输出真实数组初始化列表。
     out << "uint64_t branch_addr_list[] = { ";
-    for (size_t i = 0; i < branchAddrs.size(); ++i) {
-        if (i > 0) {
+    for (size_t branchIndex = 0; branchIndex < branchAddrs.size(); ++branchIndex) {
+        if (branchIndex > 0) {
             out << ", ";
         }
         // 地址按十六进制输出，便于和反汇编地址对照。
-        out << "0x" << std::hex << branchAddrs[i] << std::dec;
+        out << "0x" << std::hex << branchAddrs[branchIndex] << std::dec;
     }
     out << " };\n";
     return static_cast<bool>(out);
@@ -72,6 +72,54 @@ void appendUniqueBranchAddrs(const std::vector<uint64_t>& localAddrs,
     }
 }
 
+// 校验导出前的翻译状态。
+// 优先复用覆盖率阶段产出的 translateOk 结果；缺失时回退到直接 prepareTranslation。
+bool validateTranslationForExport(const std::vector<std::string>& functionNames,
+                                  const std::vector<elfkit::FunctionView>& functions,
+                                  const CoverageBoard* coverageBoard) {
+    // 优先尝试复用 coverageBoard，避免重复 prepareTranslation。
+    if (coverageBoard != nullptr) {
+        const std::vector<FunctionCoverageRow>& rows = coverageBoard->functionRows;
+        if (rows.size() == functions.size()) {
+            bool nameAligned = true;
+            for (size_t rowIndex = 0; rowIndex < rows.size(); ++rowIndex) {
+                if (rows[rowIndex].functionName != functionNames[rowIndex]) {
+                    nameAligned = false;
+                    break;
+                }
+            }
+            if (nameAligned) {
+                for (size_t rowIndex = 0; rowIndex < rows.size(); ++rowIndex) {
+                    if (!rows[rowIndex].translateOk) {
+                        LOGE("translation failed for %s: %s",
+                             functionNames[rowIndex].c_str(),
+                             rows[rowIndex].translateError.c_str());
+                        return false;
+                    }
+                }
+                return true;
+            }
+            LOGW("coverage rows name order mismatch, fallback to direct prepareTranslation");
+        } else {
+            LOGW("coverage rows size mismatch, fallback to direct prepareTranslation: rowCount=%llu functionCount=%llu",
+                 static_cast<unsigned long long>(rows.size()),
+                 static_cast<unsigned long long>(functions.size()));
+        }
+    }
+
+    // 回退路径：逐函数直接校验翻译状态。
+    for (size_t functionIndex = 0; functionIndex < functions.size(); ++functionIndex) {
+        std::string error;
+        if (!functions[functionIndex].prepareTranslation(&error)) {
+            LOGE("translation failed for %s: %s",
+                 functionNames[functionIndex].c_str(),
+                 error.c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
 // 结束匿名命名空间。
 }  // namespace
 
@@ -86,16 +134,16 @@ bool collectFunctions(elfkit::ElfImage& elf,
     // 按输入顺序逐个解析函数。
     for (const std::string& functionName : functionNames) {
         // 尝试从符号/映像中查找函数。
-        elfkit::FunctionView function = elf.findFunction(functionName);
+        elfkit::FunctionView function = elf.getFunction(functionName);
         // 任一函数找不到即整体失败，保持流程强一致。
-        if (!function.valid()) {
+        if (!function.isValid()) {
             LOGE("failed to resolve function: %s", functionName.c_str());
             return false;
         }
         // 输出函数解析结果，便于排查映射错误。
         LOGI("resolved function %s at 0x%llx",
-             function.name().c_str(),
-             static_cast<unsigned long long>(function.offset()));
+             function.getName().c_str(),
+             static_cast<unsigned long long>(function.getOffset()));
         // 写入收集结果数组。
         functions.push_back(function);
     }
@@ -105,23 +153,18 @@ bool collectFunctions(elfkit::ElfImage& elf,
 // 导出保护包：文本 dump、编码 payload、共享分支列表和 expand so。
 bool exportProtectedPackage(const VmProtectConfig& config,
                             const std::vector<std::string>& functionNames,
-                            const std::vector<elfkit::FunctionView>& functions) {
-    // 第一阶段：先验证每个函数能否进入翻译链路。
-    for (size_t i = 0; i < functions.size(); ++i) {
-        std::string error;
-        if (!functions[i].prepareTranslation(&error)) {
-            LOGE("translation failed for %s: %s",
-                 functionNames[i].c_str(),
-                 error.c_str());
-            return false;
-        }
+                            const std::vector<elfkit::FunctionView>& functions,
+                            const CoverageBoard* coverageBoard) {
+    // 第一阶段：先验证每个函数能否进入翻译链路（优先复用 coverage 结果）。
+    if (!validateTranslationForExport(functionNames, functions, coverageBoard)) {
+        return false;
     }
 
     // 第二阶段：合并所有函数的共享分支地址并去重。
     std::vector<uint64_t> sharedBranchAddrs;
     std::unordered_set<uint64_t> seenAddrs;
     for (const elfkit::FunctionView& function : functions) {
-        appendUniqueBranchAddrs(function.sharedBranchAddrs(), seenAddrs, sharedBranchAddrs);
+        appendUniqueBranchAddrs(function.getSharedBranchAddrs(), seenAddrs, sharedBranchAddrs);
     }
 
     // 将共享分支地址写出到约定文件。
@@ -135,9 +178,9 @@ bool exportProtectedPackage(const VmProtectConfig& config,
     std::vector<zSoBinPayload> payloads;
     payloads.reserve(functions.size());
 
-    for (size_t i = 0; i < functions.size(); ++i) {
-        const elfkit::FunctionView& function = functions[i];
-        const std::string& functionName = functionNames[i];
+    for (size_t functionIndex = 0; functionIndex < functions.size(); ++functionIndex) {
+        const elfkit::FunctionView& function = functions[functionIndex];
+        const std::string& functionName = functionNames[functionIndex];
 
         // 把 OP_BL 重映射到共享分支地址表索引体系。
         if (!function.remapBlToSharedBranchAddrs(sharedBranchAddrs)) {
@@ -160,10 +203,10 @@ bool exportProtectedPackage(const VmProtectConfig& config,
         // 组装 so bundle 需要的 payload 结构。
         zSoBinPayload payload;
         // 记录函数地址，供运行时定位。
-        payload.fun_addr = static_cast<uint64_t>(function.offset());
+        payload.funAddr = static_cast<uint64_t>(function.getOffset());
         // 读取编码后的二进制字节。
-        if (!readFileBytes(binPath.c_str(), payload.encoded_bytes) ||
-            payload.encoded_bytes.empty()) {
+        if (!readFileBytes(binPath.c_str(), payload.encodedBytes) ||
+            payload.encodedBytes.empty()) {
             LOGE("failed to read encoded payload: %s", binPath.c_str());
             return false;
         }
@@ -191,6 +234,7 @@ bool exportProtectedPackage(const VmProtectConfig& config,
 
 // 结束 vmp 命名空间。
 }  // namespace vmp
+
 
 
 

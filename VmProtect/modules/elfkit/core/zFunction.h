@@ -39,38 +39,38 @@ public:
     // `size`   返回原始机器码长度；
     // `data`   返回原始机器码首地址；
     // `empty`  判空快捷接口。
-    const std::string& name() const;
-    Elf64_Addr offset() const;
-    size_t size() const;
-    const uint8_t* data() const;
-    bool empty() const;
+    const std::string& getName() const;
+    Elf64_Addr getOffset() const;
+    size_t getSize() const;
+    const uint8_t* getData() const;
+    bool isEmpty() const;
 
     // 反汇编分析与输出：
     // `analyzeAssembly` 触发惰性分析；
-    // `assemblyList`    返回结构化指令列表；
-    // `assemblyInfo`    返回可读文本。
+    // `getAssemblyList` 返回结构化指令列表；
+    // `getAssemblyInfo` 返回可读文本。
     zFunction& analyzeAssembly();
-    const std::vector<zInst>& assemblyList() const;
-    std::string assemblyInfo() const;
+    const std::vector<zInst>& getAssemblyList() const;
+    std::string getAssemblyInfo() const;
 
     // 按指定模式导出到文件路径。
     // 返回 true 表示导出成功，false 表示失败（失败原因在日志中）。
-    bool dump(const char* file_path, DumpMode mode) const;
+    bool dump(const char* filePath, DumpMode mode) const;
 
     // 触发一次翻译准备并返回是否成功。
     // 失败时可选写出错误文本，便于上层聚合覆盖统计。
     bool prepareTranslation(std::string* error = nullptr) const;
 
     // 返回最近一次翻译错误文本（成功时为空）。
-    const std::string& lastTranslationError() const;
+    const std::string& getLastTranslationError() const;
 
     // 读取当前未编码缓存中的全局 `branch_addr_list`。
     // 若缓存尚未准备，会触发懒加载翻译流程。
-    const std::vector<uint64_t>& sharedBranchAddrs() const;
+    const std::vector<uint64_t>& getSharedBranchAddrs() const;
 
     // 将本函数内 `OP_BL` 的“局部索引”重映射到“全局索引”。
     // 成功后会把缓存中的 `branch_addrs_cache_` 替换成共享全局地址表。
-    bool remapBlToSharedBranchAddrs(const std::vector<uint64_t>& shared_branch_addrs);
+    bool remapBlToSharedBranchAddrs(const std::vector<uint64_t>& sharedBranchAddrs);
 
 private:
     // 确保反汇编缓存可用（惰性构建）。
@@ -81,17 +81,17 @@ private:
     // 更新未编码缓存快照：
     // 文本导入路径与机器码翻译路径都统一写入该缓存，减少分叉逻辑。
     void setUnencodedCache(
-        uint32_t register_count,
-        std::vector<uint32_t> reg_id_list,
-        uint32_t type_count,
-        std::vector<uint32_t> type_tags,
-        uint32_t init_value_count,
-        std::map<uint64_t, std::vector<uint32_t>> inst_by_address,
-        std::map<uint64_t, std::string> asm_by_address,
-        uint32_t inst_count,
-        uint32_t branch_count,
-        std::vector<uint32_t> branch_words,
-        std::vector<uint64_t> branch_addr_words
+        uint32_t registerCount,
+        std::vector<uint32_t> regIdList,
+        uint32_t typeCount,
+        std::vector<uint32_t> typeTags,
+        uint32_t initValueCount,
+        std::map<uint64_t, std::vector<uint32_t>> instByAddress,
+        std::map<uint64_t, std::string> asmByAddress,
+        uint32_t instCount,
+        uint32_t branchCount,
+        std::vector<uint32_t> branchWords,
+        std::vector<uint64_t> branchAddrWords
     ) const;
 
     // 用未编码缓存重建 `asm_list_` 展示结果。

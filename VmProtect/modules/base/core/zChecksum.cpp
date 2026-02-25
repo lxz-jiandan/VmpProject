@@ -16,15 +16,15 @@ const uint32_t* crc32Table() {
     // 首次调用时构建查找表。
     if (!inited) {
         // 逐个字节值构建 256 项。
-        for (uint32_t i = 0; i < 256; ++i) {
+        for (uint32_t tableIndex = 0; tableIndex < 256; ++tableIndex) {
             // 当前项临时寄存器。
-            uint32_t c = i;
+            uint32_t crcState = tableIndex;
             // 每项执行 8 轮多项式迭代。
-            for (int k = 0; k < 8; ++k) {
-                c = (c & 1u) ? (0xEDB88320u ^ (c >> 1u)) : (c >> 1u);
+            for (int bitRound = 0; bitRound < 8; ++bitRound) {
+                crcState = (crcState & 1u) ? (0xEDB88320u ^ (crcState >> 1u)) : (crcState >> 1u);
             }
             // 回填到查找表。
-            table[i] = c;
+            table[tableIndex] = crcState;
         }
         // 标记初始化完成。
         inited = true;
@@ -71,13 +71,13 @@ uint32_t crc32IeeeUpdate(uint32_t crc, const uint8_t* data, const size_t size) {
     // 获取查找表。
     const uint32_t* table = crc32Table();
     // 复制一份工作状态。
-    uint32_t c = crc;
+    uint32_t crcState = crc;
     // 逐字节更新。
-    for (size_t i = 0; i < size; ++i) {
-        c = table[(c ^ data[i]) & 0xFFu] ^ (c >> 8u);
+    for (size_t byteIndex = 0; byteIndex < size; ++byteIndex) {
+        crcState = table[(crcState ^ data[byteIndex]) & 0xFFu] ^ (crcState >> 8u);
     }
     // 返回新状态。
-    return c;
+    return crcState;
 }
 
 // 返回 CRC32 收尾值。

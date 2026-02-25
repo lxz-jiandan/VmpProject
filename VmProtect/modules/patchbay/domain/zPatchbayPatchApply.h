@@ -1,8 +1,8 @@
 #ifndef VMPROTECT_PATCHBAY_PATCH_APPLY_H
 #define VMPROTECT_PATCHBAY_PATCH_APPLY_H
 
-// 引入 patchbay API 中的节信息定义。
-#include "zPatchbayApi.h"
+// 引入 ELF 只读 facade（包含 patchbay 节快照类型定义）。
+#include "zElfReadFacade.h"
 
 // 引入基础整型定义。
 #include <cstdint>
@@ -42,4 +42,3 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
                                std::string* error);
 
 #endif // VMPROTECT_PATCHBAY_PATCH_APPLY_H
-

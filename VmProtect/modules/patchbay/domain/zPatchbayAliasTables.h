@@ -1,8 +1,8 @@
 #ifndef VMPROTECT_PATCHBAY_ALIAS_TABLES_H
 #define VMPROTECT_PATCHBAY_ALIAS_TABLES_H
 
-// 引入 patchbay API（PatchElfImage/PatchRequiredSections）。
-#include "zPatchbayApi.h"
+// 引入 ELF 只读 facade（含 patchbay 所需类型）。
+#include "zElfReadFacade.h"
 // 引入 alias 对定义。
 #include "zPatchbayTypes.h"
 
@@ -37,11 +37,10 @@ struct AliasTableBuildResult {
 // 返回：
 // - true: 构建成功。
 // - false: 构建失败。
-bool buildPatchbayAliasTables(const vmp::elfkit::PatchElfImage& elf,
+bool buildPatchbayAliasTables(const vmp::elfkit::zElfReadFacade& elf,
                               const vmp::elfkit::PatchRequiredSections& required,
                               const std::vector<AliasPair>& aliasPairs,
                               AliasTableBuildResult* out,
                               std::string* error);
 
 #endif // VMPROTECT_PATCHBAY_ALIAS_TABLES_H
-

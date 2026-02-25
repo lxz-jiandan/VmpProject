@@ -73,28 +73,28 @@ inline bool addU64Checked(uint64_t a, uint64_t b, uint64_t* out) {
 }
 
 // 判断两个区间是否重叠。
-inline bool rangesOverlapU64(uint64_t a_begin, uint64_t a_size,
-                               uint64_t b_begin, uint64_t b_size) {
+inline bool rangesOverlapU64(uint64_t aBegin, uint64_t aSize,
+                             uint64_t bBegin, uint64_t bSize) {
     // 空区间与任何区间都不重叠。
-    if (a_size == 0 || b_size == 0) {
+    if (aSize == 0 || bSize == 0) {
         return false;
     }
     // 任一区间在计算 end 前发生溢出则视为非法输入，不判重叠。
-    if (a_begin > std::numeric_limits<uint64_t>::max() - a_size) {
+    if (aBegin > std::numeric_limits<uint64_t>::max() - aSize) {
         return false;
     }
-    if (b_begin > std::numeric_limits<uint64_t>::max() - b_size) {
+    if (bBegin > std::numeric_limits<uint64_t>::max() - bSize) {
         return false;
     }
-    uint64_t a_end = a_begin + a_size;
-    uint64_t b_end = b_begin + b_size;
+    uint64_t aEnd = aBegin + aSize;
+    uint64_t bEnd = bBegin + bSize;
     // 半开区间相交判定：[a_begin, a_end) 与 [b_begin, b_end)。
-    return a_begin < b_end && b_begin < a_end;
+    return aBegin < bEnd && bBegin < aEnd;
 }
 
 // 判断地址区间是否完全落在给定基址区间内。
 inline bool containsAddrRangeU64(uint64_t base, uint64_t size,
-                                    uint64_t addr, uint64_t addr_size) {
+                                 uint64_t addr, uint64_t addrSize) {
     if (size == 0) {
         return false;
     }
@@ -102,16 +102,16 @@ inline bool containsAddrRangeU64(uint64_t base, uint64_t size,
     if (!addU64Checked(base, size, &end)) {
         return false;
     }
-    if (addr_size == 0) {
+    if (addrSize == 0) {
         // 0 长度时退化为“点是否落在区间端点内”。
         return addr >= base && addr <= end;
     }
-    uint64_t addr_end = 0;
-    if (!addU64Checked(addr, addr_size, &addr_end)) {
+    uint64_t addrEnd = 0;
+    if (!addU64Checked(addr, addrSize, &addrEnd)) {
         return false;
     }
     // 要求 [addr, addr_end) 完整落入 [base, end]。
-    return addr >= base && addr_end <= end;
+    return addr >= base && addrEnd <= end;
 }
 
 // 判断是否为 2 的幂。
@@ -166,10 +166,10 @@ bool collectDynamicTags(
 // 从 PT_DYNAMIC 段读取动态条目。
 bool readDynamicEntriesFromPhdr(
         const PatchElf& elf,
-        std::vector<Elf64_Dyn>* out_entries,
-        Elf64_Off* out_off,
-        Elf64_Xword* out_size,
-        bool* out_has_pt_dynamic,
+        std::vector<Elf64_Dyn>* outEntries,
+        Elf64_Off* outOff,
+        Elf64_Xword* outSize,
+        bool* outHasPtDynamic,
         std::string* error);
 
 #endif // VMP_PATCHBAY_ZELF_UTILS_H

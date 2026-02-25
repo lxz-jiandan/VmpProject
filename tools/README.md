@@ -24,6 +24,8 @@ python tools/run_delivery_check.py --project-root Z:\2026\0217_vmp_project\VmpPr
    - 配置并构建 `VmProtect`
    - 运行 `VmProtect.exe` 导出 `fun_*.txt/bin`、`libdemo_expand.so` 等产物
    - 校验并复制导出文件到 `VmEngine/app/src/main/assets`
+   - 当启用 `--patch-vmengine-symbols` 时，使用 `VmProtect` 主流程参数
+     `--vmengine-so/--output-so` 生成 `libvmengine_patch.so`
 2. 执行 `VmEngine/gradlew.bat installDebug`
 3. 执行 `adb shell am start -W -n com.example.vmengine/.MainActivity`
 4. 采集 `logcat` 并做关键字判定

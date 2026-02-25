@@ -76,15 +76,15 @@ bool BitReader6::read6(uint32_t* out) {
     // 累计当前读取值。
     uint32_t value = 0;
     // 逐 bit 读取 6 次。
-    for (uint32_t i = 0; i < 6u; ++i) {
+    for (uint32_t bitOffset = 0; bitOffset < 6u; ++bitOffset) {
         // 当前 bit 的绝对位置。
-        const uint64_t pos = bitPos + i;
+        const uint64_t pos = bitPos + bitOffset;
         // 定位到对应字节。
         const uint8_t byte = dataPtr[static_cast<size_t>(pos / 8ull)];
         // 取出该字节中的目标位。
         const uint32_t bit = (byte >> static_cast<uint32_t>(pos % 8ull)) & 0x1u;
-        // 合并到输出值第 i 位。
-        value |= (bit << i);
+        // 合并到输出值第 bitOffset 位。
+        value |= (bit << bitOffset);
     }
     // 读取游标前进 6 位。
     bitPos += 6ull;

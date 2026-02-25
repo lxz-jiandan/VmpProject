@@ -10,7 +10,7 @@
 // 基础格式校验：文件头、表项尺寸、基础边界关系。
 bool zElfValidator::validateBasic(const PatchElf& elf, std::string* error) {
     // 读取头模型。
-    const auto& header = elf.headerModel();
+    const auto& header = elf.getHeaderModel();
     // 当前工具链仅支持 64 位 AArch64，其他目标直接拒绝。
     if (!header.isElf64AArch64()) {
         if (error) {
@@ -31,7 +31,7 @@ bool zElfValidator::validateBasic(const PatchElf& elf, std::string* error) {
     }
 
     // 当前文件镜像大小。
-    const size_t file_size = elf.fileImageSize();
+    const size_t file_size = elf.getFileImageSize();
     // 文件非空时校验 PHT/SHT 区间边界。
     if (file_size > 0) {
         // 计算 PHT 末端（开区间）。
@@ -58,11 +58,13 @@ bool zElfValidator::validateBasic(const PatchElf& elf, std::string* error) {
     }
 
     // 每个 phdr 都必须满足 memsz >= filesz（加载器基本约束）。
-    for (size_t idx = 0; idx < elf.programHeaderModel().elements.size(); ++idx) {
+    for (size_t programHeaderIndex = 0;
+         programHeaderIndex < elf.getProgramHeaderModel().elements.size();
+         ++programHeaderIndex) {
         // 当前 phdr 违反基本关系则失败。
-        if (!elf.programHeaderModel().elements[idx].validateMemFileRelation()) {
+        if (!elf.getProgramHeaderModel().elements[programHeaderIndex].isMemFileRelationValid()) {
             if (error) {
-                *error = "memsz < filesz in phdr index " + std::to_string(idx);
+                *error = "memsz < filesz in phdr index " + std::to_string(programHeaderIndex);
             }
             return false;
         }
@@ -70,3 +72,4 @@ bool zElfValidator::validateBasic(const PatchElf& elf, std::string* error) {
     // 基础校验通过。
     return true;
 }
+

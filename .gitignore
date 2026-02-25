@@ -49,3 +49,6 @@ tools/*.orig
 # Local helper binaries at repository root
 /llvm-objdump.exe
 /readelf.exe
+
+*.txt
+*.bin

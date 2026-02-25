@@ -21,25 +21,25 @@ public:
     // 构造一条反汇编指令快照。
     // 参数语义：
     // 1) address：指令地址；
-    // 2) raw_bytes：机器码字节；
-    // 3) instruction_length：指令长度；
-    // 4) asm_type：指令类别；
-    // 5) disasm_text：反汇编文本。
+    // 2) rawBytes：机器码字节；
+    // 3) instructionLength：指令长度；
+    // 4) asmType：指令类别；
+    // 5) disasmText：反汇编文本。
     zInst(uint64_t address,
-          std::vector<uint8_t> raw_bytes,
-          uint32_t instruction_length,
-          std::string asm_type,
-          std::string disasm_text);
+          std::vector<uint8_t> rawBytes,
+          uint32_t instructionLength,
+          std::string asmType,
+          std::string disasmText);
 
     // 基础访问器：返回指令地址、机器码、长度和反汇编信息。
     // 设计要点：
     // 1) 所有接口均为 const，保证调用不改变对象状态；
-    // 2) `rawBytes()` 返回 const 引用，避免不必要复制。
-    uint64_t address() const;
-    const std::vector<uint8_t>& rawBytes() const;
-    uint32_t instructionLength() const;
-    const std::string& asmType() const;
-    const std::string& disasmText() const;
+    // 2) `getRawBytes()` 返回 const 引用，避免不必要复制。
+    uint64_t getAddress() const;
+    const std::vector<uint8_t>& getRawBytes() const;
+    uint32_t getInstructionLength() const;
+    const std::string& getAsmType() const;
+    const std::string& getDisasmText() const;
 
     // 拼接可读字符串，便于日志打印和回归比对。
     // 格式在 cpp 中固定为：

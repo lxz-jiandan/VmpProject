@@ -26,8 +26,8 @@ static bool failWith(std::string* error, const std::string& message) {
 static uint32_t expectedInitWordCount(const zFunctionData& data) {
     // 根据 init_value_count 与首段 opcode 估算 init_value_words 理论长度。
     uint32_t expected = 0;
-    for (uint32_t i = 0; i < data.init_value_count; i++) {
-        const uint32_t opcode = data.first_inst_opcodes[i];
+    for (uint32_t initIndex = 0; initIndex < data.init_value_count; initIndex++) {
+        const uint32_t opcode = data.first_inst_opcodes[initIndex];
         // 每条初始化至少包含目标寄存器下标 + 1 个值。
         expected += 1;
         // opcode=1 需要额外一个 high32（组成 64bit 值）。
@@ -185,8 +185,8 @@ bool zFunctionData::deserializeEncoded(const uint8_t* data, size_t len, zFunctio
 
     // 按 first_inst_count 读取 opcode 列表。
     out.first_inst_opcodes.resize(out.first_inst_count);
-    for (uint32_t i = 0; i < out.first_inst_count; i++) {
-        if (!reader.readExtU32(&out.first_inst_opcodes[i])) {
+    for (uint32_t firstInstIndex = 0; firstInstIndex < out.first_inst_count; firstInstIndex++) {
+        if (!reader.readExtU32(&out.first_inst_opcodes[firstInstIndex])) {
             return failWith(error, "failed to read first_inst_opcodes");
         }
     }
@@ -194,8 +194,8 @@ bool zFunctionData::deserializeEncoded(const uint8_t* data, size_t len, zFunctio
     // external_init_words 按 2 * first_inst_count 读取。
     if (out.first_inst_count > 0) {
         out.external_init_words.resize(static_cast<size_t>(out.first_inst_count) * 2ull);
-        for (uint32_t i = 0; i < out.first_inst_count * 2u; i++) {
-            if (!reader.readExtU32(&out.external_init_words[i])) {
+        for (uint32_t externalInitWordIndex = 0; externalInitWordIndex < out.first_inst_count * 2u; externalInitWordIndex++) {
+            if (!reader.readExtU32(&out.external_init_words[externalInitWordIndex])) {
                 return failWith(error, "failed to read external_init_words");
             }
         }
@@ -206,8 +206,8 @@ bool zFunctionData::deserializeEncoded(const uint8_t* data, size_t len, zFunctio
     }
     // 读取 type_tags。
     out.type_tags.resize(out.type_count);
-    for (uint32_t i = 0; i < out.type_count; i++) {
-        if (!reader.readExtU32(&out.type_tags[i])) {
+    for (uint32_t typeIndex = 0; typeIndex < out.type_count; typeIndex++) {
+        if (!reader.readExtU32(&out.type_tags[typeIndex])) {
             return failWith(error, "failed to read type_tags");
         }
     }
@@ -223,13 +223,13 @@ bool zFunctionData::deserializeEncoded(const uint8_t* data, size_t len, zFunctio
     // 根据 init_value_count 逐条还原 init_value_words。
     out.init_value_words.clear();
     out.init_value_words.reserve(static_cast<size_t>(out.init_value_count) * 3ull);
-    for (uint32_t i = 0; i < out.init_value_count; i++) {
+    for (uint32_t initIndex = 0; initIndex < out.init_value_count; initIndex++) {
         // 每条先读目标寄存器索引。
-        uint32_t reg_idx = 0;
-        if (!reader.readExtU32(&reg_idx)) {
-            return failWith(error, "failed to read init reg idx");
+        uint32_t regIndex = 0;
+        if (!reader.readExtU32(&regIndex)) {
+            return failWith(error, "failed to read init reg index");
         }
-        out.init_value_words.push_back(reg_idx);
+        out.init_value_words.push_back(regIndex);
 
         // 再读低 32bit 或普通值。
         uint32_t word = 0;
@@ -239,7 +239,7 @@ bool zFunctionData::deserializeEncoded(const uint8_t* data, size_t len, zFunctio
         out.init_value_words.push_back(word);
 
         // opcode=1 时还要读取高 32bit。
-        if (out.first_inst_opcodes[i] == 1u) {
+        if (out.first_inst_opcodes[initIndex] == 1u) {
             if (!reader.readExtU32(&word)) {
                 return failWith(error, "failed to read init high value");
             }
@@ -252,8 +252,8 @@ bool zFunctionData::deserializeEncoded(const uint8_t* data, size_t len, zFunctio
     }
     // 读取 inst_words。
     out.inst_words.resize(out.inst_count);
-    for (uint32_t i = 0; i < out.inst_count; i++) {
-        if (!reader.readExtU32(&out.inst_words[i])) {
+    for (uint32_t instIndex = 0; instIndex < out.inst_count; instIndex++) {
+        if (!reader.readExtU32(&out.inst_words[instIndex])) {
             return failWith(error, "failed to read inst_words");
         }
     }
@@ -263,21 +263,21 @@ bool zFunctionData::deserializeEncoded(const uint8_t* data, size_t len, zFunctio
     }
     // 读取 branch_words。
     out.branch_words.resize(out.branch_count);
-    for (uint32_t i = 0; i < out.branch_count; i++) {
-        if (!reader.readExtU32(&out.branch_words[i])) {
+    for (uint32_t branchIndex = 0; branchIndex < out.branch_count; branchIndex++) {
+        if (!reader.readExtU32(&out.branch_words[branchIndex])) {
             return failWith(error, "failed to read branch_words");
         }
     }
 
     // 读取 branch_addrs 数量。
-    uint32_t branch_addr_count = 0;
-    if (!reader.readExtU32(&branch_addr_count)) {
+    uint32_t branchAddrCount = 0;
+    if (!reader.readExtU32(&branchAddrCount)) {
         return failWith(error, "failed to read branch_addr_count");
     }
     // 读取 branch_addrs 列表。
-    out.branch_addrs.resize(branch_addr_count);
-    for (uint32_t i = 0; i < branch_addr_count; i++) {
-        if (!vmp::base::bitcodec::readU64FromU32Pair(&reader, &out.branch_addrs[i])) {
+    out.branch_addrs.resize(branchAddrCount);
+    for (uint32_t branchAddrIndex = 0; branchAddrIndex < branchAddrCount; branchAddrIndex++) {
+        if (!vmp::base::bitcodec::readU64FromU32Pair(&reader, &out.branch_addrs[branchAddrIndex])) {
             return failWith(error, "failed to read branch_addrs");
         }
     }

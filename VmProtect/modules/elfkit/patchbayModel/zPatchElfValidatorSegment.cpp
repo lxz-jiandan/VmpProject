@@ -31,8 +31,8 @@ uint64_t alignDownU64(uint64_t value, uint64_t align) {
 // 3) 重叠范围不得超过一页；
 // 4) 若存在重叠，需限制在同一页内。
 bool isLoadOverlapOk(const zProgramTableElement& a,
-                        const zProgramTableElement& b,
-                        uint64_t page_size) {
+                     const zProgramTableElement& b,
+                     uint64_t pageSize) {
     // 非 LOAD 段不做这条重叠规则校验。
     if (a.type != PT_LOAD || b.type != PT_LOAD) {
         return true;
@@ -67,7 +67,7 @@ bool isLoadOverlapOk(const zProgramTableElement& a,
     }
 
     // 若无法推断页大小，回退 4KB。
-    const uint64_t checked_page = page_size == 0 ? 0x1000ULL : page_size;
+    const uint64_t checked_page = pageSize == 0 ? 0x1000ULL : pageSize;
     // 文件或 VA 的重叠超过一页，认为风险过高。
     if (overlap_file_size > checked_page || overlap_va_size > checked_page) {
         return false;
@@ -106,7 +106,7 @@ bool isLoadOverlapOk(const zProgramTableElement& a,
 // 段布局校验：对齐、覆盖、PT_PHDR/PT_DYNAMIC/PT_INTERP 等关键约束。
 bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::string* error) {
     // 读取 Program Header 列表。
-    const auto& phs = elf.programHeaderModel().elements;
+    const auto& phs = elf.getProgramHeaderModel().elements;
     // 空表直接失败。
     if (phs.empty()) {
         if (error) {
@@ -116,11 +116,11 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
     }
 
     // 文件镜像总大小。
-    const size_t file_size = elf.fileImageSize();
+    const size_t file_size = elf.getFileImageSize();
     // 由段信息推断运行时页大小。
     const uint64_t runtime_page_size = inferRuntimePageSizeFromPhdrs(phs);
     // 按 e_phnum 计算理论 phdr 区域大小。
-    const uint64_t expected_phdr_size = (uint64_t)elf.headerModel().raw.e_phnum * sizeof(Elf64_Phdr);
+    const uint64_t expected_phdr_size = (uint64_t)elf.getHeaderModel().raw.e_phnum * sizeof(Elf64_Phdr);
 
     // PT_LOAD 计数。
     int load_count = 0;
@@ -134,9 +134,9 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
     zProgramTableElement tls_segment;
 
     // 第一轮：逐段做本段约束校验。
-    for (size_t idx = 0; idx < phs.size(); ++idx) {
+    for (size_t programHeaderIndex = 0; programHeaderIndex < phs.size(); ++programHeaderIndex) {
         // 当前段引用。
-        const auto& ph = phs[idx];
+        const auto& ph = phs[programHeaderIndex];
 
         // 统计 LOAD 段数量。
         if (ph.type == PT_LOAD) {
@@ -158,14 +158,16 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
             // p_align 非 2 的幂直接失败。
             if (!isPowerOfTwoU64(ph.align)) {
                 if (error) {
-                    *error = "p_align is not power-of-two at phdr index " + std::to_string(idx);
+                    *error = "p_align is not power-of-two at phdr index " +
+                             std::to_string(programHeaderIndex);
                 }
                 return false;
             }
             // ELF 约束：p_offset % p_align 必须等于 p_vaddr % p_align。
             if ((ph.offset % ph.align) != (ph.vaddr % ph.align)) {
                 if (error) {
-                    *error = "p_offset % p_align != p_vaddr % p_align at phdr index " + std::to_string(idx);
+                    *error = "p_offset % p_align != p_vaddr % p_align at phdr index " +
+                             std::to_string(programHeaderIndex);
                 }
                 return false;
             }
@@ -178,7 +180,8 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
             // 加法溢出或越过文件末尾都视为非法。
             if (!addU64Checked(ph.offset, ph.filesz, &end) || end > file_size) {
                 if (error) {
-                    *error = "Segment file range out of file at phdr index " + std::to_string(idx);
+                    *error = "Segment file range out of file at phdr index " +
+                             std::to_string(programHeaderIndex);
                 }
                 return false;
             }
@@ -191,7 +194,8 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
             // 发生溢出直接失败。
             if (!addU64Checked(ph.vaddr, ph.memsz, &vaddr_end)) {
                 if (error) {
-                    *error = "Segment virtual range overflow at phdr index " + std::to_string(idx);
+                    *error = "Segment virtual range overflow at phdr index " +
+                             std::to_string(programHeaderIndex);
                 }
                 return false;
             }
@@ -202,7 +206,8 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
             // PHDR 段至少要能容纳完整 PHDR 表，且 memsz>=filesz。
             if (ph.filesz < expected_phdr_size || ph.memsz < ph.filesz) {
                 if (error) {
-                    *error = "PT_PHDR size mismatch at phdr index " + std::to_string(idx);
+                    *error = "PT_PHDR size mismatch at phdr index " +
+                             std::to_string(programHeaderIndex);
                 }
                 return false;
             }
@@ -231,7 +236,8 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
                 // vaddr 或 paddr 与推导值不一致则失败。
                 if ((uint64_t)ph.vaddr != expected_vaddr || (uint64_t)ph.paddr != expected_vaddr) {
                     if (error) {
-                        *error = "PT_PHDR vaddr/paddr mismatch at phdr index " + std::to_string(idx);
+                        *error = "PT_PHDR vaddr/paddr mismatch at phdr index " +
+                                 std::to_string(programHeaderIndex);
                     }
                     return false;
                 }
@@ -242,7 +248,8 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
             // 未被任何 LOAD 覆盖则失败。
             if (!covered_by_load) {
                 if (error) {
-                    *error = "PT_PHDR is not covered by any PT_LOAD at phdr index " + std::to_string(idx);
+                    *error = "PT_PHDR is not covered by any PT_LOAD at phdr index " +
+                             std::to_string(programHeaderIndex);
                 }
                 return false;
             }
@@ -275,7 +282,8 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
                 // vaddr 不匹配则失败。
                 if ((uint64_t)ph.vaddr != expected_vaddr) {
                     if (error) {
-                        *error = "PT_DYNAMIC vaddr mismatch at phdr index " + std::to_string(idx);
+                        *error = "PT_DYNAMIC vaddr mismatch at phdr index " +
+                                 std::to_string(programHeaderIndex);
                     }
                     return false;
                 }
@@ -286,7 +294,8 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
             // 没有任何 LOAD 覆盖 PT_DYNAMIC 则失败。
             if (!mapped) {
                 if (error) {
-                    *error = "PT_DYNAMIC is not covered by any PT_LOAD at phdr index " + std::to_string(idx);
+                    *error = "PT_DYNAMIC is not covered by any PT_LOAD at phdr index " +
+                             std::to_string(programHeaderIndex);
                 }
                 return false;
             }
@@ -386,31 +395,36 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
     }
 
     // LOAD 段两两重叠检查。
-    for (size_t i = 0; i < phs.size(); ++i) {
+    for (size_t leftLoadIndex = 0; leftLoadIndex < phs.size(); ++leftLoadIndex) {
         // 第一个段。
-        const auto& a = phs[i];
+        const auto& leftLoad = phs[leftLoadIndex];
         // 非 LOAD 跳过。
-        if (a.type != PT_LOAD) {
+        if (leftLoad.type != PT_LOAD) {
             continue;
         }
         // 与后续段配对检查。
-        for (size_t j = i + 1; j < phs.size(); ++j) {
+        for (size_t rightLoadIndex = leftLoadIndex + 1;
+             rightLoadIndex < phs.size();
+             ++rightLoadIndex) {
             // 第二个段。
-            const auto& b = phs[j];
+            const auto& rightLoad = phs[rightLoadIndex];
             // 非 LOAD 跳过。
-            if (b.type != PT_LOAD) {
+            if (rightLoad.type != PT_LOAD) {
                 continue;
             }
 
             // 文件区间是否重叠。
-            const bool file_overlap = rangesOverlapU64(a.offset, a.filesz, b.offset, b.filesz);
+            const bool file_overlap = rangesOverlapU64(
+                    leftLoad.offset, leftLoad.filesz, rightLoad.offset, rightLoad.filesz);
             // 虚拟地址区间是否重叠。
-            const bool va_overlap = rangesOverlapU64(a.vaddr, a.memsz, b.vaddr, b.memsz);
+            const bool va_overlap = rangesOverlapU64(
+                    leftLoad.vaddr, leftLoad.memsz, rightLoad.vaddr, rightLoad.memsz);
             // 只要有重叠，且不满足可接受特例，就判失败。
-            if ((file_overlap || va_overlap) && !isLoadOverlapOk(a, b, runtime_page_size)) {
+            if ((file_overlap || va_overlap) &&
+                !isLoadOverlapOk(leftLoad, rightLoad, runtime_page_size)) {
                 if (error) {
-                    *error = "PT_LOAD overlap is not acceptable between phdr " + std::to_string(i) +
-                             " and " + std::to_string(j);
+                    *error = "PT_LOAD overlap is not acceptable between phdr " +
+                             std::to_string(leftLoadIndex) + " and " + std::to_string(rightLoadIndex);
                 }
                 return false;
             }
@@ -424,20 +438,20 @@ bool zElfValidator::validateProgramSegmentLayout(const PatchElf& elf, std::strin
 // 节与段映射校验：ALLOC 节必须能被 LOAD 段覆盖并满足边界关系。
 bool zElfValidator::validateSectionSegmentMapping(const PatchElf& elf, std::string* error) {
     // 读取 Program Header 列表。
-    const auto& phs = elf.programHeaderModel().elements;
+    const auto& phs = elf.getProgramHeaderModel().elements;
     // 读取 Section Header 列表。
-    const auto& secs = elf.sectionHeaderModel().elements;
+    const auto& secs = elf.getSectionHeaderModel().elements;
     // 文件总大小。
-    const size_t file_size = elf.fileImageSize();
+    const size_t file_size = elf.getFileImageSize();
     // 没有节时默认通过。
     if (secs.empty()) {
         return true;
     }
 
     // 遍历每一个 section。
-    for (size_t idx = 0; idx < secs.size(); ++idx) {
+    for (size_t sectionIndex = 0; sectionIndex < secs.size(); ++sectionIndex) {
         // 当前节引用。
-        const auto& section = *secs[idx];
+        const auto& section = *secs[sectionIndex];
         // 空节占位项直接跳过。
         if (section.type == SHT_NULL) {
             continue;
@@ -447,7 +461,7 @@ bool zElfValidator::validateSectionSegmentMapping(const PatchElf& elf, std::stri
         if (section.type != SHT_NOBITS && section.size > 0 &&
             ((uint64_t)section.offset + section.size > file_size)) {
             if (error) {
-                *error = "Section out of file range at index " + std::to_string(idx);
+                *error = "Section out of file range at index " + std::to_string(sectionIndex);
             }
             return false;
         }
@@ -499,7 +513,7 @@ bool zElfValidator::validateSectionSegmentMapping(const PatchElf& elf, std::stri
         // ALLOC 节找不到任何覆盖段则失败。
         if (!mapped_to_load) {
             if (error) {
-                *error = "ALLOC section not mapped to LOAD at index " + std::to_string(idx) +
+                *error = "ALLOC section not mapped to LOAD at index " + std::to_string(sectionIndex) +
                          " (" + section.resolved_name + ")";
             }
             return false;
@@ -508,3 +522,4 @@ bool zElfValidator::validateSectionSegmentMapping(const PatchElf& elf, std::stri
     // 全部 section 检查通过。
     return true;
 }
+

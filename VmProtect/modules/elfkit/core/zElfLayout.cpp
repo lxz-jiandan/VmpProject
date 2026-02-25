@@ -70,13 +70,13 @@ void zElf::printLayout() {
     });
 
     // 2.1) 把每个 Program Header 条目也加入（作为 program_header_table 的子项）。
-    for (int i = 0; i < program_header_table_num; i++) {
+    for (int programHeaderIndex = 0; programHeaderIndex < program_header_table_num; ++programHeaderIndex) {
         // 当前条目的文件偏移 = pht 起始 + i * 单条大小。
-        Elf64_Off entry_offset = phdr_offset + i * elf_header->e_phentsize;
+        Elf64_Off entry_offset = phdr_offset + programHeaderIndex * elf_header->e_phentsize;
 
         // 生成可读的段类型描述文本。
         const char* type_name = "";
-        switch (program_header_table[i].p_type) {
+        switch (program_header_table[programHeaderIndex].p_type) {
             case PT_NULL: type_name = "NULL"; break;
             case PT_LOAD: type_name = "Loadable Segment"; break;
             case PT_DYNAMIC: type_name = "Dynamic Segment"; break;
@@ -91,7 +91,7 @@ void zElf::printLayout() {
         }
 
         // 把 p_flags 转成可读权限串（R/W/X 或下划线）。
-        Elf64_Word flags = program_header_table[i].p_flags;
+        Elf64_Word flags = program_header_table[programHeaderIndex].p_flags;
         char perms[4];
         perms[0] = (flags & PF_R) ? 'R' : '_';
         perms[1] = (flags & PF_W) ? 'W' : '_';
@@ -100,7 +100,10 @@ void zElf::printLayout() {
 
         // 拼装最终展示名称。
         char name[256];
-        snprintf(name, sizeof(name), "program_table_element[0x%02x] (%s) %s", i, perms, type_name);
+        snprintf(name, sizeof(name), "program_table_element[0x%02x] (%s) %s",
+                 programHeaderIndex,
+                 perms,
+                 type_name);
 
         // 先压入空 name，再拷贝格式化好的名字（沿用当前实现方式）。
         regions.push_back({
@@ -120,7 +123,7 @@ void zElf::printLayout() {
     // - sh_type != SHT_NOBITS：.bss 这类不占文件字节的节跳过。
     if (section_header_table && section_header_table_num > 0) {
         Elf64_Shdr *section = section_header_table;
-        for (int i = 0; i < section_header_table_num; i++) {
+        for (int sectionIndex = 0; sectionIndex < section_header_table_num; ++sectionIndex) {
             if (section->sh_size > 0 && section->sh_offset > 0 && section->sh_type != SHT_NOBITS) {
                 // 从 .shstrtab 解析节名；异常情况下回退为空名。
                 const char *section_name = "";
@@ -131,9 +134,9 @@ void zElf::printLayout() {
                 // 组装节展示名称，优先使用真实节名。
                 char name[256];
                 if (strlen(section_name) > 0) {
-                    snprintf(name, sizeof(name), "section[0x%02x] %s", i, section_name);
+                    snprintf(name, sizeof(name), "section[0x%02x] %s", sectionIndex, section_name);
                 } else {
-                    snprintf(name, sizeof(name), "section[0x%02x]", i);
+                    snprintf(name, sizeof(name), "section[0x%02x]", sectionIndex);
                 }
 
                 // 节数据区作为顶层区域压入。
@@ -166,16 +169,18 @@ void zElf::printLayout() {
         });
 
         // 子项：section_table_element[i]。
-        for (int i = 0; i < section_header_table_num; i++) {
+        for (int sectionHeaderIndex = 0;
+             sectionHeaderIndex < section_header_table_num;
+             ++sectionHeaderIndex) {
             // 当前 section header 条目偏移。
-            Elf64_Off entry_offset = shdr_physical_offset + i * elf_header->e_shentsize;
+            Elf64_Off entry_offset = shdr_physical_offset + sectionHeaderIndex * elf_header->e_shentsize;
 
             // 解析节名：索引 0 约定为 SHN_UNDEF。
             const char *section_name = "";
-            if (i == 0) {
+            if (sectionHeaderIndex == 0) {
                 section_name = "SHN_UNDEF";
             } else {
-                Elf64_Shdr *sect = &section_header_table[i];
+                Elf64_Shdr *sect = &section_header_table[sectionHeaderIndex];
                 if (section_string_table && sect->sh_name < 10000) {
                     section_name = section_string_table + sect->sh_name;
                 }
@@ -184,9 +189,12 @@ void zElf::printLayout() {
             // 组装子项显示名称。
             char name[256];
             if (strlen(section_name) > 0) {
-                snprintf(name, sizeof(name), "section_table_element[0x%02x] %s", i, section_name);
+                snprintf(name, sizeof(name),
+                         "section_table_element[0x%02x] %s",
+                         sectionHeaderIndex,
+                         section_name);
             } else {
-                snprintf(name, sizeof(name), "section_table_element[0x%02x]", i);
+                snprintf(name, sizeof(name), "section_table_element[0x%02x]", sectionHeaderIndex);
             }
 
             // 压入 section header 子项。
@@ -369,11 +377,11 @@ void zElf::printLayout() {
 // 2) 追加一个“自救 PT_LOAD”覆盖新 PHT 区间；
 // 3) 回写 ELF Header 的 e_phoff/e_phnum；
 // 4) 产出新文件（不改原文件）。
-bool zElf::relocateAndExpandPht(int extra_entries, const char* output_path) {
+bool zElf::relocateAndExpandPht(int extraEntries, const char* outputPath) {
     LOGI("=== Step-2: PHT Relocation & Expansion (Surgical Approach) ===");
-    LOGI("Extra entries to add: %d", extra_entries);
+    LOGI("Extra entries to add: %d", extraEntries);
 
-    if (!output_path || output_path[0] == '\0') {
+    if (!outputPath || outputPath[0] == '\0') {
         LOGE("invalid output path");
         return false;
     }
@@ -394,7 +402,7 @@ bool zElf::relocateAndExpandPht(int extra_entries, const char* output_path) {
 
     Elf64_Half old_ph_num = program_header_table_num;
     // 新条目数 = 旧条目 + 额外扩展条目。
-    Elf64_Half new_ph_num = old_ph_num + extra_entries;
+    Elf64_Half new_ph_num = old_ph_num + extraEntries;
     LOGI("  Old_PH_Num: %d", old_ph_num);
     LOGI("  New_PH_Num: %d", new_ph_num);
 
@@ -414,19 +422,19 @@ bool zElf::relocateAndExpandPht(int extra_entries, const char* output_path) {
     LOGI("  Copied %d old PHT entries", old_ph_num);
 
     // 初始化新增的 PHT 条目为 PT_NULL
-    for (int i = old_ph_num; i < new_ph_num; i++) {
+    for (int newHeaderIndex = old_ph_num; newHeaderIndex < new_ph_num; ++newHeaderIndex) {
         // 先清零整条，避免脏字段。
-        std::memset(&new_pht_buffer[(size_t)i], 0, sizeof(Elf64_Phdr));
+        std::memset(&new_pht_buffer[(size_t)newHeaderIndex], 0, sizeof(Elf64_Phdr));
         // 再显式标记为 PT_NULL，占位但不参与装载。
-        new_pht_buffer[i].p_type = PT_NULL;
+        new_pht_buffer[newHeaderIndex].p_type = PT_NULL;
     }
-    LOGI("  Initialized %d new PHT entries (PT_NULL)", extra_entries);
+    LOGI("  Initialized %d new PHT entries (PT_NULL)", extraEntries);
 
     // ========== 第三阶段：创建自救 LOAD 段（手术刀方案）==========
     LOGI("\n[Phase 3] Create Self-Rescue LOAD Segment (Surgical)");
 
     // 使用最后一个新增槽位（索引 = old_ph_num + extra_entries - 1）。
-    int rescue_load_idx = old_ph_num + extra_entries - 1;
+    int rescue_load_idx = old_ph_num + extraEntries - 1;
     LOGI("  Creating new PT_LOAD at index %d", rescue_load_idx);
 
     // 直接拿到目标槽位，后续逐字段填充。
@@ -460,10 +468,10 @@ bool zElf::relocateAndExpandPht(int extra_entries, const char* output_path) {
     LOGI("\n[Phase 4] Update PT_PHDR Metadata");
 
     int pt_phdr_idx = -1;
-    for (int i = 0; i < old_ph_num; i++) {
+    for (int programHeaderIndex = 0; programHeaderIndex < old_ph_num; ++programHeaderIndex) {
         // 只在原有条目里找 PT_PHDR，新增条目不会承载该语义。
-        if (new_pht_buffer[(size_t)i].p_type == PT_PHDR) {
-            pt_phdr_idx = i;
+        if (new_pht_buffer[(size_t)programHeaderIndex].p_type == PT_PHDR) {
+            pt_phdr_idx = programHeaderIndex;
             break;
         }
     }
@@ -557,17 +565,17 @@ bool zElf::relocateAndExpandPht(int extra_entries, const char* output_path) {
     LOGI("\n[Phase 7] Write Output File");
 
     // 把组装好的新文件一次性写出。
-    if (!vmp::base::io::writeFileBytes(output_path, new_file_bytes)) {
-        LOGE("Failed to open output file: %s", output_path);
+    if (!vmp::base::io::writeFileBytes(outputPath, new_file_bytes)) {
+        LOGE("Failed to open output file: %s", outputPath);
         return false;
     }
 
-    LOGI("  ✓ Successfully wrote to: %s", output_path);
+    LOGI("  ✓ Successfully wrote to: %s", outputPath);
     LOGI("\n=== Summary ===");
     LOGI("  Original file size: 0x%zx (%zu bytes)", file_size, file_size);
     LOGI("  New file size: 0x%zx (%zu bytes)", new_file_size, new_file_size);
     LOGI("  PHT relocated from 0x%llx to 0x%llx", (unsigned long long)old_e_phoff, (unsigned long long)NEW_PHT_OFFSET);
-    LOGI("  PHT entries: %d -> %d (added %d)", old_e_phnum, new_ph_num, extra_entries);
+    LOGI("  PHT entries: %d -> %d (added %d)", old_e_phnum, new_ph_num, extraEntries);
     LOGI("  Strategy: Surgical - Added dedicated rescue LOAD segment without modifying existing segments");
 
     return true;

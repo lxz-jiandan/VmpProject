@@ -121,8 +121,8 @@ void appendU32LeArray(std::vector<uint8_t>* out, const uint32_t* values, const s
     // 预留容量，减少扩容次数。
     out->reserve(out->size() + count * sizeof(uint32_t));
     // 逐个追加。
-    for (size_t i = 0; i < count; ++i) {
-        appendU32Le(out, values[i]);
+    for (size_t valueIndex = 0; valueIndex < count; ++valueIndex) {
+        appendU32Le(out, values[valueIndex]);
     }
 }
 
@@ -135,8 +135,8 @@ void appendU64LeArray(std::vector<uint8_t>* out, const uint64_t* values, const s
     // 预留容量，减少扩容次数。
     out->reserve(out->size() + count * sizeof(uint64_t));
     // 逐个追加。
-    for (size_t i = 0; i < count; ++i) {
-        appendU64Le(out, values[i]);
+    for (size_t valueIndex = 0; valueIndex < count; ++valueIndex) {
+        appendU64Le(out, values[valueIndex]);
     }
 }
 

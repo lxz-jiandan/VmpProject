@@ -1,7 +1,7 @@
 #include "zPatchbayExport.h"
 
 // 引入 patch ELF 访问 API。
-#include "zPatchbayApi.h"
+#include "zElfReadFacade.h"
 // 引入 alias 表构建器。
 #include "zPatchbayAliasTables.h"
 // 引入 hash 重建器。
@@ -31,8 +31,8 @@ bool exportAliasSymbolsPatchbay(const char* inputPath,
     }
 
     // 加载输入 ELF。
-    vmp::elfkit::PatchElfImage elf(inputPath);
-    if (!elf.loaded()) {
+    vmp::elfkit::zElfReadFacade elf(inputPath);
+    if (!elf.isLoaded()) {
         if (error != nullptr) {
             *error = "failed to load input elf";
         }
@@ -66,7 +66,7 @@ bool exportAliasSymbolsPatchbay(const char* inputPath,
 
     // 若输入 ELF 存在 .hash，则同步重建 sysv hash。
     std::vector<uint8_t> newSysvHash;
-    if (required.hash != nullptr) {
+    if (required.hasHash) {
         newSysvHash = buildSysvHashPayloadFromBytes(buildResult.dynsymSymbols, buildResult.dynstrBytes);
         if (newSysvHash.empty()) {
             if (error != nullptr) {
@@ -104,4 +104,3 @@ bool exportAliasSymbolsPatchbay(const char* inputPath,
     }
     return false;
 }
-

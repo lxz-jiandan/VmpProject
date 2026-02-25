@@ -85,7 +85,7 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.VmProtect">
-    <configuration name="VmProtect" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="--input-so ..\libdemo.so --function fun_add --function fun_for" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="VmProtect" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="VmProtect" RUN_TARGET_NAME="VmProtect">
+    <configuration name="VmProtect" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="--input-so Z:\2026\0217_vmp_project\VmpProject\VmProtect\libdemo.so --output-dir Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\tmp_vmprotect_route --vmengine-so Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\cxx\Debug\2z4j1d3z\obj\arm64-v8a\libvmengine.so --output-so Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\cxx\Debug\2z4j1d3z\obj\arm64-v8a\libvmengine_patch.so --patch-donor-so Z:\2026\0217_vmp_project\VmpProject\VmProtect\libdemo.so --patch-impl-symbol vm_takeover_slot_0000 --function fun_for --function fun_add --function fun_for_add" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/.." PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="VmProtect" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="VmProtect" RUN_TARGET_NAME="VmProtect">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -192,7 +192,7 @@
       <workItem from="1771719182997" duration="469000" />
       <workItem from="1771784668522" duration="127000" />
       <workItem from="1771784811100" duration="23688000" />
-      <workItem from="1771970634366" duration="7295000" />
+      <workItem from="1771970634366" duration="14948000" />
     </task>
     <servers />
   </component>
@@ -218,5 +218,21 @@
       <path value="$PROJECT_DIR$/ELFIO" />
       <path value="$PROJECT_DIR$/cmake-build-debug/_deps/capstone-src" />
     </ignored-roots>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/modules/pipeline/core/zPipelineCoverage.cpp</url>
+          <line>152</line>
+          <option name="timeStamp" value="9" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/app/zMain.cpp</url>
+          <line>42</line>
+          <option name="timeStamp" value="10" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

@@ -1,7 +1,5 @@
 #include "zPatchbayAliasTables.h"
 
-// 引入节字符串读取辅助。
-#include "zSectionEntry.h"
 // 引入日志接口。
 #include "zLog.h"
 
@@ -10,21 +8,32 @@
 // 引入去重集合。
 #include <unordered_set>
 
+// 进入匿名命名空间，封装内部辅助函数。
+namespace {
+
+// 从 dynstr 字节数组读取字符串指针。
+const char* dynstrNameAt(const std::vector<uint8_t>& dynstrBytes, uint32_t offset) {
+    // 偏移越界直接返回空。
+    if (offset >= dynstrBytes.size()) {
+        return nullptr;
+    }
+    // 返回偏移位置的 C 字符串首地址。
+    return reinterpret_cast<const char*>(dynstrBytes.data() + offset);
+}
+
+// 结束匿名命名空间。
+}  // namespace
+
 // 构建 patchbay alias 所需的 dynsym/dynstr/versym 新表。
-bool buildPatchbayAliasTables(const vmp::elfkit::PatchElfImage& elf,
+bool buildPatchbayAliasTables(const vmp::elfkit::zElfReadFacade& elf,
                               const vmp::elfkit::PatchRequiredSections& required,
                               const std::vector<AliasPair>& aliasPairs,
                               AliasTableBuildResult* out,
                               std::string* error) {
-    // 提取必要节指针。
-    const auto* dynsymSection = required.dynsym;
-    const auto* dynstrSection = required.dynstr;
-    const auto* versymSection = required.versym;
-
     // 基础入参校验。
-    if (dynsymSection == nullptr ||
-        dynstrSection == nullptr ||
-        versymSection == nullptr ||
+    if (required.dynsym.index < 0 ||
+        required.dynstr.index < 0 ||
+        required.versym.index < 0 ||
         aliasPairs.empty() ||
         out == nullptr) {
         if (error != nullptr) {
@@ -34,7 +43,7 @@ bool buildPatchbayAliasTables(const vmp::elfkit::PatchElfImage& elf,
     }
 
     // versym 必须是 2 字节元素对齐。
-    if ((versymSection->payload.size() % 2U) != 0U) {
+    if ((required.versymBytes.size() % 2U) != 0U) {
         if (error != nullptr) {
             *error = ".gnu.version size is not 2-byte aligned";
         }
@@ -42,9 +51,9 @@ bool buildPatchbayAliasTables(const vmp::elfkit::PatchElfImage& elf,
     }
 
     // 拷贝可修改副本。
-    out->dynsymSymbols = dynsymSection->symbols;
-    out->dynstrBytes = dynstrSection->payload;
-    out->versymBytes = versymSection->payload;
+    out->dynsymSymbols = required.dynsym.symbols;
+    out->dynstrBytes = required.dynstr.bytes;
+    out->versymBytes = required.versymBytes;
     out->dynsymRawBytes.clear();
     out->appendedCount = 0;
 
@@ -57,7 +66,7 @@ bool buildPatchbayAliasTables(const vmp::elfkit::PatchElfImage& elf,
             continue;
         }
         // 从 dynstr 解析名称。
-        const char* name = dynstrSection->getStringAt(sym.st_name);
+        const char* name = dynstrNameAt(out->dynstrBytes, sym.st_name);
         if (name == nullptr || name[0] == '\0') {
             continue;
         }
@@ -153,4 +162,3 @@ bool buildPatchbayAliasTables(const vmp::elfkit::PatchElfImage& elf,
     std::memcpy(out->dynsymRawBytes.data(), out->dynsymSymbols.data(), out->dynsymRawBytes.size());
     return true;
 }
-

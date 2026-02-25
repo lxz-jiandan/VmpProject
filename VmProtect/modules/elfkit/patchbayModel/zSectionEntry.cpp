@@ -7,12 +7,12 @@
 // ============================================================================
 
 // 基类默认解析逻辑：将原始字节直接保存为 payload。
-void zSectionTableElement::parseFromBytes(const uint8_t* data, size_t data_size) {
+void zSectionTableElement::parseFromBytes(const uint8_t* data, size_t dataSize) {
     // 清空旧 payload。
     payload.clear();
     // 有输入时才复制。
-    if (data && data_size > 0) {
-        payload.assign(data, data + data_size);
+    if (data && dataSize > 0) {
+        payload.assign(data, data + dataSize);
     }
 }
 
@@ -30,17 +30,17 @@ void zSectionTableElement::syncHeader() {
 }
 
 // 返回解析后的 section 名称。
-const std::string& zSectionTableElement::sectionName() const {
+const std::string& zSectionTableElement::getSectionName() const {
     return resolved_name;
 }
 
 // 返回 section 类型。
-Elf64_Word zSectionTableElement::sectionType() const {
+Elf64_Word zSectionTableElement::getSectionType() const {
     return type;
 }
 
 // 返回 section 标志位。
-Elf64_Xword zSectionTableElement::sectionFlags() const {
+Elf64_Xword zSectionTableElement::getSectionFlags() const {
     return flags;
 }
 
@@ -131,9 +131,9 @@ const char* zStrTabSection::getStringAt(uint32_t off) const {
 // ============================================================================
 
 // 解析符号表：读取 payload 并按 Elf64_Sym 切分。
-void zSymbolSection::parseFromBytes(const uint8_t* data, size_t data_size) {
+void zSymbolSection::parseFromBytes(const uint8_t* data, size_t dataSize) {
     // 先走基类，填充 payload。
-    zSectionTableElement::parseFromBytes(data, data_size);
+    zSectionTableElement::parseFromBytes(data, dataSize);
     // 清空旧 symbols。
     symbols.clear();
     // 空 payload 直接返回。
@@ -178,7 +178,7 @@ void zSymbolSection::syncHeader() {
 }
 
 // 返回符号数量。
-size_t zSymbolSection::symbolCount() const {
+size_t zSymbolSection::getSymbolCount() const {
     return symbols.size();
 }
 
@@ -187,9 +187,9 @@ size_t zSymbolSection::symbolCount() const {
 // ============================================================================
 
 // 解析 `.dynamic` 节：先复用基类读取 payload，再按 Elf64_Dyn 切分条目。
-void zDynamicSection::parseFromBytes(const uint8_t* data, size_t data_size) {
+void zDynamicSection::parseFromBytes(const uint8_t* data, size_t dataSize) {
     // 先填充 payload。
-    zSectionTableElement::parseFromBytes(data, data_size);
+    zSectionTableElement::parseFromBytes(data, dataSize);
     // 清空旧动态项。
     entries.clear();
     // 空 payload 直接返回。
@@ -234,7 +234,7 @@ void zDynamicSection::syncHeader() {
 }
 
 // 返回当前动态表条目数。
-size_t zDynamicSection::entryCount() const {
+size_t zDynamicSection::getEntryCount() const {
     return entries.size();
 }
 
@@ -243,9 +243,9 @@ size_t zDynamicSection::entryCount() const {
 // ============================================================================
 
 // 解析重定位节：根据 section 类型区分 RELA 与 REL。
-void zRelocationSection::parseFromBytes(const uint8_t* data, size_t data_size) {
+void zRelocationSection::parseFromBytes(const uint8_t* data, size_t dataSize) {
     // 先填充 payload。
-    zSectionTableElement::parseFromBytes(data, data_size);
+    zSectionTableElement::parseFromBytes(data, dataSize);
     // 清空 RELA 容器。
     relocations.clear();
     // 清空 REL 容器。
@@ -322,7 +322,7 @@ void zRelocationSection::syncHeader() {
 }
 
 // 返回当前重定位条目总数。
-size_t zRelocationSection::relocationCount() const {
+size_t zRelocationSection::getRelocationCount() const {
     // REL 节返回 REL 数量。
     if (type == SHT_REL) {
         return rel_relocations.size();
@@ -330,3 +330,4 @@ size_t zRelocationSection::relocationCount() const {
     // 其他返回 RELA 数量。
     return relocations.size();
 }
+

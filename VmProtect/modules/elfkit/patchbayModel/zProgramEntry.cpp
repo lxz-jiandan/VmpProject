@@ -59,16 +59,17 @@ bool zProgramTableElement::containsFileOffset(Elf64_Off off) const {
 }
 
 // ELF 基础约束：段内存尺寸不得小于文件尺寸。
-bool zProgramTableElement::validateMemFileRelation() const {
+bool zProgramTableElement::isMemFileRelationValid() const {
     return memsz >= filesz;
 }
 
 // 计算段文件区间结束位置（开区间终点）。
-uint64_t zProgramTableElement::fileEnd() const {
+uint64_t zProgramTableElement::getFileEnd() const {
     return (uint64_t)offset + (uint64_t)filesz;
 }
 
 // 计算段虚拟地址区间结束位置（开区间终点）。
-uint64_t zProgramTableElement::vaddrEnd() const {
+uint64_t zProgramTableElement::getVaddrEnd() const {
     return (uint64_t)vaddr + (uint64_t)memsz;
 }
+

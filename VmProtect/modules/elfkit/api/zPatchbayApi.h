@@ -11,15 +11,6 @@
 // 引入动态数组容器。
 #include <vector>
 
-// 前置声明：动态段节对象。
-class zDynamicSection;
-// 前置声明：通用节对象。
-class zSectionTableElement;
-// 前置声明：字符串节对象。
-class zStrTabSection;
-// 前置声明：符号节对象。
-class zSymbolSection;
-
 // 进入命名空间。
 namespace vmp::elfkit {
 
@@ -45,43 +36,74 @@ struct PatchDynamicExportInfo {
     uint64_t value = 0;
 };
 
-// patchbay 流程依赖的关键节集合。
-// 注意：这些指针生命周期绑定到 PatchElfImage 实例。
-struct PatchRequiredSections {
-    // .dynsym 节。
-    const zSymbolSection* dynsym = nullptr;
-    // .dynstr 节。
-    const zStrTabSection* dynstr = nullptr;
-    // .gnu.version 节。
-    const zSectionTableElement* versym = nullptr;
-    // .gnu.hash 节。
-    const zSectionTableElement* gnu_hash = nullptr;
-    // .hash 节（可选）。
-    const zSectionTableElement* hash = nullptr;
-    // .dynamic 节。
-    const zDynamicSection* dynamic = nullptr;
-    // .vmp_patchbay 节（可选）。
-    const zSectionTableElement* patchbay = nullptr;
+// 通用节视图快照（只保留 patchbay 需要的最小元数据）。
+struct PatchSectionView {
+    // 节索引（找不到时为 -1）。
+    int index = -1;
+    // 节文件偏移。
+    uint64_t offset = 0;
+    // 节字节长度。
+    uint64_t size = 0;
+    // 节虚拟地址。
+    uint64_t addr = 0;
+};
 
-    // .dynsym 索引。
-    int dynsym_index = -1;
-    // .dynstr 索引。
-    int dynstr_index = -1;
-    // .gnu.version 索引。
-    int versym_index = -1;
-    // .gnu.hash 索引。
-    int gnu_hash_index = -1;
-    // .hash 索引。
-    int hash_index = -1;
-    // .vmp_patchbay 索引。
-    int patchbay_index = -1;
+// .dynsym 节快照。
+struct PatchDynsymView {
+    // .dynsym 节索引。
+    int index = -1;
+    // .dynsym 符号表快照。
+    std::vector<Elf64_Sym> symbols;
+};
+
+// .dynstr 节快照。
+struct PatchDynstrView {
+    // .dynstr 节索引。
+    int index = -1;
+    // .dynstr 原始字节快照。
+    std::vector<uint8_t> bytes;
+};
+
+// .dynamic 节快照。
+struct PatchDynamicView {
+    // .dynamic 节索引。
+    int index = -1;
+    // .dynamic 文件偏移。
+    uint64_t offset = 0;
+    // .dynamic 条目快照。
+    std::vector<Elf64_Dyn> entries;
+};
+
+// patchbay 流程依赖的关键节集合。
+// 注意：该结构仅暴露稳定数据快照，不暴露内部节对象类型。
+struct PatchRequiredSections {
+    // .dynsym 快照。
+    PatchDynsymView dynsym;
+    // .dynstr 快照。
+    PatchDynstrView dynstr;
+    // .gnu.version 节基础信息快照。
+    PatchSectionView versym;
+    // .gnu.version 原始字节快照。
+    std::vector<uint8_t> versymBytes;
+    // .gnu.hash 节基础信息快照。
+    PatchSectionView gnuHash;
+    // .hash 节基础信息快照（可选）。
+    PatchSectionView hash;
+    // 是否存在 .hash。
+    bool hasHash = false;
+    // .dynamic 快照。
+    PatchDynamicView dynamic;
+    // .vmp_patchbay 节基础信息快照（可选）。
+    PatchSectionView patchbay;
+    // 是否存在 .vmp_patchbay。
+    bool hasPatchbay = false;
 };
 
 // PatchElfImage：面向 patchbay 场景的 ELF 只读访问器。
 class PatchElfImage {
 public:
     // 按路径加载 ELF。
-    explicit PatchElfImage(const char* elf_path);
+    explicit PatchElfImage(const char* elfPath);
     // 析构释放资源。
     ~PatchElfImage();
 
@@ -95,18 +117,15 @@ public:
     PatchElfImage& operator=(PatchElfImage&& other) noexcept;
 
     // ELF 是否加载成功。
-    bool loaded() const;
+    bool isLoaded() const;
     // 执行结构校验。
     bool validate(std::string* error = nullptr) const;
 
     // 解析指定符号（优先 .symtab，回退 .dynsym）。
-    bool resolveSymbol(const char* symbol_name, PatchSymbolInfo* out_info) const;
+    bool resolveSymbol(const char* symbolName, PatchSymbolInfo* outInfo) const;
 
-    // 收集已定义的动态导出名列表。
-    bool collectDefinedDynamicExports(std::vector<std::string>* out_exports,
-                                      std::string* error) const;
     // 收集已定义动态导出（含 value）。
-    bool collectDefinedDynamicExportInfos(std::vector<PatchDynamicExportInfo>* out_exports,
+    bool collectDefinedDynamicExportInfos(std::vector<PatchDynamicExportInfo>* outExports,
                                           std::string* error) const;
 
     // 查询 patchbay 所需关键节集合。
@@ -121,4 +140,3 @@ private:
 
 // 结束命名空间。
 }  // namespace vmp::elfkit
-

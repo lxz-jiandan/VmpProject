@@ -358,17 +358,18 @@ def validateAndroidElfLayout(path: Path):
     print(f"[INFO] ELF layout OK: {path.name} e_shoff={e_shoff} e_shnum={e_shnum} file_size={len(data)}")
 
 
-def patchVmEngineSymbolsPatchbay(
+def patchVmEngineSymbolsWithVmProtectRoute(
     project_root: Path,
     vmengine_dir: Path,
     env: dict,
     donor_so: Path,
     impl_symbol: str,
     only_fun_java: bool,
+    functions,
 ):
-    # route4 L2 接管前置：
+    # route4 L2 接管前置（走 VmProtect 主流程）：
     # 1) 先强制重编 native，拿到“干净” libvmengine.so；
-    # 2) 用 patch 工具把 donor 导出注入到 vmengine，产出独立 libvmengine_patch.so；
+    # 2) 用 VmProtect 主流程对 vmengine 执行 embed+patch，产出独立 libvmengine_patch.so；
     # 3) 临时把 patch 结果部署到 libvmengine.so 供 installDebug 打包；
     # 4) 回归后再恢复原始 libvmengine.so，避免污染后续构建输入。
     if not donor_so.exists():
@@ -393,6 +394,12 @@ def patchVmEngineSymbolsPatchbay(
     if not targets:
         raise RuntimeError("no vmengine so outputs found under app/build/intermediates/cxx/Debug")
 
+    # VmProtect 主流程临时输出目录（保存 expanded/report 等中间文件）。
+    route_out_dir = vmengine_dir / "app" / "build" / "intermediates" / "tmp_vmprotect_route"
+    if route_out_dir.exists():
+        shutil.rmtree(route_out_dir)
+    route_out_dir.mkdir(parents=True, exist_ok=True)
+
     # 记录“临时部署”信息：[(target_so, backup_so, patched_so), ...]。
     # main() 会在 installDebug 后恢复 target_so。
     staged_for_install = []
@@ -410,32 +417,31 @@ def patchVmEngineSymbolsPatchbay(
             patched_so.unlink()
         if backup_so.exists():
             backup_so.unlink()
-        # 组装 patchbay 命令：
-        # input=target_so, donor=donor_so, output=patched_so, impl=impl_symbol。
+        # 组装 VmProtect 主流程命令：
+        # input=donor_so, vmengine=target_so, output=patched_so, impl=impl_symbol。
         cmd = [
             patch_tool,
-            "export_alias_from_patchbay",
-            str(target_so),
+            "--input-so",
             str(donor_so),
+            "--output-dir",
+            str(route_out_dir),
+            "--vmengine-so",
+            str(target_so),
+            "--output-so",
             str(patched_so),
+            "--patch-donor-so",
+            str(donor_so),
+            "--patch-impl-symbol",
             impl_symbol,
-            "--allow-validate-fail",
         ]
-        # 默认仅 patch fun_* / Java_*，可选关闭限制。
-        if only_fun_java:
-            cmd.append("--only-fun-java")
+        # 是否 patch donor 的全部导出：仅在开启时追加开关。
+        if not only_fun_java:
+            cmd.append("--patch-all-exports")
+        # 加固路线必须显式传入函数集合。
+        for function_name in functions:
+            cmd.extend(["--function", function_name])
 
-        # 执行 patch 命令。
-        cmd_str = " ".join([
-            patch_tool,
-            "export_alias_from_patchbay",
-            str(target_so),
-            str(donor_so),
-            str(patched_so),
-            impl_symbol,
-            "--allow-validate-fail",
-        ])
-        print("cmd_str:" + cmd_str)
+        # 执行主流程命令。
         runCmd(cmd, cwd=str(project_root), env=env)
         # 校验独立 patch 产物，确保输出完整可用。
         validateAndroidElfLayout(patched_so)
@@ -486,7 +492,7 @@ def main():
     parser.add_argument(
         "--patch-vmengine-symbols",
         action="store_true",
-        help="Patch libvmengine.so with export_alias_from_patchbay before installDebug",
+        help="Patch libvmengine.so with VmProtect main route before installDebug",
     )
     # donor so 路径参数。
     parser.add_argument(
@@ -498,7 +504,7 @@ def main():
     parser.add_argument(
         "--patch-impl-symbol",
         default="vm_takeover_slot_0000",
-        help="Implementation symbol/prefix used by export_alias_from_patchbay",
+        help="Implementation symbol/prefix used by VmProtect patch stage",
     )
     # 是否 patch donor 的全部导出。
     parser.add_argument(
@@ -545,13 +551,14 @@ def main():
         if not donor.is_absolute():
             donor = root / donor
         # 执行 patch 流程。
-        staged_for_install = patchVmEngineSymbolsPatchbay(
+        staged_for_install = patchVmEngineSymbolsWithVmProtectRoute(
             project_root=root,
             vmengine_dir=vmengine_dir,
             env=env,
             donor_so=donor,
             impl_symbol=args.patch_impl_symbol,
             only_fun_java=not args.patch_all_exports,
+            functions=args.functions,
         )
         try:
             # Skip native rebuild so patched output is not overwritten.

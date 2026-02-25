@@ -134,47 +134,47 @@ std::vector<uint8_t> buildGnuHashPayloadFromBytes(const std::vector<Elf64_Sym>& 
     std::vector<uint32_t> lastInBucket(nbuckets, 0);
 
     // 第一遍：填充 bucket、bloom 和 lastInBucket。
-    for (uint32_t idx = symoffset; idx < nchain; ++idx) {
-        const Elf64_Sym& sym = dynsymSymbols[idx];
-        const char* name = dynstrNameAt(dynstrBytes, sym.st_name);
-        if (name == nullptr || name[0] == '\0') {
+    for (uint32_t symbolIndex = symoffset; symbolIndex < nchain; ++symbolIndex) {
+        const Elf64_Sym& symbol = dynsymSymbols[symbolIndex];
+        const char* symbolName = dynstrNameAt(dynstrBytes, symbol.st_name);
+        if (symbolName == nullptr || symbolName[0] == '\0') {
             continue;
         }
-        const uint32_t h = elfGnuHash(name);
-        const uint32_t b = h % nbuckets;
-        if (buckets[b] == 0) {
+        const uint32_t hashValue = elfGnuHash(symbolName);
+        const uint32_t bucketIndex = hashValue % nbuckets;
+        if (buckets[bucketIndex] == 0) {
             // 记录桶中第一个符号。
-            buckets[b] = idx;
+            buckets[bucketIndex] = symbolIndex;
         }
         // 持续更新桶尾索引。
-        lastInBucket[b] = idx;
+        lastInBucket[bucketIndex] = symbolIndex;
         // 计算 bloom 词索引。
-        const uint32_t word = (h / 64U) % bloomSize;
+        const uint32_t bloomWordIndex = (hashValue / 64U) % bloomSize;
         // 计算 bloom 第一位。
-        const uint32_t bit1 = h % 64U;
+        const uint32_t bit1 = hashValue % 64U;
         // 计算 bloom 第二位。
-        const uint32_t bit2 = (h >> bloomShift) % 64U;
+        const uint32_t bit2 = (hashValue >> bloomShift) % 64U;
         // 设置 bloom 位。
-        bloom[word] |= (1ULL << bit1) | (1ULL << bit2);
+        bloom[bloomWordIndex] |= (1ULL << bit1) | (1ULL << bit2);
     }
 
     // 第二遍：构建 chain 值，桶尾元素最低位置 1。
-    for (uint32_t idx = symoffset; idx < nchain; ++idx) {
-        const Elf64_Sym& sym = dynsymSymbols[idx];
-        const char* name = dynstrNameAt(dynstrBytes, sym.st_name);
-        if (name == nullptr || name[0] == '\0') {
+    for (uint32_t symbolIndex = symoffset; symbolIndex < nchain; ++symbolIndex) {
+        const Elf64_Sym& symbol = dynsymSymbols[symbolIndex];
+        const char* symbolName = dynstrNameAt(dynstrBytes, symbol.st_name);
+        if (symbolName == nullptr || symbolName[0] == '\0') {
             continue;
         }
-        const uint32_t h = elfGnuHash(name);
-        const uint32_t b = h % nbuckets;
-        const uint32_t chainIndex = idx - symoffset;
+        const uint32_t hashValue = elfGnuHash(symbolName);
+        const uint32_t bucketIndex = hashValue % nbuckets;
+        const uint32_t chainIndex = symbolIndex - symoffset;
         // 链值保留高 31 位哈希，最低位留给“桶尾标记”。
-        uint32_t val = h & ~1U;
-        if (idx == lastInBucket[b]) {
-            val |= 1U;
+        uint32_t chainValue = hashValue & ~1U;
+        if (symbolIndex == lastInBucket[bucketIndex]) {
+            chainValue |= 1U;
         }
         if (chainIndex < chain.size()) {
-            chain[chainIndex] = val;
+            chain[chainIndex] = chainValue;
         }
     }
 
@@ -194,4 +194,3 @@ std::vector<uint8_t> buildGnuHashPayloadFromBytes(const std::vector<Elf64_Sym>& 
     vmp::base::codec::appendU32LeArray(&payload, chain.data(), chain.size());
     return payload;
 }
-

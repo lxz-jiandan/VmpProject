@@ -1,4 +1,4 @@
-#ifndef VMP_PATCHBAY_SECTION_ENTRY_H
+﻿#ifndef VMP_PATCHBAY_SECTION_ENTRY_H
 #define VMP_PATCHBAY_SECTION_ENTRY_H
 
 #include "zPatchElfTypes.h"
@@ -32,7 +32,7 @@ public:
     virtual ~zSectionTableElement() = default;
 
     /** @brief 从字节流解析 payload（基类为直接拷贝）。 */
-    virtual void parseFromBytes(const uint8_t* data, size_t data_size);
+    virtual void parseFromBytes(const uint8_t* data, size_t dataSize);
 
     /** @brief 序列化为字节流（基类直接返回 payload）。 */
     virtual std::vector<uint8_t> toByteArray() const;
@@ -44,13 +44,13 @@ public:
     Elf64_Shdr toShdr() const;
 
     /** @brief 获取解析后的节名。 */
-    const std::string& sectionName() const;
+    const std::string& getSectionName() const;
 
     /** @brief 获取节类型。 */
-    Elf64_Word sectionType() const;
+    Elf64_Word getSectionType() const;
 
     /** @brief 获取节标志。 */
-    Elf64_Xword sectionFlags() const;
+    Elf64_Xword getSectionFlags() const;
 
     /** @brief 从原始 `Elf64_Shdr` 反序列化字段。 */
     void fromShdr(const Elf64_Shdr& shdr);
@@ -92,7 +92,7 @@ public:
     std::vector<Elf64_Sym> symbols;  ///< 符号条目列表。
 
     /** @brief 从节 payload 解析符号表条目。 */
-    void parseFromBytes(const uint8_t* data, size_t data_size) override;
+    void parseFromBytes(const uint8_t* data, size_t dataSize) override;
 
     /** @brief 将符号条目序列化为节 payload。 */
     std::vector<uint8_t> toByteArray() const override;
@@ -101,7 +101,7 @@ public:
     void syncHeader() override;
 
     /** @brief 获取符号条目数量。 */
-    size_t symbolCount() const;
+    size_t getSymbolCount() const;
 };
 
 // ============================================================================
@@ -116,7 +116,7 @@ public:
     std::vector<Elf64_Dyn> entries;  ///< 动态表条目（DT_*）列表。
 
     /** @brief 从原始字节解析动态表条目。 */
-    void parseFromBytes(const uint8_t* data, size_t data_size) override;
+    void parseFromBytes(const uint8_t* data, size_t dataSize) override;
 
     /** @brief 将动态表条目序列化为字节数组。 */
     std::vector<uint8_t> toByteArray() const override;
@@ -125,7 +125,7 @@ public:
     void syncHeader() override;
 
     /** @brief 获取当前动态表条目数量。 */
-    size_t entryCount() const;
+    size_t getEntryCount() const;
 };
 
 // ============================================================================
@@ -141,7 +141,7 @@ public:
     std::vector<Elf64_Rel> rel_relocations;   ///< `SHT_REL` 条目列表。
 
     /** @brief 从节 payload 解析重定位条目。 */
-    void parseFromBytes(const uint8_t* data, size_t data_size) override;
+    void parseFromBytes(const uint8_t* data, size_t dataSize) override;
 
     /** @brief 将当前重定位条目序列化为节 payload。 */
     std::vector<uint8_t> toByteArray() const override;
@@ -150,7 +150,8 @@ public:
     void syncHeader() override;
 
     /** @brief 获取当前重定位条目总数。 */
-    size_t relocationCount() const;
+    size_t getRelocationCount() const;
 };
 
 #endif // VMP_PATCHBAY_SECTION_ENTRY_H
+

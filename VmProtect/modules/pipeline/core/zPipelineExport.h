@@ -22,7 +22,8 @@ bool collectFunctions(elfkit::ElfImage& elf,
 // 导出保护包：函数 payload + branch 地址 + expand so。
 bool exportProtectedPackage(const VmProtectConfig& config,
                             const std::vector<std::string>& functionNames,
-                            const std::vector<elfkit::FunctionView>& functions);
+                            const std::vector<elfkit::FunctionView>& functions,
+                            const CoverageBoard* coverageBoard);
 
 // 结束命名空间。
 }  // namespace vmp

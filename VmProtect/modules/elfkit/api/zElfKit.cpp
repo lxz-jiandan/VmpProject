@@ -1,4 +1,4 @@
-#include "zElfKit.h"
+﻿#include "zElfKit.h"
 
 // 引入底层 ELF 解析对象。
 #include "zElf.h"
@@ -17,15 +17,15 @@ namespace vmp::elfkit {
 namespace {
 
 // 将统一 void* 转为可写 zFunction*。
-zFunction* toMutableFunction(void* impl_ptr) {
+zFunction* toMutableFunction(void* implPtr) {
     // 该指针由底层 zElf::getFunction 返回，类型在本模块内可控。
-    return reinterpret_cast<zFunction*>(impl_ptr);
+    return reinterpret_cast<zFunction*>(implPtr);
 }
 
 // 将统一 void* 转为只读 zFunction*。
-const zFunction* toConstFunction(void* impl_ptr) {
+const zFunction* toConstFunction(void* implPtr) {
     // 只读访问路径复用同一底层对象地址。
-    return reinterpret_cast<const zFunction*>(impl_ptr);
+    return reinterpret_cast<const zFunction*>(implPtr);
 }
 
 // 将新 API 的 DumpMode 转换为旧实现枚举。
@@ -71,40 +71,40 @@ public:
 };
 
 // 由内部实现指针构造 FunctionView。
-FunctionView::FunctionView(void* impl_ptr) : impl_ptr_(impl_ptr) {}
+FunctionView::FunctionView(void* implPtr) : impl_ptr_(implPtr) {}
 
 // 判断视图是否有效。
-bool FunctionView::valid() const {
+bool FunctionView::isValid() const {
     // impl_ptr_ 非空即可认为底层对象可访问。
     return impl_ptr_ != nullptr;
 }
 
 // 获取函数名。
-const std::string& FunctionView::name() const {
+const std::string& FunctionView::getName() const {
     // 先转只读对象，失败时返回静态空字符串。
     const zFunction* function = toConstFunction(impl_ptr_);
-    return function ? function->name() : emptyName();
+    return function ? function->getName() : emptyName();
 }
 
 // 获取函数偏移。
-uint64_t FunctionView::offset() const {
+uint64_t FunctionView::getOffset() const {
     // 统一转成 uint64_t，屏蔽底层返回类型差异。
     const zFunction* function = toConstFunction(impl_ptr_);
-    return function ? static_cast<uint64_t>(function->offset()) : 0;
+    return function ? static_cast<uint64_t>(function->getOffset()) : 0;
 }
 
 // 获取函数大小。
-size_t FunctionView::size() const {
+size_t FunctionView::getSize() const {
     // 无效对象返回 0，调用方可据此做空检查。
     const zFunction* function = toConstFunction(impl_ptr_);
-    return function ? function->size() : 0;
+    return function ? function->getSize() : 0;
 }
 
 // 获取函数数据指针。
-const uint8_t* FunctionView::data() const {
+const uint8_t* FunctionView::getData() const {
     // data 指向底层函数字节缓存，不做拷贝。
     const zFunction* function = toConstFunction(impl_ptr_);
-    return function ? function->data() : nullptr;
+    return function ? function->getData() : nullptr;
 }
 
 // 准备翻译中间态。
@@ -115,30 +115,30 @@ bool FunctionView::prepareTranslation(std::string* error) const {
 }
 
 // 按模式导出函数。
-bool FunctionView::dump(const char* file_path, const DumpMode mode) const {
+bool FunctionView::dump(const char* filePath, const DumpMode mode) const {
     // 新 API 模式先映射到旧实现模式，再委托底层 dump。
     zFunction* function = toMutableFunction(impl_ptr_);
-    return function ? function->dump(file_path, toLegacyDumpMode(mode)) : false;
+    return function ? function->dump(filePath, toLegacyDumpMode(mode)) : false;
 }
 
 // 获取共享分支地址列表。
-const std::vector<uint64_t>& FunctionView::sharedBranchAddrs() const {
+const std::vector<uint64_t>& FunctionView::getSharedBranchAddrs() const {
     // 无对象时返回静态空数组，避免 nullptr 语义。
     zFunction* function = toMutableFunction(impl_ptr_);
-    return function ? function->sharedBranchAddrs() : emptyBranchAddrs();
+    return function ? function->getSharedBranchAddrs() : emptyBranchAddrs();
 }
 
 // 执行 BL 重映射。
-bool FunctionView::remapBlToSharedBranchAddrs(const std::vector<uint64_t>& shared_branch_addrs) const {
+bool FunctionView::remapBlToSharedBranchAddrs(const std::vector<uint64_t>& sharedBranchAddrs) const {
     // 该操作会改写分支映射，因此需要可写对象。
     zFunction* function = toMutableFunction(impl_ptr_);
-    return function ? function->remapBlToSharedBranchAddrs(shared_branch_addrs) : false;
+    return function ? function->remapBlToSharedBranchAddrs(sharedBranchAddrs) : false;
 }
 
 // 构造 ElfImage 并分配 pImpl。
-ElfImage::ElfImage(const char* elf_path)
+ElfImage::ElfImage(const char* elfPath)
     // pImpl 在构造时一次性创建，后续由移动语义转移所有权。
-    : impl_(new Impl(elf_path)) {}
+    : impl_(new Impl(elfPath)) {}
 
 // 析构并释放 pImpl。
 ElfImage::~ElfImage() {
@@ -171,23 +171,23 @@ ElfImage& ElfImage::operator=(ElfImage&& other) noexcept {
 }
 
 // 判断 ELF 是否已加载。
-bool ElfImage::loaded() const {
+bool ElfImage::isLoaded() const {
     // 同时检查 pImpl、文件指针与文件大小，避免半初始化状态。
     return impl_ != nullptr && impl_->elf.elf_file_ptr != nullptr && impl_->elf.file_size > 0;
 }
 
 // 按符号名查找函数。
-FunctionView ElfImage::findFunction(const std::string& symbol_name) {
+FunctionView ElfImage::getFunction(const std::string& symbolName) {
     if (!impl_) {
         // 未初始化时返回空视图。
         return FunctionView();
     }
     // getFunction 返回底层对象地址，直接封装成 FunctionView。
-    return FunctionView(impl_->elf.getFunction(symbol_name.c_str()));
+    return FunctionView(impl_->elf.getFunction(symbolName.c_str()));
 }
 
 // 列举全部函数视图。
-std::vector<FunctionView> ElfImage::listFunctions() {
+std::vector<FunctionView> ElfImage::getFunctions() {
     std::vector<FunctionView> out;
     if (!impl_) {
         // 未初始化直接返回空列表。
@@ -206,3 +206,4 @@ std::vector<FunctionView> ElfImage::listFunctions() {
 
 // 结束命名空间。
 }  // namespace vmp::elfkit
+

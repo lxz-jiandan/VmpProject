@@ -1,4 +1,4 @@
-#ifndef VMP_PATCHBAY_PROGRAM_TABLE_H
+﻿#ifndef VMP_PATCHBAY_PROGRAM_TABLE_H
 #define VMP_PATCHBAY_PROGRAM_TABLE_H
 
 // Program Header 条目模型。
@@ -38,14 +38,15 @@ public:
      * @param type 目标段类型（PT_*）。
      * @return 找到返回索引；找不到返回 -1。
      */
-    int findFirstByType(Elf64_Word type) const;
+    int getFirstByType(Elf64_Word type) const;
 
     /**
      * @brief 查找所有指定类型段。
      * @param type 目标段类型（PT_*）。
      * @return 匹配的索引列表；可为空。
      */
-    std::vector<int> findAllByType(Elf64_Word type) const;
+    std::vector<int> getAllByType(Elf64_Word type) const;
 };
 
 #endif // VMP_PATCHBAY_PROGRAM_TABLE_H
+

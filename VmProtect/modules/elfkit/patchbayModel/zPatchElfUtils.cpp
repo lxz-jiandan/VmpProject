@@ -101,44 +101,44 @@ bool isDynamicPointerTag(Elf64_Sxword tag) {
 // 从 PT_DYNAMIC 段读取动态条目（6 参数完整版本）。
 bool readDynamicEntriesFromPhdr(
         const PatchElf& elf,
-        std::vector<Elf64_Dyn>* out_entries,
-        Elf64_Off* out_off,
-        Elf64_Xword* out_size,
-        bool* out_has_pt_dynamic,
+        std::vector<Elf64_Dyn>* outEntries,
+        Elf64_Off* outOff,
+        Elf64_Xword* outSize,
+        bool* outHasPtDynamic,
         std::string* error) {
     // 默认声明“未发现 PT_DYNAMIC”。
-    if (out_has_pt_dynamic) {
-        *out_has_pt_dynamic = false;
+    if (outHasPtDynamic) {
+        *outHasPtDynamic = false;
     }
     // 输出 entries 先清空，避免返回旧值。
-    if (out_entries) {
-        out_entries->clear();
+    if (outEntries) {
+        outEntries->clear();
     }
 
     // 读取当前镜像视图。
-    const uint8_t* file_data = elf.fileImageData();
-    const size_t file_size = elf.fileImageSize();
+    const uint8_t* fileData = elf.getFileImageData();
+    const size_t fileSize = elf.getFileImageSize();
 
     // 扫描 Program Header，寻找首个有效 PT_DYNAMIC。
-    for (const auto& ph : elf.programHeaderModel().elements) {
+    for (const auto& ph : elf.getProgramHeaderModel().elements) {
         // 仅接受 filesz>0 的 PT_DYNAMIC。
         if (ph.type != PT_DYNAMIC || ph.filesz == 0) {
             continue;
         }
         // 标记“文件里声明了 PT_DYNAMIC”。
-        if (out_has_pt_dynamic) {
-            *out_has_pt_dynamic = true;
+        if (outHasPtDynamic) {
+            *outHasPtDynamic = true;
         }
 
         // 文件镜像为空时无法读取动态段。
-        if (!file_data || file_size == 0) {
+        if (!fileData || fileSize == 0) {
             if (error) {
                 *error = "PT_DYNAMIC exists but file image is empty";
             }
             return false;
         }
         // 检查 PT_DYNAMIC 文件范围是否越界。
-        if ((uint64_t)ph.offset + (uint64_t)ph.filesz > file_size) {
+        if ((uint64_t)ph.offset + (uint64_t)ph.filesz > fileSize) {
             if (error) {
                 *error = "PT_DYNAMIC range exceeds file size";
             }
@@ -156,20 +156,20 @@ bool readDynamicEntriesFromPhdr(
         }
 
         // 需要导出 entries 时执行结构体数组复制。
-        if (out_entries) {
+        if (outEntries) {
             // 预分配目标数组。
-            out_entries->resize(count);
+            outEntries->resize(count);
             // 从 file_image_ 复制原始动态条目。
-            std::memcpy(out_entries->data(), file_data + ph.offset,
+            std::memcpy(outEntries->data(), fileData + ph.offset,
                         count * sizeof(Elf64_Dyn));
         }
         // 输出 PT_DYNAMIC 偏移（可选）。
-        if (out_off) {
-            *out_off = ph.offset;
+        if (outOff) {
+            *outOff = ph.offset;
         }
         // 输出 PT_DYNAMIC 大小（可选）。
-        if (out_size) {
-            *out_size = ph.filesz;
+        if (outSize) {
+            *outSize = ph.filesz;
         }
         // 读取成功即返回。
         return true;
@@ -201,8 +201,8 @@ bool collectDynamicTags(
             return;
         }
         // 顺序遍历动态条目。
-        for (size_t idx = 0; idx < count; ++idx) {
-            const Elf64_Dyn& entry = entries[idx];
+        for (size_t entryIndex = 0; entryIndex < count; ++entryIndex) {
+            const Elf64_Dyn& entry = entries[entryIndex];
             const int64_t tag = static_cast<int64_t>(entry.d_tag);
             // 首次出现的 tag 才写入 map。
             if (tags->find(tag) == tags->end()) {
@@ -216,9 +216,9 @@ bool collectDynamicTags(
     };
 
     // 优先路径：使用 SHT_DYNAMIC 的模型解析结果。
-    const auto& sections = elf.sectionHeaderModel().elements;
-    for (size_t idx = 0; idx < sections.size(); ++idx) {
-        const auto* sec = sections[idx].get();
+    const auto& sections = elf.getSectionHeaderModel().elements;
+    for (size_t sectionIndex = 0; sectionIndex < sections.size(); ++sectionIndex) {
+        const auto* sec = sections[sectionIndex].get();
         // 跳过空节与非 SHT_DYNAMIC 节。
         if (!sec || sec->type != SHT_DYNAMIC) {
             continue;
@@ -229,7 +229,7 @@ bool collectDynamicTags(
         if (!dynamic_sec) {
             if (error) {
                 *error = "SHT_DYNAMIC section is not parsed as zDynamicSection at index "
-                         + std::to_string(idx);
+                         + std::to_string(sectionIndex);
             }
             return false;
         }
@@ -237,7 +237,7 @@ bool collectDynamicTags(
         // 有 section.size 但 entries 为空，说明解析异常。
         if (dynamic_sec->entries.empty() && sec->size > 0) {
             if (error) {
-                *error = "Dynamic section parse failed at index " + std::to_string(idx);
+                *error = "Dynamic section parse failed at index " + std::to_string(sectionIndex);
             }
             return false;
         }
@@ -271,3 +271,4 @@ bool collectDynamicTags(
     }
     return true;
 }
+

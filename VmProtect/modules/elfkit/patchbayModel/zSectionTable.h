@@ -1,4 +1,4 @@
-#ifndef VMP_PATCHBAY_SECTION_TABLE_H
+﻿#ifndef VMP_PATCHBAY_SECTION_TABLE_H
 #define VMP_PATCHBAY_SECTION_TABLE_H
 
 // Section 条目基类及派生类声明。
@@ -26,17 +26,17 @@ public:
 
     /**
      * @brief 从原始 section header 与文件字节构建模型。
-     * @param file_data 完整 ELF 文件字节首地址。
-     * @param file_size 文件总字节数。
-     * @param section_headers 原始 section header 数组首地址。
-     * @param section_count section 条目数量。
+     * @param fileData 完整 ELF 文件字节首地址。
+     * @param fileSize 文件总字节数。
+     * @param sectionHeaders 原始 section header 数组首地址。
+     * @param sectionCount section 条目数量。
      * @param shstrndx 节名字符串表索引（e_shstrndx）。
      * @return true 表示解析成功；false 表示存在越界或格式异常。
      */
-    bool fromRaw(const uint8_t* file_data,
-                 size_t file_size,
-                 const Elf64_Shdr* section_headers,
-                 size_t section_count,
+    bool fromRaw(const uint8_t* fileData,
+                 size_t fileSize,
+                 const Elf64_Shdr* sectionHeaders,
+                 size_t sectionCount,
                  uint16_t shstrndx);
 
     /**
@@ -47,24 +47,25 @@ public:
 
     /**
      * @brief 按节名查询 section 索引。
-     * @param section_name 目标节名（例如 `.text`、`.dynsym`）。
+     * @param sectionName 目标节名（例如 `.text`、`.dynsym`）。
      * @return 找到返回索引；找不到返回 -1。
      */
-    int findByName(const std::string& section_name) const;
+    int getByName(const std::string& sectionName) const;
 
     /**
      * @brief 获取指定索引的可写 section 对象。
-     * @param idx 目标索引。
+     * @param sectionIndex 目标索引。
      * @return 成功返回对象指针；越界返回 nullptr。
      */
-    zSectionTableElement* get(size_t idx);
+    zSectionTableElement* get(size_t sectionIndex);
 
     /**
      * @brief 获取指定索引的只读 section 对象。
-     * @param idx 目标索引。
+     * @param sectionIndex 目标索引。
      * @return 成功返回对象指针；越界返回 nullptr。
      */
-    const zSectionTableElement* get(size_t idx) const;
+    const zSectionTableElement* get(size_t sectionIndex) const;
 };
 
 #endif // VMP_PATCHBAY_SECTION_TABLE_H
+

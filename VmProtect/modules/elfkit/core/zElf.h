@@ -1,4 +1,4 @@
-/*
+﻿/*
  * [VMP_FLOW_NOTE] 文件级流程注释
  * - zElf 对外接口定义，声明 ELF 解析能力边界。
  * - 加固链路位置：离线分析接口层。
@@ -38,7 +38,7 @@ public:
     // 默认构造：仅保留空对象，不自动加载文件。
     zElf();
     // 便捷构造：加载文件并串行执行 parse_*。
-    zElf(const char* elf_file_name);
+    zElf(const char* elfFileName);
     // 析构：释放 elf_file_ptr 持有的文件缓存。
     ~zElf();
 
@@ -108,40 +108,40 @@ public:
     void parseDynamicTable();
 
     // 从磁盘读取 ELF 文件到 elf_file_ptr。
-    bool loadElfFile(const char* elf_path);
+    bool loadElfFile(const char* elfPath);
 
     // 打印文件布局（按地址排序，含 padding 区段）。
     void printLayout();
 
     // 第二阶段：迁移并扩容 Program Header Table。
     // 会输出改写后的新文件，不直接原地修改源文件。
-    bool relocateAndExpandPht(int extra_entries, const char* output_path);
+    bool relocateAndExpandPht(int extraEntries, const char* outputPath);
 
     // 从动态符号表路径查找符号“文件内偏移”。
-    Elf64_Addr findSymbolOffsetByDynamic(const char* symbol_name);
+    Elf64_Addr getSymbolOffsetByDynamic(const char* symbolName);
     // 从节符号表路径查找符号“文件内偏移”。
-    Elf64_Addr findSymbolOffsetBySection(const char* symbol_name);
+    Elf64_Addr getSymbolOffsetBySection(const char* symbolName);
     // 统一查找入口：先 dynamic 再 section。
-    Elf64_Addr findSymbolOffset(const char* symbol_name);
+    Elf64_Addr getSymbolOffset(const char* symbolName);
 
     // 获取符号在 FILE_VIEW 下对应的内存指针（elf_file_ptr + offset）。
-    char* getSymbolFileAddress(const char* symbol_name);
+    char* getSymbolFileAddress(const char* symbolName);
 
     // 获取符号元信息（含 st_size），优先 dynamic，回退 section。
-    Elf64_Sym* findSymbolInfo(const char* symbol_name);
+    Elf64_Sym* getSymbolInfo(const char* symbolName);
 
     // 扫描符号表并构建 function_list_ 缓存。
     bool buildFunctionList();
     // 规范命名入口：查询/构建目标函数对象。
-    zFunction* getFunction(const char* function_name);
+    zFunction* getFunction(const char* functionName);
     // 只读访问当前已构建的函数列表。
     const std::vector<zFunction>& getFunctionList() const;
 
 private:
     // 按符号名称和大小构建 zFunction，并写入 function_list_。
-    bool addFunctionFromSymbol(const char* symbol_name, Elf64_Xword symbol_size);
+    bool addFunctionFromSymbol(const char* symbolName, Elf64_Xword symbolSize);
     // 在 function_list_ 里按名称检索已有函数。
-    zFunction* findFunctionInList(const char* function_name);
+    zFunction* getCachedFunction(const char* functionName);
 
     // .strtab 的文件偏移（当前主要用于调试）。
     Elf64_Addr string_table_offset = 0;
@@ -154,3 +154,4 @@ private:
 };
 
 #endif // OVERT_ZELF_H
+

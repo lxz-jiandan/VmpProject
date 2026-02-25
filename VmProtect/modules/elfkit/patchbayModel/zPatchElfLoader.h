@@ -15,10 +15,10 @@ namespace zElfLoader {
  * - 不抛异常，统一用 bool 返回结果。
  *
  * @param elf 目标 PatchElf 对象（输出）。
- * @param elf_path ELF 路径。
+ * @param elfPath ELF 路径。
  * @return true 表示加载与解析成功。
  */
-bool loadFileAndParse(PatchElf* elf, const char* elf_path);
+bool loadFileAndParse(PatchElf* elf, const char* elfPath);
 
 } // namespace zElfLoader
 

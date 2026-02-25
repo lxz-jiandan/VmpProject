@@ -1,4 +1,4 @@
-#ifndef VMP_PATCHBAY_PROGRAM_ENTRY_H
+﻿#ifndef VMP_PATCHBAY_PROGRAM_ENTRY_H
 #define VMP_PATCHBAY_PROGRAM_ENTRY_H
 
 // ELF 基础类型（Elf64_Phdr / Elf64_Addr / PT_* / PF_*）。
@@ -65,19 +65,20 @@ public:
      * @brief 校验 ELF 约束关系 `memsz >= filesz`。
      * @return true 表示关系合法。
      */
-    bool validateMemFileRelation() const;
+    bool isMemFileRelationValid() const;
 
     /**
      * @brief 计算文件范围末尾偏移。
      * @return `offset + filesz`（以 uint64_t 返回防止窄类型溢出）。
      */
-    uint64_t fileEnd() const;
+    uint64_t getFileEnd() const;
 
     /**
      * @brief 计算虚拟地址范围末尾。
      * @return `vaddr + memsz`（以 uint64_t 返回防止窄类型溢出）。
      */
-    uint64_t vaddrEnd() const;
+    uint64_t getVaddrEnd() const;
 };
 
 #endif // VMP_PATCHBAY_PROGRAM_ENTRY_H
+

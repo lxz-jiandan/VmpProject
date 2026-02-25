@@ -113,7 +113,7 @@ std::string hexU64Label(uint64_t value) {
 // 判断某个虚拟地址区间是否被任一 PT_LOAD 映射。
 bool isLoadMapped(const PatchElf& elf, uint64_t vaddr, uint64_t size) {
     // 遍历全部 Program Header。
-    for (const auto& ph : elf.programHeaderModel().elements) {
+    for (const auto& ph : elf.getProgramHeaderModel().elements) {
         // 仅关注 LOAD 段。
         if (ph.type != PT_LOAD) {
             // 非 LOAD 段不参与运行时地址可达性判断。
@@ -163,8 +163,8 @@ bool zElfValidator::validatePltGotRelocations(const PatchElf& elf, std::string* 
         }
 
         // DT_PLTREL 如存在，必须等于 DT_RELA。
-        const auto pltrel_it = dynamic_tags.find(DT_PLTREL);
-        if (pltrel_it != dynamic_tags.end() && pltrel_it->second != DT_RELA) {
+        const auto pltRelIt = dynamic_tags.find(DT_PLTREL);
+        if (pltRelIt != dynamic_tags.end() && pltRelIt->second != DT_RELA) {
             if (error) {
                 *error = "DT_PLTREL is not DT_RELA";
             }
@@ -172,8 +172,8 @@ bool zElfValidator::validatePltGotRelocations(const PatchElf& elf, std::string* 
         }
 
         // DT_RELAENT 如存在，必须等于 Elf64_Rela 大小。
-        const auto relaent_it = dynamic_tags.find(DT_RELAENT);
-        if (relaent_it != dynamic_tags.end() && relaent_it->second != sizeof(Elf64_Rela)) {
+        const auto relaEntIt = dynamic_tags.find(DT_RELAENT);
+        if (relaEntIt != dynamic_tags.end() && relaEntIt->second != sizeof(Elf64_Rela)) {
             if (error) {
                 *error = "DT_RELAENT mismatch";
             }
@@ -181,8 +181,8 @@ bool zElfValidator::validatePltGotRelocations(const PatchElf& elf, std::string* 
         }
 
         // DT_PLTRELSZ 必须按 Elf64_Rela 对齐。
-        const auto pltrelsz_it = dynamic_tags.find(DT_PLTRELSZ);
-        if (pltrelsz_it != dynamic_tags.end() && (pltrelsz_it->second % sizeof(Elf64_Rela)) != 0) {
+        const auto pltRelSzIt = dynamic_tags.find(DT_PLTRELSZ);
+        if (pltRelSzIt != dynamic_tags.end() && (pltRelSzIt->second % sizeof(Elf64_Rela)) != 0) {
             if (error) {
                 *error = "DT_PLTRELSZ is not aligned to Elf64_Rela size";
             }
@@ -190,8 +190,8 @@ bool zElfValidator::validatePltGotRelocations(const PatchElf& elf, std::string* 
         }
 
         // DT_RELASZ 必须按 Elf64_Rela 对齐。
-        const auto relasz_it = dynamic_tags.find(DT_RELASZ);
-        if (relasz_it != dynamic_tags.end() && (relasz_it->second % sizeof(Elf64_Rela)) != 0) {
+        const auto relaSzIt = dynamic_tags.find(DT_RELASZ);
+        if (relaSzIt != dynamic_tags.end() && (relaSzIt->second % sizeof(Elf64_Rela)) != 0) {
             if (error) {
                 *error = "DT_RELASZ is not aligned to Elf64_Rela size";
             }
@@ -199,10 +199,10 @@ bool zElfValidator::validatePltGotRelocations(const PatchElf& elf, std::string* 
         }
 
         // DT_PLTGOT 如存在，必须落在 LOAD 映射内。
-        const auto pltgot_it = dynamic_tags.find(DT_PLTGOT);
-        if (pltgot_it != dynamic_tags.end()) {
+        const auto pltGotIt = dynamic_tags.find(DT_PLTGOT);
+        if (pltGotIt != dynamic_tags.end()) {
             // 至少检查 8 字节，确保 GOT 入口地址可访问。
-            if (!isLoadMapped(elf, (Elf64_Addr)pltgot_it->second, sizeof(uint64_t))) {
+            if (!isLoadMapped(elf, (Elf64_Addr)pltGotIt->second, sizeof(uint64_t))) {
                 if (error) {
                     *error = "DT_PLTGOT is not mapped by PT_LOAD";
                 }
@@ -217,9 +217,9 @@ bool zElfValidator::validatePltGotRelocations(const PatchElf& elf, std::string* 
 // 重解析一致性：用当前字节流重新解析并与模型规模做一致性比对。
 bool zElfValidator::validateReparseConsistency(const PatchElf& elf, std::string* error) {
     // 文件字节首地址。
-    const uint8_t* file_data = elf.fileImageData();
+    const uint8_t* file_data = elf.getFileImageData();
     // 文件字节总长度。
-    const size_t file_size = elf.fileImageSize();
+    const size_t file_size = elf.getFileImageSize();
     // 字节缺失或太小都无法作为 ELF64 解析。
     if (!file_data || file_size < sizeof(Elf64_Ehdr)) {
         if (error) {
@@ -257,10 +257,13 @@ bool zElfValidator::validateReparseConsistency(const PatchElf& elf, std::string*
     // fromRaw 仅重建表结构，不改变原文件数据。
     reparsed_ph.fromRaw(reinterpret_cast<const Elf64_Phdr*>(file_data + eh.e_phoff), eh.e_phnum);
     // 校验每个 phdr 的 memsz/filesz 关系。
-    for (size_t idx = 0; idx < reparsed_ph.elements.size(); ++idx) {
-        if (!reparsed_ph.elements[idx].validateMemFileRelation()) {
+    for (size_t programHeaderIndex = 0;
+         programHeaderIndex < reparsed_ph.elements.size();
+         ++programHeaderIndex) {
+        if (!reparsed_ph.elements[programHeaderIndex].isMemFileRelationValid()) {
             if (error) {
-                *error = "Reparse memsz/filesz mismatch at phdr index " + std::to_string(idx);
+                *error = "Reparse memsz/filesz mismatch at phdr index " +
+                         std::to_string(programHeaderIndex);
             }
             return false;
         }
@@ -283,14 +286,14 @@ bool zElfValidator::validateReparseConsistency(const PatchElf& elf, std::string*
     }
 
     // 对比 Program Header 数量是否一致。
-    if (reparsed_ph.elements.size() != elf.programHeaderModel().elements.size()) {
+    if (reparsed_ph.elements.size() != elf.getProgramHeaderModel().elements.size()) {
         if (error) {
             *error = "Reparse phdr count mismatch";
         }
         return false;
     }
     // 对比 Section Header 数量是否一致。
-    if (reparsed_sh.elements.size() != elf.sectionHeaderModel().elements.size()) {
+    if (reparsed_sh.elements.size() != elf.getSectionHeaderModel().elements.size()) {
         if (error) {
             *error = "Reparse shdr count mismatch";
         }
@@ -299,3 +302,4 @@ bool zElfValidator::validateReparseConsistency(const PatchElf& elf, std::string*
     // 解析规模一致。
     return true;
 }
+

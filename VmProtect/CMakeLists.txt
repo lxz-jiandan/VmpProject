@@ -58,6 +58,7 @@ set(VM_PROTECT_FORMAT_SOURCES
 set(VM_PROTECT_PIPELINE_SOURCES
     ${VMP_PIPELINE_SRC_DIR}/zPipelineTypes.cpp
     ${VMP_PIPELINE_SRC_DIR}/zPipelineCli.cpp
+    ${VMP_PIPELINE_SRC_DIR}/zPipelineRun.cpp
     ${VMP_PIPELINE_SRC_DIR}/zPipelinePatch.cpp
     ${VMP_PIPELINE_SRC_DIR}/zPipelineCoverage.cpp
     ${VMP_PIPELINE_SRC_DIR}/zPipelineExport.cpp

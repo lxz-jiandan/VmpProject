@@ -17,7 +17,7 @@
 #define MAX_SEGMENT_LEN 3000
 
 // 控制台日志实现：先格式化，再按最终文本输出。
-void zLogPrint(int level, const char* tag, const char* file_name, const char* function_name, int line_num, const char* format, ...) {
+void zLogPrint(int level, const char* tag, const char* fileName, const char* functionName, int lineNum, const char* format, ...) {
     // 小于阈值的日志直接忽略，减少高频路径开销。
     if(level < CURRENT_LOG_LEVEL) return;
 
@@ -41,12 +41,12 @@ void zLogPrint(int level, const char* tag, const char* file_name, const char* fu
     else if (level == LOG_LEVEL_VERBOSE) level_str = "VERBOSE";
 
     // 如需带位置信息的完整输出，可打开下面一行。
-    // 示例：printf("[%s][%s][%s:%d] %s\n", level_str, function_name, file_name, line_num, buffer);
+    // 示例：printf("[%s][%s][%s:%d] %s\n", level_str, functionName, fileName, lineNum, buffer);
     // 当前实现不使用以下参数，显式 (void) 抑制“未使用形参”告警。
     (void)tag;
-    (void)file_name;
-    (void)function_name;
-    (void)line_num;
+    (void)fileName;
+    (void)functionName;
+    (void)lineNum;
     (void)level_str;
     // 当前默认只输出消息正文，保持回归日志简洁。
     printf("%s\n", buffer);

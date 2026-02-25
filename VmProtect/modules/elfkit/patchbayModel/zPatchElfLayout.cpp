@@ -116,14 +116,17 @@ void PatchElf::printLayout() {
         pht.size = (uint64_t)header_model_.raw.e_phnum * header_model_.raw.e_phentsize;
         pht.label = "program_header_table";
         // 逐条构建子项。
-        for (size_t idx = 0; idx < ph_table_model_.elements.size(); ++idx) {
+        for (size_t programHeaderIndex = 0;
+             programHeaderIndex < ph_table_model_.elements.size();
+             ++programHeaderIndex) {
             LayoutBlock child;
             // 当前 phdr 在文件中的偏移。
-            child.start = header_model_.raw.e_phoff + (uint64_t)idx * header_model_.raw.e_phentsize;
+            child.start = header_model_.raw.e_phoff +
+                          (uint64_t)programHeaderIndex * header_model_.raw.e_phentsize;
             // 单条大小固定为 e_phentsize。
             child.size = header_model_.raw.e_phentsize;
             // 取当前 phdr。
-            const auto& ph = ph_table_model_.elements[idx];
+            const auto& ph = ph_table_model_.elements[programHeaderIndex];
             // 权限文本。
             const std::string flags = formatPhFlags(ph.flags);
             // 文件映射长度。
@@ -135,7 +138,7 @@ void PatchElf::printLayout() {
             std::snprintf(buf,
                           sizeof(buf),
                           "program_table_element[0x%02zx] 0x%08llx-0x%08llx %s %s",
-                          idx,
+                          programHeaderIndex,
                           (unsigned long long)ph.offset,
                           (unsigned long long)file_end,
                           flags.c_str(),
@@ -152,9 +155,9 @@ void PatchElf::printLayout() {
     }
 
     // 3) 加入每个实际占文件空间的 section 区块（跳过 NOBITS/size=0）。
-    for (size_t idx = 0; idx < sh_table_model_.elements.size(); ++idx) {
+    for (size_t sectionIndex = 0; sectionIndex < sh_table_model_.elements.size(); ++sectionIndex) {
         // 当前节。
-        const auto& sec = *sh_table_model_.elements[idx];
+        const auto& sec = *sh_table_model_.elements[sectionIndex];
         // NOBITS 或空节不占文件字节，跳过。
         if (sec.type == SHT_NOBITS || sec.size == 0) {
             continue;
@@ -234,7 +237,7 @@ void PatchElf::printLayout() {
                       sizeof(buf),
                       "%ssection[0x%02zx] %s",
                       prefix.c_str(),
-                      idx,
+                      sectionIndex,
                       sec.resolved_name.empty() ? "<unnamed>" : sec.resolved_name.c_str());
         sec_block.label = buf;
         top_blocks.push_back(std::move(sec_block));
@@ -248,23 +251,26 @@ void PatchElf::printLayout() {
         sht.size = (uint64_t)header_model_.raw.e_shnum * header_model_.raw.e_shentsize;
         sht.label = "section_header_table";
         // 构建每条 shdr 子项。
-        for (size_t idx = 0; idx < sh_table_model_.elements.size(); ++idx) {
+        for (size_t sectionHeaderIndex = 0;
+             sectionHeaderIndex < sh_table_model_.elements.size();
+             ++sectionHeaderIndex) {
             LayoutBlock child;
             // 当前 shdr 在文件中的偏移。
-            child.start = header_model_.raw.e_shoff + (uint64_t)idx * header_model_.raw.e_shentsize;
+            child.start = header_model_.raw.e_shoff +
+                          (uint64_t)sectionHeaderIndex * header_model_.raw.e_shentsize;
             // 单条大小固定为 e_shentsize。
             child.size = header_model_.raw.e_shentsize;
             // 当前节对象。
-            const auto& sec = *sh_table_model_.elements[idx];
+            const auto& sec = *sh_table_model_.elements[sectionHeaderIndex];
             // 0 号索引固定标记 SHN_UNDEF。
-            const char* name = (idx == 0) ? "SHN_UNDEF" :
+            const char* name = (sectionHeaderIndex == 0) ? "SHN_UNDEF" :
                                (sec.resolved_name.empty() ? "<unnamed>" : sec.resolved_name.c_str());
             // 生成子项标签文本。
             char buf[128];
             std::snprintf(buf,
                           sizeof(buf),
                           "section_table_element[0x%02zx] %s",
-                          idx,
+                          sectionHeaderIndex,
                           name);
             child.label = buf;
             sht.children.push_back(std::move(child));
@@ -283,16 +289,16 @@ void PatchElf::printLayout() {
     std::sort(sorted.begin(), sorted.end(),
               [](const LayoutBlock& a, const LayoutBlock& b) { return a.start < b.start; });
     // 扫描相邻块之间的空洞。
-    for (size_t i = 0; i + 1 < sorted.size(); ++i) {
+    for (size_t blockIndex = 0; blockIndex + 1 < sorted.size(); ++blockIndex) {
         // 当前块结束（开区间终点）。
-        const uint64_t cur_end = sorted[i].start + sorted[i].size;
+        const uint64_t currentEnd = sorted[blockIndex].start + sorted[blockIndex].size;
         // 下一块起点。
-        const uint64_t next_start = sorted[i + 1].start;
+        const uint64_t nextStart = sorted[blockIndex + 1].start;
         // 存在间隙则创建 padding 块。
-        if (next_start > cur_end) {
+        if (nextStart > currentEnd) {
             LayoutBlock pad;
-            pad.start = cur_end;
-            pad.size = next_start - cur_end;
+            pad.start = currentEnd;
+            pad.size = nextStart - currentEnd;
             pad.label = "[padding]";
             padding_blocks.push_back(std::move(pad));
         }
@@ -319,15 +325,15 @@ void PatchElf::printLayout() {
 }
 
 // 迁移并扩容 Program Header Table（常用于给新增段预留 phdr 条目）。
-bool PatchElf::relocateAndExpandPht(int extra_entries, const char* output_path) {
+bool PatchElf::relocateAndExpandPht(int extraEntries, const char* outputPath) {
     // 扩容项必须为正数。
-    if (extra_entries <= 0) {
-        LOGE("extra_entries must be positive");
+    if (extraEntries <= 0) {
+        LOGE("extraEntries must be positive");
         return false;
     }
 
     // 先在模型尾部追加 PT_NULL 占位条目。
-    for (int i = 0; i < extra_entries; ++i) {
+    for (int extraEntryIndex = 0; extraEntryIndex < extraEntries; ++extraEntryIndex) {
         zProgramTableElement entry;
         entry.type = PT_NULL;
         ph_table_model_.elements.push_back(entry);
@@ -336,14 +342,14 @@ bool PatchElf::relocateAndExpandPht(int extra_entries, const char* output_path) 
     // 依据现有段推断页大小。
     const Elf64_Off PAGE_SIZE = (Elf64_Off)inferRuntimePageSizeFromPhdrs(ph_table_model_.elements);
     // 新 PHT 放到当前文件末尾并按页对齐，避免覆盖现有数据。
-    const Elf64_Off new_pht_offset = alignUpOff((Elf64_Off)currentMaxFileEnd(), PAGE_SIZE);
+    const Elf64_Off new_pht_offset = alignUpOff((Elf64_Off)getMaxFileEnd(), PAGE_SIZE);
     // 刷新 ELF Header 的 e_phoff。
     header_model_.raw.e_phoff = new_pht_offset;
     // 刷新 ELF Header 的 e_phnum。
     header_model_.raw.e_phnum = (Elf64_Half)ph_table_model_.elements.size();
 
     // 若存在 PT_PHDR，需同步刷新其映射信息。
-    int pt_phdr_idx = ph_table_model_.findFirstByType(PT_PHDR);
+    int pt_phdr_idx = ph_table_model_.getFirstByType(PT_PHDR);
     if (pt_phdr_idx >= 0) {
         // 取可写引用。
         auto& pt_phdr = ph_table_model_.elements[pt_phdr_idx];
@@ -389,5 +395,6 @@ bool PatchElf::relocateAndExpandPht(int extra_entries, const char* output_path) 
     }
 
     // 若给了输出路径则落盘，否则只更新内存模型。
-    return output_path ? save(output_path) : true;
+    return outputPath ? save(outputPath) : true;
 }
+

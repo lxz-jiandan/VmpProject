@@ -50,7 +50,7 @@ namespace zElfLoader {
  * 2. 调用 loadElfFile() 加载文件并构建模型
  *
  * @param elf [输出] PatchElf 对象指针，必须非空
- * @param elf_path ELF 文件路径，必须非空
+ * @param elfPath ELF 文件路径，必须非空
  * @return true 成功加载并解析，false 失败
  *
  * @note 此函数不抛出异常，所有错误通过返回值处理
@@ -58,14 +58,14 @@ namespace zElfLoader {
  *
  * @see PatchElf::loadElfFile()
  */
-bool loadFileAndParse(PatchElf* elf, const char* elf_path) {
+bool loadFileAndParse(PatchElf* elf, const char* elfPath) {
     // 目标对象和路径都必须有效。
-    if (!elf || !elf_path) {
+    if (!elf || !elfPath) {
         return false;
     }
 
     // 直接调用类方法执行加载+解析。
-    return elf->loadElfFile(elf_path);
+    return elf->loadElfFile(elfPath);
 }
 
 } // namespace zElfLoader
@@ -97,18 +97,18 @@ PatchElf::PatchElf() {
  * 等价于：
  * @code
  * PatchElf elf;
- * zElfLoader::loadFileAndParse(&elf, elf_file_name);
+ * zElfLoader::loadFileAndParse(&elf, elfFileName);
  * @endcode
  *
- * @param elf_file_name ELF 文件路径，必须非空
+ * @param elfFileName ELF 文件路径，必须非空
  *
  * @note 构造函数不抛出异常，需要检查对象状态判断是否加载成功
  */
-PatchElf::PatchElf(const char* elf_file_name) {
+PatchElf::PatchElf(const char* elfFileName) {
     // 打印入参，便于多文件批处理定位。
-    LOGD("Constructor called with elf_file_name: %s", elf_file_name ? elf_file_name : "(null)");
+    LOGD("Constructor called with elfFileName: %s", elfFileName ? elfFileName : "(null)");
     // 复用命名空间级别封装入口。
-    zElfLoader::loadFileAndParse(this, elf_file_name);
+    zElfLoader::loadFileAndParse(this, elfFileName);
 }
 
 // ============================================================================
@@ -135,7 +135,7 @@ PatchElf::PatchElf(const char* elf_file_name) {
  * - AArch64（ARM 64 位）
  * - 小端序（Little Endian）
  *
- * @param elf_path ELF 文件路径，必须可读
+ * @param elfPath ELF 文件路径，必须可读
  * @return true 成功加载，false 失败（文件不存在、格式错误、内存不足等）
  *
  * @note 失败时会清空 file_image_，对象处于干净状态
@@ -144,76 +144,57 @@ PatchElf::PatchElf(const char* elf_file_name) {
  *
  * @see zElfHeader::isElf64AArch64()
  */
-bool PatchElf::loadElfFile(const char* elf_path) {
+bool PatchElf::loadElfFile(const char* elfPath) {
     // 错误信息输出缓冲。
     std::string elf_error;
     // 临时字节缓冲。
     std::vector<uint8_t> loaded_bytes;
 
     // 读取 ELF 原始字节。
-    if (!vmp::elfkit::internal::loadElfFileBytes(elf_path, &loaded_bytes, &elf_error)) {
+    if (!vmp::elfkit::internal::loadElfFileBytes(elfPath, &loaded_bytes, &elf_error)) {
         LOGE("Failed to load elf bytes: %s", elf_error.c_str());
         return false;
     }
-    // 做格式和架构校验。
-    if (!vmp::elfkit::internal::validateElf64Aarch64(
-            loaded_bytes.data(), loaded_bytes.size(), &elf_error)) {
-        LOGE("Failed to validate elf header: %s", elf_error.c_str());
+    // 解析统一 ELF 视图（含头表范围校验）。
+    vmp::elfkit::internal::ElfFileView64 elfView;
+    if (!vmp::elfkit::internal::parseElfFileView64Aarch64(
+            loaded_bytes.data(), loaded_bytes.size(), &elfView, &elf_error)) {
+        LOGE("Failed to parse elf file view: %s", elf_error.c_str());
         return false;
     }
 
     // 记录源路径（供 backup 回滚）。
-    source_path_ = elf_path;
+    source_path_ = elfPath;
     // 写入文件镜像。
     file_image_ = std::move(loaded_bytes);
 
-    // 解析 ELF Header 并校验目标架构。
-    if (!header_model_.fromRaw(file_image_.data(), file_image_.size()) || !header_model_.isElf64AArch64()) {
+    // 从统一视图回填 ELF Header 模型。
+    if (file_image_.size() < sizeof(Elf64_Ehdr)) {
         file_image_.clear();
-        return false;  // 不是有效的 ELF64 + AArch64 文件
+        return false;
     }
+    header_model_.raw = *reinterpret_cast<const Elf64_Ehdr*>(file_image_.data());
 
-    // 引用原始 ELF Header。
-    const Elf64_Ehdr& header = header_model_.raw;
-
-    // 校验 Program Header Table 边界。
-    if (!vmp::elfkit::internal::validateTableRange(
-            header.e_phoff,
-            header.e_phentsize,
-            header.e_phnum,
-            file_image_.size(),
-            "program header table out of range",
-            &elf_error)) {
-        LOGE("%s", elf_error.c_str());
-        file_image_.clear();
-        return false;  // PHT 超出文件范围
-    }
     // 从字节镜像解析 phdr 表模型。
-    ph_table_model_.fromRaw(reinterpret_cast<const Elf64_Phdr*>(file_image_.data() + header.e_phoff), header.e_phnum);
+    const Elf64_Phdr* phRaw = nullptr;
+    if (elfView.programHeaderCount > 0) {
+        phRaw = reinterpret_cast<const Elf64_Phdr*>(file_image_.data() + header_model_.raw.e_phoff);
+    }
+    ph_table_model_.fromRaw(phRaw, elfView.programHeaderCount);
 
     // 校验并解析 Section Header Table（允许 e_shnum == 0）。
-    if (header.e_shnum == 0) {
+    if (elfView.sectionHeaderCount == 0) {
         // 无 section 场景直接清空 section 模型。
         sh_table_model_.elements.clear();
     } else {
-        // 校验 SHT 边界。
-        if (!vmp::elfkit::internal::validateTableRange(
-                header.e_shoff,
-                header.e_shentsize,
-                header.e_shnum,
-                file_image_.size(),
-                "section header table out of range",
-                &elf_error)) {
-            LOGE("%s", elf_error.c_str());
-            file_image_.clear();
-            return false;  // SHT 超出文件范围
-        }
+        const Elf64_Shdr* shRaw = reinterpret_cast<const Elf64_Shdr*>(
+            file_image_.data() + header_model_.raw.e_shoff);
         // 解析 section 模型（含 shstrtab 名称解析和多态节创建）。
         if (!sh_table_model_.fromRaw(file_image_.data(),
                                      file_image_.size(),
-                                     reinterpret_cast<const Elf64_Shdr*>(file_image_.data() + header.e_shoff),
-                                     header.e_shnum,
-                                     header.e_shstrndx)) {
+                                     shRaw,
+                                     elfView.sectionHeaderCount,
+                                     elfView.sectionNameTableIndex)) {
             file_image_.clear();
             return false;  // Section 解析失败
         }
@@ -360,10 +341,10 @@ Elf64_Addr PatchElf::fileOffsetToVaddr(Elf64_Off off) const {
  * 示例：
  * ```
  * file_image_.size() = 0x3000
- * LOAD 1: offset=0x0000  filesz=0x2000  → fileEnd=0x2000
- * LOAD 2: offset=0x2000  filesz=0x1500  → fileEnd=0x3500
+ * LOAD 1: offset=0x0000  filesz=0x2000  → getFileEnd=0x2000
+ * LOAD 2: offset=0x2000  filesz=0x1500  → getFileEnd=0x3500
  *
- * currentMaxFileEnd() = max(0x3000, 0x2000, 0x3500) = 0x3500
+ * getMaxFileEnd() = max(0x3000, 0x2000, 0x3500) = 0x3500
  * ```
  *
  * @return 文件的最大结束偏移（字节）
@@ -372,16 +353,16 @@ Elf64_Addr PatchElf::fileOffsetToVaddr(Elf64_Off off) const {
  * @note 只考虑 PT_LOAD 段（其他段不占文件空间或不需要加载）
  * @note 用于 reconstruction 时分配新数据块的起始位置
  *
- * @see zProgramTableElement::fileEnd() - 返回 offset + filesz
- * @see currentMaxLoadVaddrEnd() - 计算虚拟地址范围
+ * @see zProgramTableElement::getFileEnd() - 返回 offset + filesz
+ * @see getMaxLoadVaddrEnd() - 计算虚拟地址范围
  */
-uint64_t PatchElf::currentMaxFileEnd() const {
+uint64_t PatchElf::getMaxFileEnd() const {
     // 初始值取当前文件镜像大小。
     uint64_t max_end = file_image_.size();
     // 扫描所有 LOAD 段的文件结束位置。
     for (const auto& ph : ph_table_model_.elements) {
         if (ph.type == PT_LOAD) {
-            max_end = std::max(max_end, ph.fileEnd());
+            max_end = std::max(max_end, ph.getFileEnd());
         }
     }
     return max_end;
@@ -400,10 +381,10 @@ uint64_t PatchElf::currentMaxFileEnd() const {
  *
  * 示例：
  * ```
- * LOAD 1 (RX): vaddr=0x400000  memsz=0x2000  → vaddrEnd=0x402000
- * LOAD 2 (RW): vaddr=0x410000  memsz=0x3000  → vaddrEnd=0x413000
+ * LOAD 1 (RX): vaddr=0x400000  memsz=0x2000  → getVaddrEnd=0x402000
+ * LOAD 2 (RW): vaddr=0x410000  memsz=0x3000  → getVaddrEnd=0x413000
  *
- * currentMaxLoadVaddrEnd() = max(0x402000, 0x413000) = 0x413000
+ * getMaxLoadVaddrEnd() = max(0x402000, 0x413000) = 0x413000
  * ```
  *
  * @return 最大的虚拟地址结束位置
@@ -413,17 +394,18 @@ uint64_t PatchElf::currentMaxFileEnd() const {
  * @note 用于 reconstruction 时分配新段的虚拟地址
  * @note 使用 p_memsz 而不是 p_filesz（包含 BSS 段等未初始化数据）
  *
- * @see zProgramTableElement::vaddrEnd() - 返回 vaddr + memsz
- * @see currentMaxFileEnd() - 计算文件偏移范围
+ * @see zProgramTableElement::getVaddrEnd() - 返回 vaddr + memsz
+ * @see getMaxFileEnd() - 计算文件偏移范围
  */
-uint64_t PatchElf::currentMaxLoadVaddrEnd() const {
+uint64_t PatchElf::getMaxLoadVaddrEnd() const {
     // 初始 VA 结束位置为 0。
     uint64_t max_end = 0;
     // 扫描所有 LOAD 段。
     for (const auto& ph : ph_table_model_.elements) {
         if (ph.type == PT_LOAD) {
-            max_end = std::max(max_end, ph.vaddrEnd());
+            max_end = std::max(max_end, ph.getVaddrEnd());
         }
     }
     return max_end;
 }
+

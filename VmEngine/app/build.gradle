@@ -35,7 +35,7 @@ def vmpOutputDir = file("$buildDir/generated/vmprotectOut")
 def vmpAssetsDir = file("src/main/assets")
 
 def parseVmpFunctions = {
-    // 未指定函数时返回空列表，表示走默认策略。
+    // 未指定函数时返回空列表（由调用方决定是否允许为空）。
     if (vmpFunctionsRaw.isEmpty()) {
         return []
     }
@@ -160,6 +160,13 @@ tasks.register("runVmProtectPipelineDebug") {
         if (!vmpPatchDonorSo.exists()) {
             throw new GradleException("vmp donor so not found: ${vmpPatchDonorSo}")
         }
+        // 加固路线核心参数要求：函数符号必须显式传入，禁止落回 VmProtect 内部默认函数集。
+        def selectedFunctions = parseVmpFunctions()
+        if (selectedFunctions.isEmpty()) {
+            throw new GradleException(
+                    "vmpFunctions is required in hardening route. " +
+                            "Pass -PvmpFunctions=fun_add,fun_for,...")
+        }
 
         // 清理并重建输出目录，避免遗留旧文件。
         if (vmpOutputDir.exists()) {
@@ -179,9 +186,9 @@ tasks.register("runVmProtectPipelineDebug") {
                 "--shared-branch-file", "branch_addr_list.txt",
                 // 产物报告路径。
                 "--coverage-report", "coverage_report.md",
-                // host so 与最终 patch so。
-                "--host-so", hostSo.absolutePath,
-                "--final-so", protectedHostSo.absolutePath,
+                // vmengine so 与最终输出 so。
+                "--vmengine-so", hostSo.absolutePath,
+                "--output-so", protectedHostSo.absolutePath,
                 // patch donor 及实现符号。
                 "--patch-donor-so", vmpPatchDonorSo.absolutePath,
                 "--patch-impl-symbol", vmpPatchImplSymbol,
@@ -190,8 +197,8 @@ tasks.register("runVmProtectPipelineDebug") {
             // 可选：启用全导出 patch 策略。
             cmd.add("--patch-all-exports")
         }
-        parseVmpFunctions().each { fn ->
-            // 可选：仅 patch 指定函数集合。
+        selectedFunctions.each { fn ->
+            // 加固函数列表：由 -PvmpFunctions 显式给出。
             cmd.addAll(["--function", fn])
         }
 

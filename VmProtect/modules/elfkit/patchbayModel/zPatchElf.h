@@ -60,10 +60,10 @@ public:
 
     /**
      * @brief 从文件构造
-     * @param elf_file_name ELF 文件路径
+     * @param elfFileName ELF 文件路径
      * @note 自动加载并解析文件
      */
-    explicit PatchElf(const char* elf_file_name);
+    explicit PatchElf(const char* elfFileName);
 
     /**
      * @brief 析构函数
@@ -77,11 +77,11 @@ public:
 
     /**
      * @brief 从文件加载 ELF
-     * @param elf_path ELF 文件路径
+     * @param elfPath ELF 文件路径
      * @return true 成功，false 失败
      * @note 读取整个文件到 file_image_，并构建 Model View
      */
-    bool loadElfFile(const char* elf_path);
+    bool loadElfFile(const char* elfPath);
 
     /**
      * @brief 打印 ELF 布局信息
@@ -91,12 +91,12 @@ public:
 
     /**
      * @brief 重定位并扩展 Program Header Table
-     * @param extra_entries 需要添加的 Program Header 数量
-     * @param output_path 输出文件路径
+     * @param extraEntries 需要添加的 Program Header 数量
+     * @param outputPath 输出文件路径
      * @return true 成功，false 失败
      * @deprecated 请使用 Model View API 进行操作
      */
-    bool relocateAndExpandPht(int extra_entries, const char* output_path);
+    bool relocateAndExpandPht(int extraEntries, const char* outputPath);
 
     /**
      * @brief 重构 ELF 文件
@@ -108,11 +108,11 @@ public:
 
     /**
      * @brief 保存 ELF 文件
-     * @param output_path 输出文件路径
+     * @param outputPath 输出文件路径
      * @return true 成功，false 失败
      * @note 如果 reconstruction_dirty_ 为 true，会自动调用 reconstruct()
      */
-    bool save(const char* output_path);
+    bool save(const char* outputPath);
 
     /**
      * @brief 判断 ELF 是否已成功加载并通过基础格式检查。
@@ -122,12 +122,12 @@ public:
     /**
      * @brief 获取当前文件镜像大小。
      */
-    size_t fileImageSize() const;
+    size_t getFileImageSize() const;
 
     /**
      * @brief 获取当前文件镜像只读指针。
      */
-    const uint8_t* fileImageData() const;
+    const uint8_t* getFileImageData() const;
 
     /**
      * @brief 验证 ELF 文件完整性
@@ -145,37 +145,37 @@ public:
      * @brief 获取 ELF Header 模型（可修改）
      * @return ELF Header 模型引用
      */
-    zElfHeader& headerModel();
+    zElfHeader& getHeaderModel();
 
     /**
      * @brief 获取 Program Header Table 模型（可修改）
      * @return Program Header Table 模型引用
      */
-    zElfProgramHeaderTable& programHeaderModel();
+    zElfProgramHeaderTable& getProgramHeaderModel();
 
     /**
      * @brief 获取 Section Header Table 模型（可修改）
      * @return Section Header Table 模型引用
      */
-    zElfSectionHeaderTable& sectionHeaderModel();
+    zElfSectionHeaderTable& getSectionHeaderModel();
 
     /**
      * @brief 获取 ELF Header 模型（只读）
      * @return ELF Header 模型常量引用
      */
-    const zElfHeader& headerModel() const;
+    const zElfHeader& getHeaderModel() const;
 
     /**
      * @brief 获取 Program Header Table 模型（只读）
      * @return Program Header Table 模型常量引用
      */
-    const zElfProgramHeaderTable& programHeaderModel() const;
+    const zElfProgramHeaderTable& getProgramHeaderModel() const;
 
     /**
      * @brief 获取 Section Header Table 模型（只读）
      * @return Section Header Table 模型常量引用
      */
-    const zElfSectionHeaderTable& sectionHeaderModel() const;
+    const zElfSectionHeaderTable& getSectionHeaderModel() const;
 
     // ========================================================================
     // 公共方法 - 便捷访问器（段/节）
@@ -184,59 +184,59 @@ public:
     /**
      * @brief 按索引获取 Program Header（可写）。
      */
-    zProgramTableElement* getProgramHeader(size_t idx);
+    zProgramTableElement* getProgramHeader(size_t programHeaderIndex);
 
     /**
      * @brief 按索引获取 Program Header（只读）。
      */
-    const zProgramTableElement* getProgramHeader(size_t idx) const;
+    const zProgramTableElement* getProgramHeader(size_t programHeaderIndex) const;
 
     /**
      * @brief 按类型获取首个 Program Header（可写）。
      */
-    zProgramTableElement* findFirstProgramHeader(Elf64_Word type);
+    zProgramTableElement* getFirstProgramHeader(Elf64_Word type);
 
     /**
      * @brief 按类型获取首个 Program Header（只读）。
      */
-    const zProgramTableElement* findFirstProgramHeader(Elf64_Word type) const;
+    const zProgramTableElement* getFirstProgramHeader(Elf64_Word type) const;
 
     /**
      * @brief 按类型获取全部 Program Header（可写）。
      */
-    std::vector<zProgramTableElement*> findAllProgramHeaders(Elf64_Word type);
+    std::vector<zProgramTableElement*> getAllProgramHeaders(Elf64_Word type);
 
     /**
      * @brief 按类型获取全部 Program Header（只读）。
      */
-    std::vector<const zProgramTableElement*> findAllProgramHeaders(Elf64_Word type) const;
+    std::vector<const zProgramTableElement*> getAllProgramHeaders(Elf64_Word type) const;
 
     /**
      * @brief 按索引获取 Section（可写）。
      */
-    zSectionTableElement* getSection(size_t idx);
+    zSectionTableElement* getSection(size_t sectionIndex);
 
     /**
      * @brief 按索引获取 Section（只读）。
      */
-    const zSectionTableElement* getSection(size_t idx) const;
+    const zSectionTableElement* getSection(size_t sectionIndex) const;
 
     /**
      * @brief 按名称获取 Section（可写）。
      */
-    zSectionTableElement* findSectionByName(const std::string& section_name);
+    zSectionTableElement* getSectionByName(const std::string& sectionName);
 
     /**
      * @brief 按名称获取 Section（只读）。
      */
-    const zSectionTableElement* findSectionByName(const std::string& section_name) const;
+    const zSectionTableElement* getSectionByName(const std::string& sectionName) const;
 
     /**
      * @brief 追加一个 Program Header。
      * @param ph 要追加的 Program Header。
-     * @param out_index [输出] 新条目索引（可选）。
+     * @param outIndex [输出] 新条目索引（可选）。
      */
-    bool addProgramHeader(const zProgramTableElement& ph, size_t* out_index = nullptr);
+    bool addProgramHeader(const zProgramTableElement& ph, size_t* outIndex = nullptr);
 
     /**
      * @brief 追加一个普通 Section（默认使用基类节模型）。
@@ -245,54 +245,54 @@ public:
      * @param flags 节标志（SHF_*）。
      * @param addralign 对齐（sh_addralign）。
      * @param payload 节数据（SHT_NOBITS 可为空）。
-     * @param out_index [输出] 新条目索引（可选）。
+     * @param outIndex [输出] 新条目索引（可选）。
      */
     bool addSectionSimple(const std::string& name,
                           Elf64_Word type,
                           Elf64_Xword flags,
                           Elf64_Xword addralign,
                           const std::vector<uint8_t>& payload,
-                          size_t* out_index = nullptr);
+                          size_t* outIndex = nullptr);
 
     /**
      * @brief 给指定 Section 追加空白数据（或扩大 NOBITS）。
      */
-    bool addSectionPaddingByName(const std::string& section_name, size_t pad_size);
+    bool addSectionPaddingByName(const std::string& sectionName, size_t padSize);
 
     /**
      * @brief 给指定 Section 追加空白数据（或扩大 NOBITS）。
      */
-    bool addSectionPaddingByIndex(size_t idx, size_t pad_size);
+    bool addSectionPaddingByIndex(size_t sectionIndex, size_t padSize);
 
     /**
      * @brief 给指定 Program Header 增加零填充的内存大小（仅扩容 memsz）。
      */
-    bool addZeroFillToSegment(size_t idx, Elf64_Xword extra_memsz);
+    bool addZeroFillToSegment(size_t segmentIndex, Elf64_Xword extraMemsz);
 
     /**
      * @brief 追加一个段（由 p_type 指定）。
      * @param type 段类型（PT_*）。
-     * @param flags_text 三字符权限串（如 "R_X"/"RW_"/"R__"）。
-     * @param out_index [输出] 新段索引（可选）。
+     * @param flagsText 三字符权限串（如 "R_X"/"RW_"/"R__"）。
+     * @param outIndex [输出] 新段索引（可选）。
      */
     bool addSegment(Elf64_Word type,
-                     const std::string& flags_text,
-                     size_t* out_index = nullptr);
+                    const std::string& flagsText,
+                    size_t* outIndex = nullptr);
 
     /**
      * @brief 追加一个 Section 并放置到指定 PT_LOAD 内（默认 PROGBITS+ALLOC）。
      * @param name 节名称。
-     * @param load_segment_idx PT_LOAD 索引。
-     * @param out_index [输出] 新节索引（可选）。
+     * @param loadSegmentIndex PT_LOAD 索引。
+     * @param outIndex [输出] 新节索引（可选）。
      */
     bool addSection(const std::string& name,
-                     size_t load_segment_idx,
-                     size_t* out_index = nullptr);
+                    size_t loadSegmentIndex,
+                    size_t* outIndex = nullptr);
 
     /**
      * @brief 追加一个 Section（默认放到最后一个 PT_LOAD）。
      */
-    bool addSection(const std::string& name, size_t* out_index = nullptr);
+    bool addSection(const std::string& name, size_t* outIndex = nullptr);
 
     /**
      * @brief 获取第一个 PT_LOAD 索引（不存在返回 -1）。
@@ -307,7 +307,7 @@ public:
     /**
      * @brief 重构并输出文件。
      */
-    bool relocate(const std::string& output_path);
+    bool relocate(const std::string& outputPath);
 
     /**
      * @brief 恢复到原始加载状态（重新解析源文件）。
@@ -409,16 +409,17 @@ private:
      * @return 最大文件偏移（所有数据的末尾）
      * @note 用于确定新数据的分配位置
      */
-    uint64_t currentMaxFileEnd() const;
+    uint64_t getMaxFileEnd() const;
 
     /**
      * @brief 获取当前最大的 LOAD 段虚拟地址结束位置
      * @return 最大虚拟地址（所有 LOAD 段的末尾）
      * @note 用于确定新段的虚拟地址
      */
-    uint64_t currentMaxLoadVaddrEnd() const;
+    uint64_t getMaxLoadVaddrEnd() const;
 };
 
 #endif // VMP_PATCHBAY_PATCH_ELF_H
+
 
 

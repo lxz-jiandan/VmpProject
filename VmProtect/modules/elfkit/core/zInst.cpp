@@ -12,44 +12,44 @@
 
 // 通过移动构造接管机器码与反汇编文本，避免不必要拷贝。
 zInst::zInst(uint64_t address,
-             std::vector<uint8_t> raw_bytes,
-             uint32_t instruction_length,
-             std::string asm_type,
-             std::string disasm_text)
+             std::vector<uint8_t> rawBytes,
+             uint32_t instructionLength,
+             std::string asmType,
+             std::string disasmText)
     // 保存地址。
     : addressValue(address),
       // 移动接管机器码字节数组（避免复制成本）。
-      rawBytesValue(std::move(raw_bytes)),
+      rawBytesValue(std::move(rawBytes)),
       // 保存指令长度。
-      instructionLengthValue(instruction_length),
+      instructionLengthValue(instructionLength),
       // 移动接管类型文本（例如 "add"/"bl"/"ret"）。
-      asmTypeValue(std::move(asm_type)),
+      asmTypeValue(std::move(asmType)),
       // 移动接管反汇编文本（例如 "add x0, x0, #1"）。
-      disasmTextValue(std::move(disasm_text)) {
+      disasmTextValue(std::move(disasmText)) {
     // 构造体主体无需额外逻辑。
 }
 
-uint64_t zInst::address() const {
+uint64_t zInst::getAddress() const {
     // 返回地址快照。
     return addressValue;
 }
 
-const std::vector<uint8_t>& zInst::rawBytes() const {
+const std::vector<uint8_t>& zInst::getRawBytes() const {
     // 返回机器码只读引用，避免额外拷贝。
     return rawBytesValue;
 }
 
-uint32_t zInst::instructionLength() const {
+uint32_t zInst::getInstructionLength() const {
     // 返回指令长度。
     return instructionLengthValue;
 }
 
-const std::string& zInst::asmType() const {
+const std::string& zInst::getAsmType() const {
     // 返回类型标签。
     return asmTypeValue;
 }
 
-const std::string& zInst::disasmText() const {
+const std::string& zInst::getDisasmText() const {
     // 返回反汇编文本。
     return disasmTextValue;
 }
@@ -69,11 +69,12 @@ std::string zInst::getInfo() const {
     oss << ", bytes=";
 
     // 机器码按两位十六进制拼接，格式与常见反汇编工具一致。
-    for (size_t i = 0; i < rawBytesValue.size(); i++) {
+    for (size_t byteIndex = 0; byteIndex < rawBytesValue.size(); ++byteIndex) {
         // 字节之间用空格分隔。
-        if (i > 0) oss << ' ';
+        if (byteIndex > 0) oss << ' ';
         // 每字节补齐两位十六进制（00~ff）。
-        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(rawBytesValue[i]);
+        oss << std::hex << std::setw(2) << std::setfill('0')
+            << static_cast<unsigned>(rawBytesValue[byteIndex]);
     }
     // 恢复十进制流状态，避免影响后续数字输出。
     oss << std::dec;

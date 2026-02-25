@@ -16,26 +16,26 @@ void zFunction::rebuildAsmListFromUnencoded() const {
     // 每次重建前先清空旧展示结果，避免残留。
     asm_list_.clear();
     // 把按地址缓存的 opcode 行重建成展示用的 zInst 列表。
-    for (const auto& kv : inst_words_by_addr_cache_) {
+    for (const auto& instEntry : inst_words_by_addr_cache_) {
         // map 键是原始指令地址。
-        uint64_t addr = kv.first;
+        const uint64_t address = instEntry.first;
         // 未编码缓存不含真实原始字节，这里用 4 字节占位。
-        std::vector<uint8_t> raw(4, 0);
-        std::string asm_text;
+        std::vector<uint8_t> rawBytes(4, 0);
+        std::string asmText;
         // 默认类型填 vm，表示这是虚拟化后的展示条目。
-        std::string asm_type = "vm";
+        std::string asmType = "vm";
 
-        auto it = asm_text_by_addr_cache_.find(addr);
-        if (it != asm_text_by_addr_cache_.end()) {
-            asm_text = it->second;
-            // 以首 token 作为 asm_type（例如 mov/add/bl）。
-            std::istringstream ss(asm_text);
-            ss >> asm_type;
-            if (asm_type.empty()) asm_type = "vm";
+        const auto asmTextIt = asm_text_by_addr_cache_.find(address);
+        if (asmTextIt != asm_text_by_addr_cache_.end()) {
+            asmText = asmTextIt->second;
+            // 以首 token 作为 asmType（例如 mov/add/bl）。
+            std::istringstream ss(asmText);
+            ss >> asmType;
+            if (asmType.empty()) asmType = "vm";
         }
 
         // 组装统一的 zInst 展示节点。
-        asm_list_.emplace_back(addr, std::move(raw), 4u, std::move(asm_type), std::move(asm_text));
+        asm_list_.emplace_back(address, std::move(rawBytes), 4u, std::move(asmType), std::move(asmText));
     }
     // 标记展示缓存可用。
     asm_ready_ = true;
@@ -56,7 +56,7 @@ void zFunction::ensureAsmReady() const {
 
     // 否则走真实 Capstone 反汇编路径重建展示列表。
     asm_list_.clear();
-    if (!data() || size() == 0) {
+    if (!getData() || getSize() == 0) {
         asm_ready_ = true;
         return;
     }
@@ -69,33 +69,33 @@ void zFunction::ensureAsmReady() const {
     }
 
     cs_insn* insn = nullptr;
-    size_t count = cs_disasm(handle, data(), size(), offset(), 0, &insn);
-    // 逐条指令转成 zInst 结构，统一供 assemblyInfo() 输出。
-    for (size_t i = 0; i < count; i++) {
+    const size_t instructionCount = cs_disasm(handle, getData(), getSize(), getOffset(), 0, &insn);
+    // 逐条指令转成 zInst 结构，统一供 getAssemblyInfo() 输出。
+    for (size_t instructionIndex = 0; instructionIndex < instructionCount; ++instructionIndex) {
         // 拿到单条反汇编结果。
-        const cs_insn& item = insn[i];
-        std::vector<uint8_t> raw(item.bytes, item.bytes + item.size);
+        const cs_insn& instruction = insn[instructionIndex];
+        std::vector<uint8_t> rawBytes(instruction.bytes, instruction.bytes + instruction.size);
 
         // mnemonic 作为类型，mnemonic + op_str 作为展示文本。
-        std::string asm_type = item.mnemonic ? item.mnemonic : "";
-        std::string disasm_text = asm_type;
-        if (item.op_str && item.op_str[0] != '\0') {
-            disasm_text += " ";
-            disasm_text += item.op_str;
+        std::string asmType = instruction.mnemonic ? instruction.mnemonic : "";
+        std::string disasmText = asmType;
+        if (instruction.op_str && instruction.op_str[0] != '\0') {
+            disasmText += " ";
+            disasmText += instruction.op_str;
         }
 
         asm_list_.emplace_back(
-            item.address,
-            std::move(raw),
-            static_cast<uint32_t>(item.size),
-            std::move(asm_type),
-            std::move(disasm_text)
+            instruction.address,
+            std::move(rawBytes),
+            static_cast<uint32_t>(instruction.size),
+            std::move(asmType),
+            std::move(disasmText)
         );
     }
 
     // 释放 Capstone 分配的指令数组。
     if (insn) {
-        cs_free(insn, count);
+        cs_free(insn, instructionCount);
     }
     // 关闭句柄并标记展示缓存完成。
     cs_close(&handle);

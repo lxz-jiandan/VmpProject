@@ -657,6 +657,15 @@ build CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineCli.cpp.o
   TARGET_COMPILE_PDB = CMakeFiles\vmprotect_pipeline.dir\vmprotect_pipeline.pdb
   TARGET_PDB = libvmprotect_pipeline.pdb
 
+build CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineRun.cpp.obj: CXX_COMPILER__vmprotect_pipeline_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core/zPipelineRun.cpp || cmake_object_order_depends_target_vmprotect_pipeline
+  DEP_FILE = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core\zPipelineRun.cpp.obj.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -IZ:/2026/0217_vmp_project/VmpProject/VmProtect -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/base/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/foundation/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/core -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/api -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/elfkit/patchbayModel -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/app -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/domain -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/format -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/patchbay/foundation -IZ:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core -isystem Z:/2026/0217_vmp_project/VmpProject/VmProtect/capstone_sdk/include
+  OBJECT_DIR = CMakeFiles\vmprotect_pipeline.dir
+  OBJECT_FILE_DIR = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core
+  TARGET_COMPILE_PDB = CMakeFiles\vmprotect_pipeline.dir\vmprotect_pipeline.pdb
+  TARGET_PDB = libvmprotect_pipeline.pdb
+
 build CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelinePatch.cpp.obj: CXX_COMPILER__vmprotect_pipeline_Debug Z$:/2026/0217_vmp_project/VmpProject/VmProtect/modules/pipeline/core/zPipelinePatch.cpp || cmake_object_order_depends_target_vmprotect_pipeline
   DEP_FILE = CMakeFiles\vmprotect_pipeline.dir\modules\pipeline\core\zPipelinePatch.cpp.obj.d
   FLAGS = -g -std=c++17
@@ -692,7 +701,7 @@ build CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineExport.cp
 #############################################
 # Link the static library libvmprotect_pipeline.a
 
-build libvmprotect_pipeline.a: CXX_STATIC_LIBRARY_LINKER__vmprotect_pipeline_Debug CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineTypes.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineCli.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelinePatch.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineCoverage.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineExport.cpp.obj || libvmp_patchbay.a libvmprotect_base.a libvmprotect_elfkit.a libvmprotect_format.a libvmprotect_foundation.a
+build libvmprotect_pipeline.a: CXX_STATIC_LIBRARY_LINKER__vmprotect_pipeline_Debug CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineTypes.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineCli.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineRun.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelinePatch.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineCoverage.cpp.obj CMakeFiles/vmprotect_pipeline.dir/modules/pipeline/core/zPipelineExport.cpp.obj || libvmp_patchbay.a libvmprotect_base.a libvmprotect_elfkit.a libvmprotect_format.a libvmprotect_foundation.a
   LANGUAGE_COMPILE_FLAGS = -g
   OBJECT_DIR = CMakeFiles\vmprotect_pipeline.dir
   POST_BUILD = cd .

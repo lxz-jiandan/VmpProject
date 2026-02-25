@@ -127,6 +127,12 @@ Route4 L2 的关键不是“随意改 ELF”，而是提前在目标 so 预留 `
 
 - 必须提供输入 so：
   - `--input-so <path>`
+- 加固路线（vmengine embed/patch）必须显式提供 4 个核心参数：
+  - `--input-so <path>`：被加固 so（donor）路径
+  - `--vmengine-so <path>`：`libvmengine.so` 路径
+  - `--function <symbol>`（可重复）：被加固函数符号
+  - `--output-so <path>`：加固后输出 so 路径
+- 其余参数可继续使用默认值（`output-dir/expanded-so/shared-branch-file/coverage-report` 等）。
 
 ### 4.2 VmProtect 主流程输出（典型）
 
@@ -185,7 +191,7 @@ VmProtect\cmake-build-debug\VmProtect.exe --input-so VmProtect/libdemo.so --func
 
 ```powershell
 cd VmEngine
-gradlew.bat installDebug -PvmpEnabled=true
+gradlew.bat installDebug -PvmpEnabled=true -PvmpFunctions=fun_add,fun_for
 ```
 
 教学目的：理解 Stage1~Stage3 如何在 Gradle 内串联。
@@ -218,7 +224,15 @@ gradlew.bat installDebug -PvmpEnabled=true
    - 含义：回归脚本找不到工具二进制。
    - 处理：先构建 `VmProtect`，或修正工具路径。
 
-4. `route_symbol_takeover` 不一致
+4. `hardening route requires --output-so (protected output so path)`
+   - 含义：进入加固路线后，未显式传入加固输出路径。
+   - 处理：补 `--output-so <path>`。
+
+5. `hardening route requires explicit --function <symbol> (repeatable)`
+   - 含义：进入加固路线后，未显式传入函数符号。
+   - 处理：补至少一个 `--function <name>`。
+
+6. `route_symbol_takeover` 不一致
    - 含义：导出接管后的符号行为与基线不一致。
    - 排查优先级：
      1. donor 导出是否符合预期。

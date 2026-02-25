@@ -68,10 +68,10 @@
 // 参数语义：
 // `level`         日志等级（用于阈值过滤）；
 // `tag`           模块标签（当前 console 实现里未使用）；
-// `file_name`     源文件名（可用于扩展输出模板）；
-// `function_name` 函数名（可用于扩展输出模板）；
-// `line_num`      行号（可用于扩展输出模板）；
+// `fileName`      源文件名（可用于扩展输出模板）；
+// `functionName`  函数名（可用于扩展输出模板）；
+// `lineNum`       行号（可用于扩展输出模板）；
 // `format`        printf 风格格式串。
-void zLogPrint(int level, const char* tag, const char* file_name, const char* function_name, int line_num, const char* format, ...);
+void zLogPrint(int level, const char* tag, const char* fileName, const char* functionName, int lineNum, const char* format, ...);
 
 #endif // TESTPOST_LOGQUEUE_H

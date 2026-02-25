@@ -7,9 +7,9 @@ void zElfProgramHeaderTable::fromRaw(const Elf64_Phdr* raw, size_t count) {
     // 预留容量减少扩容次数。
     elements.reserve(count);
     // 逐条转换。
-    for (size_t idx = 0; idx < count; ++idx) {
+    for (size_t programHeaderIndex = 0; programHeaderIndex < count; ++programHeaderIndex) {
         // 逐条转换为内部可读写模型，便于后续重构修改。
-        elements.push_back(zProgramTableElement::fromPhdr(raw[idx]));
+        elements.push_back(zProgramTableElement::fromPhdr(raw[programHeaderIndex]));
     }
 }
 
@@ -28,11 +28,13 @@ std::vector<Elf64_Phdr> zElfProgramHeaderTable::toRaw() const {
 }
 
 // 查找首个指定类型段（找不到返回 -1）。
-int zElfProgramHeaderTable::findFirstByType(Elf64_Word type) const {
+int zElfProgramHeaderTable::getFirstByType(Elf64_Word type) const {
     // 线性扫描。
-    for (size_t idx = 0; idx < elements.size(); ++idx) {
-        if (elements[idx].type == type) {
-            return (int)idx;
+    for (size_t programHeaderIndex = 0;
+         programHeaderIndex < elements.size();
+         ++programHeaderIndex) {
+        if (elements[programHeaderIndex].type == type) {
+            return (int)programHeaderIndex;
         }
     }
     // 未找到目标类型。
@@ -40,15 +42,18 @@ int zElfProgramHeaderTable::findFirstByType(Elf64_Word type) const {
 }
 
 // 收集全部指定类型段索引。
-std::vector<int> zElfProgramHeaderTable::findAllByType(Elf64_Word type) const {
+std::vector<int> zElfProgramHeaderTable::getAllByType(Elf64_Word type) const {
     // 结果数组。
     std::vector<int> out;
     // 顺序扫描。
-    for (size_t idx = 0; idx < elements.size(); ++idx) {
-        if (elements[idx].type == type) {
-            out.push_back((int)idx);
+    for (size_t programHeaderIndex = 0;
+         programHeaderIndex < elements.size();
+         ++programHeaderIndex) {
+        if (elements[programHeaderIndex].type == type) {
+            out.push_back((int)programHeaderIndex);
         }
     }
     // 允许返回空数组，表示当前表不存在该类型段。
     return out;
 }
+

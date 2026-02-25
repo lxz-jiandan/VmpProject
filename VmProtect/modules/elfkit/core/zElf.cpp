@@ -33,14 +33,14 @@ zElf::zElf() {
 
 // 便捷构造：加载 ELF 并按固定顺序建立解析上下文。
 // 顺序不可乱：头部 -> 程序头 -> 动态段 -> 节表 -> 函数列表。
-zElf::zElf(const char *elf_file_name) {
+zElf::zElf(const char *elfFileName) {
     // 打印输入文件名，便于多文件批处理定位问题。
-    LOGD("Constructor called with elf_file_name: %s", elf_file_name);
+    LOGD("Constructor called with elf_file_name: %s", elfFileName);
 
     // 当前工具链只支持文件视图解析。
     link_view = LINK_VIEW::FILE_VIEW;
     // 文件加载成功后才继续后续解析。
-    if (loadElfFile(elf_file_name)) {
+    if (loadElfFile(elfFileName)) {
         // 解析 ELF 头。
         parseElfHead();
         // 解析 Program Header Table。
@@ -67,15 +67,16 @@ void zElf::parseElfHead() {
 
     // 临时错误字符串。
     std::string elf_error;
-    // 对当前文件做 ELF64/AArch64 基础校验。
-    if (!vmp::elfkit::internal::validateElf64Aarch64(
-            reinterpret_cast<const uint8_t*>(elf_file_ptr), file_size, &elf_error)) {
+    // 解析统一 ELF 文件视图（含头表边界校验）。
+    vmp::elfkit::internal::ElfFileView64 elfView;
+    if (!vmp::elfkit::internal::parseElfFileView64Aarch64(
+            reinterpret_cast<const uint8_t*>(elf_file_ptr), file_size, &elfView, &elf_error)) {
         LOGE("invalid elf header: %s", elf_error.c_str());
         return;
     }
 
     // 文件起始地址即 ELF Header 起始地址。
-    elf_header = (Elf64_Ehdr *) elf_file_ptr;
+    elf_header = (Elf64_Ehdr*)elfView.elfHeader;
     // 打印节头表偏移。
     LOGD("elf_header->e_shoff 0x%llx", (unsigned long long)elf_header->e_shoff);
     // 打印节头数量。
@@ -83,44 +84,11 @@ void zElf::parseElfHead() {
 
     // 记录 ELF Header 长度，布局打印时会用到。
     elf_header_size = elf_header->e_ehsize;
-
-    // 校验 Program Header Table 边界。
-    if (!vmp::elfkit::internal::validateTableRange(
-            elf_header->e_phoff,
-            elf_header->e_phentsize,
-            elf_header->e_phnum,
-            file_size,
-            "program header table out of range",
-            &elf_error)) {
-        // 越界时清理指针与计数，防止误用。
-        LOGE("%s", elf_error.c_str());
-        program_header_table = nullptr;
-        program_header_table_num = 0;
-    } else {
-        // 合法时定位 Program Header Table 起始指针。
-        program_header_table = (Elf64_Phdr*)(elf_file_ptr + elf_header->e_phoff);
-        // 保存 Program Header 数量。
-        program_header_table_num = elf_header->e_phnum;
-    }
-
-    // 校验 Section Header Table 边界。
-    if (!vmp::elfkit::internal::validateTableRange(
-            elf_header->e_shoff,
-            elf_header->e_shentsize,
-            elf_header->e_shnum,
-            file_size,
-            "section header table out of range",
-            &elf_error)) {
-        // 越界时清理指针与计数。
-        LOGE("%s", elf_error.c_str());
-        section_header_table = nullptr;
-        section_header_table_num = 0;
-    } else {
-        // 合法时定位 Section Header Table 起始指针。
-        section_header_table = (Elf64_Shdr*)(elf_file_ptr + elf_header->e_shoff);
-        // 保存 Section Header 数量。
-        section_header_table_num = elf_header->e_shnum;
-    }
+    // 从共享视图回填 PHT/SHT 信息，避免重复解析。
+    program_header_table = const_cast<Elf64_Phdr*>(elfView.programHeaders);
+    program_header_table_num = elfView.programHeaderCount;
+    section_header_table = const_cast<Elf64_Shdr*>(elfView.sectionHeaders);
+    section_header_table_num = elfView.sectionHeaderCount;
 }
 
 // 遍历 Program Header Table，提取 PT_LOAD 和 PT_DYNAMIC 关键信息。
@@ -138,26 +106,26 @@ void zElf::parseProgramHeaderTable() {
     bool found_load_segment = false;
 
     // 遍历全部 Program Header 条目。
-    for (int i = 0; i < program_header_table_num; i++) {
+    for (int programHeaderIndex = 0; programHeaderIndex < program_header_table_num; ++programHeaderIndex) {
         // 第一个 PT_LOAD 提供 VA->文件偏移换算基准。
-        if (program_header_table[i].p_type == PT_LOAD && !found_load_segment) {
+        if (program_header_table[programHeaderIndex].p_type == PT_LOAD && !found_load_segment) {
             // 标记已命中首个 LOAD 段。
             found_load_segment = true;
             // 记录 LOAD 段虚拟地址基准。
-            load_segment_virtual_offset = program_header_table[i].p_vaddr;
+            load_segment_virtual_offset = program_header_table[programHeaderIndex].p_vaddr;
             // 记录 LOAD 段物理地址基准。
-            load_segment_physical_offset = program_header_table[i].p_paddr;
+            load_segment_physical_offset = program_header_table[programHeaderIndex].p_paddr;
             LOGD("load_segment_virtual_offset 0x%llx", (unsigned long long)load_segment_virtual_offset);
         }
 
         // PT_DYNAMIC 给出 DT_* 元数据入口。
-        if (program_header_table[i].p_type == PT_DYNAMIC) {
+        if (program_header_table[programHeaderIndex].p_type == PT_DYNAMIC) {
             // 保存动态段文件偏移。
-            dynamic_table_offset = program_header_table[i].p_offset;
+            dynamic_table_offset = program_header_table[programHeaderIndex].p_offset;
             // 计算动态段起始指针。
-            dynamic_table = (Elf64_Dyn*)(elf_file_ptr + program_header_table[i].p_offset);
+            dynamic_table = (Elf64_Dyn*)(elf_file_ptr + program_header_table[programHeaderIndex].p_offset);
             // 计算动态表项数量。
-            dynamic_element_num = (program_header_table[i].p_filesz) / sizeof(Elf64_Dyn);
+            dynamic_element_num = (program_header_table[programHeaderIndex].p_filesz) / sizeof(Elf64_Dyn);
             LOGD("dynamic_table_offset 0x%llx", (unsigned long long)dynamic_table_offset);
             LOGD("dynamic_element_num %llu", (unsigned long long)dynamic_element_num);
         }
@@ -179,7 +147,7 @@ void zElf::parseDynamicTable() {
     Elf64_Dyn *dynamic_element = dynamic_table;
 
     // 顺序扫描全部 DT_* 表项。
-    for (int i = 0; i < dynamic_element_num; i++) {
+    for (int dynamicIndex = 0; dynamicIndex < dynamic_element_num; ++dynamicIndex) {
         // 动态字符串表地址。
         if (dynamic_element->d_tag == DT_STRTAB) {
             LOGD("DT_STRTAB 0x%llx", (unsigned long long)dynamic_element->d_un.d_ptr);
@@ -236,7 +204,7 @@ void zElf::parseSectionTable() {
     LOGD("parseSectionTable section_string_table %p", (void*)section_string_table);
 
     // 扫描所有 section，抓取符号/字符串相关节。
-    for (int i = 0; i < section_header_table_num; i++) {
+    for (int sectionIndex = 0; sectionIndex < section_header_table_num; ++sectionIndex) {
         // 当前 section 名称。
         char *section_name = section_string_table + section_element->sh_name;
 
@@ -268,15 +236,15 @@ void zElf::parseSectionTable() {
 }
 
 // 从磁盘读取整个 ELF 到堆内存，供后续离线解析。
-bool zElf::loadElfFile(const char *elf_path) {
+bool zElf::loadElfFile(const char *elfPath) {
     // 打印输入路径。
-    LOGI("loadElfFile %s", elf_path);
+    LOGI("loadElfFile %s", elfPath);
     // 错误信息缓存。
     std::string elf_error;
     // 临时字节缓冲。
     std::vector<uint8_t> loaded_bytes;
     // 读取文件字节。
-    if (!vmp::elfkit::internal::loadElfFileBytes(elf_path, &loaded_bytes, &elf_error)) {
+    if (!vmp::elfkit::internal::loadElfFileBytes(elfPath, &loaded_bytes, &elf_error)) {
         LOGE("Failed to load elf bytes: %s", elf_error.c_str());
         return false;
     }

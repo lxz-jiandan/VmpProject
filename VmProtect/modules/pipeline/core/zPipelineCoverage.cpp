@@ -24,6 +24,8 @@
 
 // 引入日志能力。
 #include "zLog.h"
+// 引入输出路径拼接工具。
+#include "zPipelineCli.h"
 
 // 进入 vmp 主命名空间。
 namespace vmp {
@@ -148,31 +150,31 @@ void analyzeCoverageForFunction(csh handle,
                                 const vmp::elfkit::FunctionView& function,
                                 FunctionCoverageRow& row,
                                 CoverageBoard& board) {
-    // 先尝试构建翻译中间态，记录该函数是否可翻译。
-    row.translateOk = function.prepareTranslation(&row.translateError);
-    // 对错误字符串做 markdown 安全处理。
-    row.translateError = markdownSafe(row.translateError);
-
     // 没有代码数据时直接返回，仅保留翻译状态字段。
-    if (function.data() == nullptr || function.size() == 0) {
+    if (function.getData() == nullptr || function.getSize() == 0) {
         return;
     }
 
     // capstone 反汇编结果数组指针。
     cs_insn* insn = nullptr;
     // 执行反汇编，起始地址使用函数 offset。
-    const size_t count = cs_disasm(handle,
-                                   function.data(),
-                                   function.size(),
-                                   function.offset(),
-                                   0,
-                                   &insn);
+    const size_t instructionCount = cs_disasm(handle,
+                                              function.getData(),
+                                              function.getSize(),
+                                              function.getOffset(),
+                                              0,
+                                              &insn);
     // 逐条统计支持/不支持情况。
-    for (size_t i = 0; i < count; ++i) {
+    for (size_t instructionIndex = 0; instructionIndex < instructionCount; ++instructionIndex) {
+        const cs_insn& currentInsn = insn[instructionIndex];
         // 判断当前指令是否在支持面内。
-        const bool supported = isInstructionSupported(supportedIds, insn[i].id, insn[i].mnemonic);
+        const bool supported = isInstructionSupported(supportedIds,
+                                                      currentInsn.id,
+                                                      currentInsn.mnemonic);
         // 生成可读标签用于直方图。
-        const std::string label = buildInstructionLabel(handle, insn[i].id, insn[i].mnemonic);
+        const std::string label = buildInstructionLabel(handle,
+                                                        currentInsn.id,
+                                                        currentInsn.mnemonic);
         // 函数维度总数 +1。
         ++row.totalInstructions;
         // 全局维度总数 +1。
@@ -190,7 +192,7 @@ void analyzeCoverageForFunction(csh handle,
     }
     // 释放反汇编结果，避免泄漏。
     if (insn != nullptr) {
-        cs_free(insn, count);
+        cs_free(insn, instructionCount);
     }
 }
 
@@ -201,6 +203,13 @@ void analyzeCoverageForFunction(csh handle,
 bool buildCoverageBoard(const std::vector<std::string>& functionNames,
                         const std::vector<elfkit::FunctionView>& functions,
                         CoverageBoard& board) {
+    // 输入规模必须一致，避免名称和函数对象错位。
+    if (functionNames.size() != functions.size()) {
+        LOGE("coverage failed: functionNames/functions size mismatch nameCount=%llu functionCount=%llu",
+             static_cast<unsigned long long>(functionNames.size()),
+             static_cast<unsigned long long>(functions.size()));
+        return false;
+    }
     // capstone 句柄。
     csh handle = 0;
     // 打开 ARM64 反汇编引擎。
@@ -214,15 +223,89 @@ bool buildCoverageBoard(const std::vector<std::string>& functionNames,
     // 预留函数行容量，减少扩容开销。
     board.functionRows.reserve(functions.size());
     // 遍历每个函数，填充函数级行数据并汇总到 board。
-    for (size_t i = 0; i < functions.size(); ++i) {
+    for (size_t functionIndex = 0; functionIndex < functions.size(); ++functionIndex) {
         FunctionCoverageRow row;
-        row.functionName = functionNames[i];
-        analyzeCoverageForFunction(handle, supportedIds, functions[i], row, board);
+        row.functionName = functionNames[functionIndex];
+        analyzeCoverageForFunction(handle,
+                                   supportedIds,
+                                   functions[functionIndex],
+                                   row,
+                                   board);
         board.functionRows.push_back(std::move(row));
     }
 
     // 关闭 capstone 句柄。
     cs_close(&handle);
+    return true;
+}
+
+// 填充翻译状态：该阶段只负责 prepareTranslation 相关信息。
+bool fillTranslationStatus(const std::vector<elfkit::FunctionView>& functions,
+                           CoverageBoard& board) {
+    // 输入规模必须一致，按索引回填。
+    if (board.functionRows.size() != functions.size()) {
+        LOGE("fillTranslationStatus failed: rowCount/functionCount mismatch rowCount=%llu functionCount=%llu",
+             static_cast<unsigned long long>(board.functionRows.size()),
+             static_cast<unsigned long long>(functions.size()));
+        return false;
+    }
+    // 逐函数回填翻译状态和错误信息。
+    for (size_t functionIndex = 0; functionIndex < functions.size(); ++functionIndex) {
+        FunctionCoverageRow& row = board.functionRows[functionIndex];
+        row.translateOk = functions[functionIndex].prepareTranslation(&row.translateError);
+        row.translateError = markdownSafe(row.translateError);
+    }
+    return true;
+}
+
+// 执行覆盖率分析阶段（统计 + 翻译状态采集）。
+bool runCoverageAnalyzeFlow(const std::vector<std::string>& functionNames,
+                            const std::vector<elfkit::FunctionView>& functions,
+                            CoverageBoard& board) {
+    // 构建覆盖率统计面板。
+    if (!buildCoverageBoard(functionNames, functions, board)) {
+        return false;
+    }
+    // 补充翻译状态与错误信息。
+    if (!fillTranslationStatus(functions, board)) {
+        return false;
+    }
+    return true;
+}
+
+// 将覆盖率面板写入报告文件。
+bool runCoverageReportFlow(const VmProtectConfig& config, const CoverageBoard& board) {
+    // 组合 coverage 报告输出路径。
+    const std::string coverageReportPath = joinOutputPath(config, config.coverageReport);
+    // 落盘覆盖率报告。
+    if (!writeCoverageReport(coverageReportPath, board)) {
+        LOGE("failed to write coverage report: %s", coverageReportPath.c_str());
+        return false;
+    }
+    // 输出成功日志。
+    LOGI("coverage report written: %s", coverageReportPath.c_str());
+    return true;
+}
+
+// 执行完整覆盖率流程。
+bool runCoverageFlow(const VmProtectConfig& config,
+                     const std::vector<std::string>& functionNames,
+                     const std::vector<elfkit::FunctionView>& functions,
+                     CoverageBoard* outBoard) {
+    // 覆盖率看板对象。
+    CoverageBoard board;
+    // 先执行覆盖率分析阶段。
+    if (!runCoverageAnalyzeFlow(functionNames, functions, board)) {
+        return false;
+    }
+    // 再执行报告写入阶段。
+    if (!runCoverageReportFlow(config, board)) {
+        return false;
+    }
+    // 可选：把覆盖率结果回传给后续阶段复用。
+    if (outBoard != nullptr) {
+        *outBoard = board;
+    }
     return true;
 }
 

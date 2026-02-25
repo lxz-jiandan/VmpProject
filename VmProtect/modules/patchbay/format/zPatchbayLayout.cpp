@@ -36,8 +36,8 @@ bool validateElfTablesForAndroid(const std::vector<uint8_t>& fileBytes, std::str
         // 获取 program header 表首地址。
         const auto* phdrs = reinterpret_cast<const Elf64_Phdr*>(fileBytes.data() + ehdr->e_phoff);
         // 逐项检查 PT_LOAD 段。
-        for (uint16_t i = 0; i < ehdr->e_phnum; ++i) {
-            const Elf64_Phdr& ph = phdrs[i];
+        for (uint16_t programHeaderIndex = 0; programHeaderIndex < ehdr->e_phnum; ++programHeaderIndex) {
+            const Elf64_Phdr& ph = phdrs[programHeaderIndex];
             // 非 PT_LOAD 或无需对齐约束的段直接跳过。
             if (ph.p_type != PT_LOAD || ph.p_align <= 1) {
                 continue;
@@ -92,4 +92,3 @@ bool validateElfTablesForAndroid(const std::vector<uint8_t>& fileBytes, std::str
     // 所有结构约束通过。
     return true;
 }
-

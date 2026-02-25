@@ -8,7 +8,7 @@
 
 #include "zPatchbayEntry.h"
 // 引入 patch ELF 访问 API。
-#include "zPatchbayApi.h"
+#include "zElfReadFacade.h"
 // 引入 patchbay 导出主流程。
 #include "zPatchbayExport.h"
 // 引入命名规则与槽位命名规则。
@@ -80,22 +80,22 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
         bool onlyFunJava = false;
 
         // 解析可选参数。
-        for (int i = 6; i < argc; ++i) {
-            if (std::strcmp(argv[i], "--allow-validate-fail") == 0) {
+        for (int argIndex = 6; argIndex < argc; ++argIndex) {
+            if (std::strcmp(argv[argIndex], "--allow-validate-fail") == 0) {
                 allowValidateFail = true;
                 continue;
             }
-            if (std::strcmp(argv[i], "--only-fun-java") == 0) {
+            if (std::strcmp(argv[argIndex], "--only-fun-java") == 0) {
                 onlyFunJava = true;
                 continue;
             }
-            LOGE("invalid option: %s", argv[i]);
+            LOGE("invalid option: %s", argv[argIndex]);
             return 2;
         }
 
         // 加载 donor ELF。
-        vmp::elfkit::PatchElfImage donor(argv[3]);
-        if (!donor.loaded()) {
+        vmp::elfkit::zElfReadFacade donor(argv[3]);
+        if (!donor.isLoaded()) {
             LOGE("failed to load donor ELF: %s", argv[3]);
             return 2;
         }
@@ -128,18 +128,23 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
         }
 
         // 加载 input ELF。
-        vmp::elfkit::PatchElfImage inputElf(argv[2]);
-        if (!inputElf.loaded()) {
+        vmp::elfkit::zElfReadFacade inputElf(argv[2]);
+        if (!inputElf.isLoaded()) {
             LOGE("failed to load input ELF: %s", argv[2]);
             return 2;
         }
 
-        // 收集 input 已有导出名。
-        std::vector<std::string> inputExports;
-        if (!inputElf.collectDefinedDynamicExports(&inputExports, &collectError)) {
+        // 收集 input 已有导出（含 value），再投影为名称列表。
+        std::vector<vmp::elfkit::PatchDynamicExportInfo> inputExportInfos;
+        if (!inputElf.collectDefinedDynamicExportInfos(&inputExportInfos, &collectError)) {
             LOGE("collect input exports failed: %s",
                  collectError.empty() ? "(unknown)" : collectError.c_str());
             return 2;
+        }
+        std::vector<std::string> inputExports;
+        inputExports.reserve(inputExportInfos.size());
+        for (const vmp::elfkit::PatchDynamicExportInfo& info : inputExportInfos) {
+            inputExports.push_back(info.name);
         }
 
         // 校验 vmengine 导出命名规则，不合法直接终止。
@@ -168,8 +173,12 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
             LOGE("export conflict detected between donor and vmengine: count=%zu",
                  duplicateExports.size());
             constexpr size_t kDetailLimit = 16;
-            for (size_t i = 0; i < duplicateExports.size() && i < kDetailLimit; ++i) {
-                LOGE("conflict export[%zu]: %s", i, duplicateExports[i].c_str());
+            for (size_t detailIndex = 0;
+                 detailIndex < duplicateExports.size() && detailIndex < kDetailLimit;
+                 ++detailIndex) {
+                LOGE("conflict export[%zu]: %s",
+                     detailIndex,
+                     duplicateExports[detailIndex].c_str());
             }
             if (duplicateExports.size() > kDetailLimit) {
                 LOGE("... and %zu more conflict exports",
@@ -182,14 +191,14 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
         std::vector<AliasPair> pairs;
         pairs.reserve(donorExports.size());
         const bool useSlotMode = isTakeoverSlotModeImpl(argv[5]);
-        for (size_t i = 0; i < donorExports.size(); ++i) {
+        for (size_t exportIndex = 0; exportIndex < donorExports.size(); ++exportIndex) {
             AliasPair pair;
-            pair.exportName = donorExports[i].name;
+            pair.exportName = donorExports[exportIndex].name;
             pair.implName =
-                useSlotMode ? buildTakeoverSlotSymbolName(static_cast<uint32_t>(i))
+                useSlotMode ? buildTakeoverSlotSymbolName(static_cast<uint32_t>(exportIndex))
                             : std::string(argv[5]);
             // key 字段承载 donor st_value（route4 key 语义）。
-            pair.exportKey = donorExports[i].value;
+            pair.exportKey = donorExports[exportIndex].value;
             pairs.push_back(std::move(pair));
         }
 
@@ -233,4 +242,3 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
     printUsage(argv[0]);
     return 1;
 }
-

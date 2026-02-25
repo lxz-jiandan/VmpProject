@@ -32,10 +32,10 @@ struct VmProtectConfig {
     bool analyzeAllFunctions = false;
     // 是否仅执行覆盖率阶段。
     bool coverageOnly = false;
-    // host so 路径（用于 embed）。
-    std::string hostSo;
-    // 最终输出 so 路径。
-    std::string finalSo;
+    // vmengine so 路径（用于 embed）。
+    std::string vmengineSo;
+    // 加固后输出 so 路径。
+    std::string outputSo;
     // patch donor so 路径。
     std::string patchDonorSo;
     // patch 使用的实现符号名。
@@ -71,10 +71,10 @@ struct CliOverrides {
     bool analyzeAllSet = false;
     // analyzeAll 目标值。
     bool analyzeAll = false;
-    // 覆盖 hostSo。
-    std::string hostSo;
-    // 覆盖 finalSo。
-    std::string finalSo;
+    // 覆盖 vmengineSo。
+    std::string vmengineSo;
+    // 覆盖 outputSo。
+    std::string outputSo;
     // 覆盖 patchDonorSo。
     std::string patchDonorSo;
     // 覆盖 patchImplSymbol。

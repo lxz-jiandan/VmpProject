@@ -15,10 +15,10 @@
 struct zSoBinPayload {
     // 函数地址（主键）。
     // 约束：同一次写入中必须唯一，且不能为 0。
-    uint64_t fun_addr = 0;
+    uint64_t funAddr = 0;
     // 函数编码字节流（由 zFunctionData::serializeEncoded 产出）。
     // 约束：不能为空。
-    std::vector<uint8_t> encoded_bytes;
+    std::vector<uint8_t> encodedBytes;
 };
 
 // 把多个编码 bin 追加到 so 文件尾部，生成可被 Engine 直接解析的新 so。
@@ -27,15 +27,15 @@ public:
     // 写入 expanded so：
     // 1) 复制原始 so；
     // 2) 追加 bundle header/entry/branch 表/payload/footer；
-    // 3) 输出 output_so_path。
+    // 3) 输出 outputSoPath。
     // 返回值：
     // true  = 写入成功；
     // false = 参数非法、读取失败、校验失败或写盘失败。
     static bool writeExpandedSo(
-        const char* input_so_path,
-        const char* output_so_path,
+        const char* inputSoPath,
+        const char* outputSoPath,
         const std::vector<zSoBinPayload>& payloads,
-        const std::vector<uint64_t>& shared_branch_addrs
+        const std::vector<uint64_t>& sharedBranchAddrs
     );
 };
 

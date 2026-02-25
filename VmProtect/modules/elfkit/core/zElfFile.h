@@ -20,6 +20,28 @@
 // 进入内部命名空间。
 namespace vmp::elfkit::internal {
 
+// 统一 ELF64 文件视图（仅包含解析入口所需的核心表信息）。
+struct ElfFileView64 {
+    // 原始文件字节首地址。
+    const uint8_t* fileBytes = nullptr;
+    // 文件总大小。
+    size_t fileSize = 0;
+
+    // ELF Header 指针。
+    const Elf64_Ehdr* elfHeader = nullptr;
+
+    // Program Header Table 首地址与条目元信息。
+    const Elf64_Phdr* programHeaders = nullptr;
+    uint16_t programHeaderCount = 0;
+    uint16_t programHeaderEntrySize = 0;
+
+    // Section Header Table 首地址与条目元信息。
+    const Elf64_Shdr* sectionHeaders = nullptr;
+    uint16_t sectionHeaderCount = 0;
+    uint16_t sectionHeaderEntrySize = 0;
+    uint16_t sectionNameTableIndex = SHN_UNDEF;
+};
+
 // 通用失败返回辅助函数。
 inline bool fail(std::string* error, const char* message) {
     // 有错误输出对象时写入错误文本。
@@ -84,33 +106,92 @@ inline bool validateElf64Aarch64(const uint8_t* bytes, size_t size, std::string*
 
 // 校验任意“定长表”是否落在文件范围内。
 inline bool validateTableRange(uint64_t offset,
-                               uint64_t entry_size,
-                               uint64_t entry_count,
-                               size_t file_size,
-                               const char* table_name,
+                               uint64_t entrySize,
+                               uint64_t entryCount,
+                               size_t fileSize,
+                               const char* tableName,
                                std::string* error) {
     // 0 项表直接认为合法。
-    if (entry_count == 0) {
+    if (entryCount == 0) {
         return true;
     }
     // 每项大小不能为 0。
-    if (entry_size == 0) {
-        return fail(error, table_name ? table_name : "invalid table entry size");
+    if (entrySize == 0) {
+        return fail(error, tableName ? tableName : "invalid table entry size");
     }
     // 起始偏移不能超过文件大小。
-    if (offset > file_size) {
-        return fail(error, table_name ? table_name : "table offset out of file bounds");
+    if (offset > fileSize) {
+        return fail(error, tableName ? tableName : "table offset out of file bounds");
     }
-    // 防止 entry_size * entry_count 溢出。
-    if (entry_count > (std::numeric_limits<uint64_t>::max() / entry_size)) {
-        return fail(error, table_name ? table_name : "table size overflow");
+    // 防止 entrySize * entryCount 溢出。
+    if (entryCount > (std::numeric_limits<uint64_t>::max() / entrySize)) {
+        return fail(error, tableName ? tableName : "table size overflow");
     }
 
     // 计算表总字节数。
-    const uint64_t table_bytes = entry_size * entry_count;
+    const uint64_t tableBytes = entrySize * entryCount;
     // 校验完整表范围不越界。
-    if (table_bytes > static_cast<uint64_t>(file_size) - offset) {
-        return fail(error, table_name ? table_name : "table range out of file bounds");
+    if (tableBytes > static_cast<uint64_t>(fileSize) - offset) {
+        return fail(error, tableName ? tableName : "table range out of file bounds");
+    }
+    return true;
+}
+
+// 解析 ELF64+AArch64 文件的核心视图，并统一完成头表越界校验。
+inline bool parseElfFileView64Aarch64(const uint8_t* bytes,
+                                      size_t size,
+                                      ElfFileView64* out,
+                                      std::string* error) {
+    // 输出对象必须有效。
+    if (out == nullptr) {
+        return fail(error, "null elf view output");
+    }
+
+    // 先清空输出，保证失败时状态可预期。
+    *out = ElfFileView64{};
+
+    // 先做 ELF64+AArch64 基础校验。
+    if (!validateElf64Aarch64(bytes, size, error)) {
+        return false;
+    }
+
+    // 解释 ELF Header。
+    const auto* ehdr = reinterpret_cast<const Elf64_Ehdr*>(bytes);
+
+    // 回填基础字段。
+    out->fileBytes = bytes;
+    out->fileSize = size;
+    out->elfHeader = ehdr;
+    out->programHeaderCount = ehdr->e_phnum;
+    out->programHeaderEntrySize = ehdr->e_phentsize;
+    out->sectionHeaderCount = ehdr->e_shnum;
+    out->sectionHeaderEntrySize = ehdr->e_shentsize;
+    out->sectionNameTableIndex = ehdr->e_shstrndx;
+
+    // 校验 Program Header Table。
+    if (!validateTableRange(ehdr->e_phoff,
+                            ehdr->e_phentsize,
+                            ehdr->e_phnum,
+                            size,
+                            "program header table out of range",
+                            error)) {
+        return false;
+    }
+    if (ehdr->e_phnum > 0) {
+        out->programHeaders = reinterpret_cast<const Elf64_Phdr*>(bytes + ehdr->e_phoff);
+    }
+
+    // 校验 Section Header Table。
+    if (!validateTableRange(ehdr->e_shoff,
+                            ehdr->e_shentsize,
+                            ehdr->e_shnum,
+                            size,
+                            "section header table out of range",
+                            error)) {
+        return false;
+    }
+    if (ehdr->e_shnum > 0) {
+        out->sectionHeaders = reinterpret_cast<const Elf64_Shdr*>(bytes + ehdr->e_shoff);
     }
     return true;
 }
@@ -119,4 +200,3 @@ inline bool validateTableRange(uint64_t offset,
 }  // namespace vmp::elfkit::internal
 
 #endif  // VMP_ELFKIT_INTERNAL_ELF_FILE_H
-

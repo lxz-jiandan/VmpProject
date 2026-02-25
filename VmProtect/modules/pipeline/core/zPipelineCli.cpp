@@ -36,9 +36,9 @@ void deduplicateKeepOrder(std::vector<std::string>& values) {
 // 解析命令行参数并填充覆盖项。
 bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& error) {
     // 从 argv[1] 开始遍历（跳过程序名）。
-    for (int i = 1; i < argc; ++i) {
+    for (int argIndex = 1; argIndex < argc; ++argIndex) {
         // 读取当前参数，空指针时回退空字符串。
-        const std::string arg = argv[i] ? argv[i] : "";
+        const std::string arg = argv[argIndex] ? argv[argIndex] : "";
         // 跳过空参数。
         if (arg.empty()) {
             continue;
@@ -49,53 +49,53 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             continue;
         }
         // 输入 so 路径参数。
-        if (arg == "--input-so" && i + 1 < argc) {
-            cli.inputSo = argv[++i];
+        if (arg == "--input-so" && argIndex + 1 < argc) {
+            cli.inputSo = argv[++argIndex];
             continue;
         }
         // 输出目录参数。
-        if (arg == "--output-dir" && i + 1 < argc) {
-            cli.outputDir = argv[++i];
+        if (arg == "--output-dir" && argIndex + 1 < argc) {
+            cli.outputDir = argv[++argIndex];
             continue;
         }
         // expand so 文件名参数。
-        if (arg == "--expanded-so" && i + 1 < argc) {
-            cli.expandedSo = argv[++i];
+        if (arg == "--expanded-so" && argIndex + 1 < argc) {
+            cli.expandedSo = argv[++argIndex];
             continue;
         }
         // 共享 branch 地址文件参数。
-        if (arg == "--shared-branch-file" && i + 1 < argc) {
-            cli.sharedBranchFile = argv[++i];
+        if (arg == "--shared-branch-file" && argIndex + 1 < argc) {
+            cli.sharedBranchFile = argv[++argIndex];
             continue;
         }
-        // host so 参数。
-        if (arg == "--host-so" && i + 1 < argc) {
-            cli.hostSo = argv[++i];
+        // vmengine so 参数。
+        if (arg == "--vmengine-so" && argIndex + 1 < argc) {
+            cli.vmengineSo = argv[++argIndex];
             continue;
         }
-        // final so 参数。
-        if (arg == "--final-so" && i + 1 < argc) {
-            cli.finalSo = argv[++i];
+        // 输出 so 参数。
+        if (arg == "--output-so" && argIndex + 1 < argc) {
+            cli.outputSo = argv[++argIndex];
             continue;
         }
         // patch donor so 参数。
-        if (arg == "--patch-donor-so" && i + 1 < argc) {
-            cli.patchDonorSo = argv[++i];
+        if (arg == "--patch-donor-so" && argIndex + 1 < argc) {
+            cli.patchDonorSo = argv[++argIndex];
             continue;
         }
         // patch impl symbol 参数。
-        if (arg == "--patch-impl-symbol" && i + 1 < argc) {
-            cli.patchImplSymbol = argv[++i];
+        if (arg == "--patch-impl-symbol" && argIndex + 1 < argc) {
+            cli.patchImplSymbol = argv[++argIndex];
             continue;
         }
         // 覆盖率报告路径参数。
-        if (arg == "--coverage-report" && i + 1 < argc) {
-            cli.coverageReport = argv[++i];
+        if (arg == "--coverage-report" && argIndex + 1 < argc) {
+            cli.coverageReport = argv[++argIndex];
             continue;
         }
         // 受保护函数参数（可重复）。
-        if (arg == "--function" && i + 1 < argc) {
-            cli.functions.emplace_back(argv[++i]);
+        if (arg == "--function" && argIndex + 1 < argc) {
+            cli.functions.emplace_back(argv[++argIndex]);
             continue;
         }
         // 是否 patch donor 全量导出。
@@ -150,11 +150,10 @@ void printUsage() {
         << "  --output-dir <dir>           Output directory for txt/bin/report\n"
         // expand so。
         << "  --expanded-so <file>         Expanded so output file name\n"
-        // host so。
-        << "  --host-so <file>             Host so for embed/patch output (e.g. libvmengine.so)\n"
-        // final so。
-        << "  --final-so <file>            Final protected so path "
-           "(default: host-so; with patch -> libvmengine_patch.so)\n"
+        // vmengine so。
+        << "  --vmengine-so <file>         Vmengine so path (required in hardening route)\n"
+        // 输出 so。
+        << "  --output-so <file>           Protected output so path (required in hardening route)\n"
         // donor so。
         << "  --patch-donor-so <file>      Donor so for patchbay export fill\n"
         // impl symbol。
@@ -168,11 +167,17 @@ void printUsage() {
         // 覆盖率报告。
         << "  --coverage-report <file>     Coverage report output file name\n"
         // 函数参数。
-        << "  --function <name>            Protected function (repeatable)\n"
+        << "  --function <name>            Protected function symbol (repeatable, required in hardening route)\n"
         // 覆盖率模式。
         << "  --coverage-only              Only generate coverage board\n"
         // 全函数分析模式。
         << "  --analyze-all                Analyze all extracted functions\n"
+        // 加固模式说明。
+        << "\n"
+        << "Hardening route:\n"
+        << "  Triggered when any of --vmengine-so/--output-so/--patch-donor-so is set.\n"
+        << "  In this mode, --input-so/--vmengine-so/--output-so/--function are required.\n"
+        << "\n"
         // 帮助参数。
         << "  -h, --help                   Show this help\n";
 }
