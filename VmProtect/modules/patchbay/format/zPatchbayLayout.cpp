@@ -87,6 +87,58 @@ bool validateElfTablesForAndroid(const std::vector<uint8_t>& fileBytes, std::str
             }
             return false;
         }
+
+        // 获取 section header 表首地址。
+        const auto* shdrs = reinterpret_cast<const Elf64_Shdr*>(fileBytes.data() + ehdr->e_shoff);
+
+        // 逐项校验“文件占位型 section”的文件范围与两两重叠。
+        // - type=SHT_NOBITS 不占用文件字节，跳过重叠判断；
+        // - size=0 视作空区间，跳过。
+        for (uint16_t leftSectionIndex = 0; leftSectionIndex < ehdr->e_shnum; ++leftSectionIndex) {
+            const Elf64_Shdr& left = shdrs[leftSectionIndex];
+            if (left.sh_type == SHT_NOBITS || left.sh_size == 0) {
+                continue;
+            }
+
+            if (left.sh_offset > fileBytes.size() ||
+                left.sh_size > (fileBytes.size() - static_cast<size_t>(left.sh_offset))) {
+                if (error != nullptr) {
+                    *error = "section data out of range at index " + std::to_string(leftSectionIndex);
+                }
+                return false;
+            }
+
+            const uint64_t leftBegin = static_cast<uint64_t>(left.sh_offset);
+            const uint64_t leftEnd = leftBegin + static_cast<uint64_t>(left.sh_size);
+
+            for (uint16_t rightSectionIndex = static_cast<uint16_t>(leftSectionIndex + 1);
+                 rightSectionIndex < ehdr->e_shnum;
+                 ++rightSectionIndex) {
+                const Elf64_Shdr& right = shdrs[rightSectionIndex];
+                if (right.sh_type == SHT_NOBITS || right.sh_size == 0) {
+                    continue;
+                }
+                if (right.sh_offset > fileBytes.size() ||
+                    right.sh_size > (fileBytes.size() - static_cast<size_t>(right.sh_offset))) {
+                    if (error != nullptr) {
+                        *error = "section data out of range at index " + std::to_string(rightSectionIndex);
+                    }
+                    return false;
+                }
+
+                const uint64_t rightBegin = static_cast<uint64_t>(right.sh_offset);
+                const uint64_t rightEnd = rightBegin + static_cast<uint64_t>(right.sh_size);
+                const bool overlap = (leftBegin < rightEnd) && (rightBegin < leftEnd);
+                if (overlap) {
+                    if (error != nullptr) {
+                        *error = "overlapping file-backed sections: " +
+                                 std::to_string(leftSectionIndex) + " and " +
+                                 std::to_string(rightSectionIndex);
+                    }
+                    return false;
+                }
+            }
+        }
     }
 
     // 所有结构约束通过。

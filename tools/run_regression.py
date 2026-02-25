@@ -343,16 +343,43 @@ def validateAndroidElfLayout(path: Path):
             )
     # section header 范围与对齐校验。
     if e_shnum > 0:
-        sh_size = e_shentsize * e_shnum
-        if e_shentsize == 0 or e_shoff + sh_size > len(data):
+        sh_table_size = e_shentsize * e_shnum
+        if e_shentsize == 0 or e_shoff + sh_table_size > len(data):
             raise RuntimeError(
-                f"{path} has invalid section header table range: off={e_shoff} size={sh_size} file={len(data)}"
+                f"{path} has invalid section header table range: off={e_shoff} size={sh_table_size} file={len(data)}"
             )
         # Android/ELF64 场景中 section header 常规应 8 字节对齐。
         if (e_shoff % 8) != 0:
             raise RuntimeError(
                 f"{path} has non-8-byte-aligned section header table: e_shoff={e_shoff}"
             )
+
+        # 逐节校验文件范围，并检测“文件占位型 section”重叠。
+        # 注意：SHT_NOBITS 不占用文件字节，跳过重叠判断。
+        kShtNoBits = 8
+        sectionRanges = []
+        for sectionIndex in range(e_shnum):
+            sh_off = e_shoff + sectionIndex * e_shentsize
+            # Elf64_Shdr: <IIQQQQIIQQ
+            (_, sh_type, _, _, sh_offset, sh_size, _, _, _, _) = struct.unpack_from(
+                "<IIQQQQIIQQ", data, sh_off
+            )
+            if sh_size == 0 or sh_type == kShtNoBits:
+                continue
+            if sh_offset > len(data) or sh_size > (len(data) - sh_offset):
+                raise RuntimeError(
+                    f"{path} has out-of-range section data: index={sectionIndex} off={sh_offset} size={sh_size} file={len(data)}"
+                )
+            sectionRanges.append((sh_offset, sh_offset + sh_size, sectionIndex))
+
+        sectionRanges.sort(key=lambda item: (item[0], item[1]))
+        for rangeIndex in range(len(sectionRanges) - 1):
+            left = sectionRanges[rangeIndex]
+            right = sectionRanges[rangeIndex + 1]
+            if right[0] < left[1]:
+                raise RuntimeError(
+                    f"{path} has overlapping file-backed sections: left={left[2]}({left[0]}..{left[1]}) right={right[2]}({right[0]}..{right[1]})"
+                )
 
     # 打印结构检查通过信息。
     print(f"[INFO] ELF layout OK: {path.name} e_shoff={e_shoff} e_shnum={e_shnum} file_size={len(data)}")

@@ -92,6 +92,7 @@ int main(int argc, char* argv[]) {
     if (!vmp::runCoverageFlow(config, functionNames, functions, &coverageBoard)) {
         return 1;
     }
+
     // coverageOnly 模式到此结束。
     if (config.coverageOnly) {
         LOGI("coverage-only mode enabled, export skipped");
@@ -102,6 +103,7 @@ int main(int argc, char* argv[]) {
     if (!vmp::exportProtectedPackage(config, functionNames, functions, &coverageBoard)) {
         return 1;
     }
+
     // 可选 vmengine 注入/patch 流程。
     if (!vmp::runVmengineProtectFlow(config)) {
         return 1;

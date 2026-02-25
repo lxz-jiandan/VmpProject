@@ -286,14 +286,6 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // [阶段 1] 读取 patchbay header 并校验容量/区间。
-    // patchbay 节至少要容纳一个 header。
-    if (patchbay.size < sizeof(PatchBayHeader)) {
-        if (error != nullptr) {
-            *error = "patchbay section too small";
-        }
-        return false;
-    }
-
     // 读取输入文件原始字节，后续在内存中原地修改。
     std::vector<uint8_t> newFile;
     if (!loadFileBytes(inputPath, &newFile)) {
@@ -303,11 +295,11 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
         return false;
     }
 
-    // patchbay 节范围必须完整落在文件内。
+    // patchbay 至少要有足够空间读取 header。
     if (patchbay.offset > newFile.size() ||
-        patchbay.size > (newFile.size() - static_cast<size_t>(patchbay.offset))) {
+        sizeof(PatchBayHeader) > (newFile.size() - static_cast<size_t>(patchbay.offset))) {
         if (error != nullptr) {
-            *error = "patchbay section range out of file";
+            *error = "patchbay header out of file";
         }
         return false;
     }
@@ -324,9 +316,19 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // 校验 headerSize 和 totalSize 基本约束。
-    if (patchHeader->headerSize < sizeof(PatchBayHeader) || patchHeader->totalSize > patchbay.size) {
+    if (patchHeader->headerSize < sizeof(PatchBayHeader) ||
+        patchHeader->totalSize < patchHeader->headerSize) {
         if (error != nullptr) {
             *error = "patchbay header size/capacity invalid";
+        }
+        return false;
+    }
+
+    // 以 header.totalSize 为准校验 patchbay 有效区间落在文件范围内。
+    if (patchbay.offset > newFile.size() ||
+        patchHeader->totalSize > (newFile.size() - static_cast<size_t>(patchbay.offset))) {
+        if (error != nullptr) {
+            *error = "patchbay payload range out of file";
         }
         return false;
     }
@@ -446,6 +448,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
         const int versymIndex = required.versym.index;
         const int gnuHashIndex = required.gnuHash.index;
         const int hashIndex = required.hasHash ? required.hash.index : -1;
+        const int patchbayIndex = required.hasPatchbay ? required.patchbay.index : -1;
 
         // 索引到节头指针的辅助函数。
         auto patchShdr = [&shdrs](int sectionIndex) -> Elf64_Shdr* {
@@ -498,6 +501,13 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
                 sh->sh_link = static_cast<Elf64_Word>(dynsymIndex);
                 sh->sh_addralign = 4;
             }
+        }
+
+        // .vmp_patchbay 在静态视图中仅暴露 header 区，避免与重定位后的
+        // .dynsym/.dynstr/.gnu.hash/.gnu.version 区间发生 section 重叠。
+        if (auto* sh = patchShdr(patchbayIndex)) {
+            sh->sh_size = static_cast<Elf64_Xword>(patchHeader->headerSize);
+            sh->sh_entsize = 0;
         }
     }
 

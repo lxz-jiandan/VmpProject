@@ -85,12 +85,12 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.VmProtect">
-    <configuration name="VmProtect" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="--input-so Z:\2026\0217_vmp_project\VmpProject\VmProtect\libdemo.so --output-dir Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\tmp_vmprotect_route --vmengine-so Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\cxx\Debug\2z4j1d3z\obj\arm64-v8a\libvmengine.so --output-so Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\cxx\Debug\2z4j1d3z\obj\arm64-v8a\libvmengine_patch.so --patch-donor-so Z:\2026\0217_vmp_project\VmpProject\VmProtect\libdemo.so --patch-impl-symbol vm_takeover_slot_0000 --function fun_for --function fun_add --function fun_for_add" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/.." PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="VmProtect" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="VmProtect" RUN_TARGET_NAME="VmProtect">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+    <configuration name="VmProtect" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="--input-so Z:\2026\0217_vmp_project\VmpProject\VmProtect\libdemo.so --output-dir Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\tmp_vmprotect_route --vmengine-so Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\cxx\Debug\2z4j1d3z\obj\arm64-v8a\libvmengine.so --output-so Z:\2026\0217_vmp_project\VmpProject\VmEngine\app\build\intermediates\cxx\Debug\2z4j1d3z\obj\arm64-v8a\libvmengine_patch.so --patch-donor-so Z:\2026\0217_vmp_project\VmpProject\VmProtect\libdemo.so --patch-impl-symbol vm_takeover_slot_0000 --function fun_for --function fun_add --function fun_for_add" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/.." PASS_PARENT_ENVS_2="true" PROJECT_NAME="VmProtect" TARGET_NAME="VmProtect" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="VmProtect" RUN_TARGET_NAME="VmProtect">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -192,7 +192,8 @@
       <workItem from="1771719182997" duration="469000" />
       <workItem from="1771784668522" duration="127000" />
       <workItem from="1771784811100" duration="23688000" />
-      <workItem from="1771970634366" duration="14948000" />
+      <workItem from="1771970634366" duration="16466000" />
+      <workItem from="1772058609363" duration="804000" />
     </task>
     <servers />
   </component>
@@ -231,6 +232,11 @@
           <url>file://$PROJECT_DIR$/app/zMain.cpp</url>
           <line>42</line>
           <option name="timeStamp" value="10" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/app/zMain.cpp</url>
+          <line>102</line>
+          <option name="timeStamp" value="12" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

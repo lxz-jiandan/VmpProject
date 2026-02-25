@@ -1,265 +1,260 @@
-# VmpProject：教学 + 原理版 README
+# VmProject
 
-这份文档不是“命令清单”，而是按教学顺序解释：
+VmProject 是一个面向 Android ARM64 so 的“离线加固 + 运行时接管”工程，核心由三部分组成：
 
-1. 这套方案在解决什么问题。
-2. 为什么这样设计（原理）。
-3. 如何验证“方案真的成立”（不是只看能跑）。
+- `VmProtect`：离线工具，负责函数翻译、导出、打包、注入与符号接管补丁。
+- `VmEngine`：运行时引擎，负责加载导出的 payload、建立接管映射并执行 VM 逻辑。
+- `tools` / `demo`：自动化回归与演示工程，用于验证端到端链路。
 
----
+这份文档面向新同学，重点回答四个问题：
 
-## 1. 问题定义
+- 这个项目在做什么
+- 原理是什么
+- 设计思路是什么
+- 代码架构分几层、每层干什么
 
-目标：把目标 `so` 中的函数迁移到 VM 执行路径，同时尽量保持外部行为不变。
+## 1. 项目在做什么
 
-工程当前采用三段式：
+一句话：把原始 so 中指定函数转成 VM 可执行的编码数据，并在运行时通过导出符号接管把调用导向 VM 执行路径。
 
-1. 离线翻译导出（`VmProtect.exe`）。
-2. payload 嵌入宿主 `so`（embed）。
-3. 导出接管（patchbay），把导出符号指向接管实现。
+在当前工程里，主要路线是 `route4`：
 
----
+- 离线阶段把函数导出为编码 payload（`libdemo_expand.so`）。
+- 把 payload 嵌入到 `vmengine so` 尾部（embed）。
+- 可选地对导出符号做 patch（patchbay），把 donor 中的导出名映射到 `vm_takeover_slot_xxxx`。
+- 运行时在 `vmengine` 初始化时加载嵌入 payload，恢复 slot 映射并接管调用。
 
-## 2. 工程组成
+## 2. 端到端原理
 
-- `VmProtect/`
-  - 离线工具，产出 `VmProtect.exe`。
-  - 同时内置 patchbay 子命令（`export_alias_from_patchbay` 等）。
-- `VmEngine/`
-  - Android 运行时，负责加载与执行 VM 数据。
+## 2.1 离线阶段（VmProtect）
+
+入口在 `VmProtect/app/zMain.cpp`，主流程是：
+
+1. 解析 CLI 参数，构建配置。
+2. 读取输入 so，收集目标函数。
+3. 生成覆盖率与翻译可达性报告（Capstone + 翻译状态）。
+4. 导出函数文本和编码二进制，生成 `libdemo_expand.so`。
+5. 若指定 `--vmengine-so/--output-so`，执行加固路线：
+   - embed：把 `libdemo_expand.so` 附加到 vmengine so 尾部（带 footer+CRC）。
+   - patchbay（可选）：更新 `.dynsym/.dynstr/.gnu.hash/.gnu.version/.dynamic` 指针与数据，导出 alias 接管。
+
+关键点：
+
+- 函数翻译核心在 `VmProtect/modules/elfkit/core/zFunction.cpp`。
+- 覆盖率统计在 `VmProtect/modules/pipeline/core/zPipelineCoverage.cpp`。
+- payload 打包在 `VmProtect/modules/elfkit/core/zSoBinBundle.cpp`。
+- embed 在 `VmProtect/modules/pipeline/core/zPipelinePatch.cpp`。
+- patchbay 主流程在 `VmProtect/modules/patchbay/domain/zPatchbayExport.cpp`。
+
+## 2.2 运行时阶段（VmEngine）
+
+`VmEngine` 在库构造阶段进入初始化（`vm_library_ctor`），核心流程在 `VmEngine/app/src/main/cpp/zVmInitCore.cpp`：
+
+1. 从当前 `libvmengine.so` 尾部读取嵌入 payload（`zEmbeddedPayload`）。
+2. 把 payload 落盘成 `libdemo_expand_embedded.so` 并加载。
+3. 预加载函数编码数据到 VM 缓存。
+4. 从 patched vmengine 的 `dynsym/dynstr` 恢复 `slot_id -> fun_addr` 映射（`zElfTakeoverDynsym`）。
+5. 初始化接管表，后续所有 slot 跳板统一进入 `vm_takeover_dispatch_by_id`（`zSymbolTakeover`）。
+
+结果是：外部调用被 patch 后的导出符号，会通过 `vm_takeover_slot_xxxx` 跳板转进 VM 分发逻辑执行。
+
+## 3. 设计思路
+
+## 3.1 分层拆解，保持职责单一
+
+工程把“基础能力、格式解析、领域逻辑、流程编排、入口”拆开，避免一个模块同时做 IO、ELF 解析、业务决策、CLI 控制。
+
+## 3.2 对 ELF 做“低破坏”修改
+
+patchbay 采用预留区（`.vmp_patchbay`）写入新表，优先避免大规模重排整个 ELF，从而降低链接/装载风险。
+
+## 3.3 核心参数显式化
+
+在加固路线中，关键参数必须显式传入：
+
+- `--input-so`
+- `--vmengine-so`
+- `--output-so`
+- `--function`（可重复）
+
+这样可以减少“默认值误触发”的不确定性。
+
+## 3.4 可观测、可回归
+
+工程内置覆盖率报告、流程日志和设备端回归脚本，保障每次重构后能快速确认链路可用。
+
+## 4. 架构层级（按当前实现映射）
+
+## L0 基础能力层
+
+目录：
+
+- `VmProtect/modules/base/core`
+- `VmProtect/modules/foundation/core`
+
+职责：
+
+- 字节/校验/编码/哈希/文件 IO（`zBytes/zChecksum/zCodec/zHash/zIo`）。
+- 日志与基础工具（`zLog/zIoUtils`）。
+
+特点：
+
+- 不带业务语义，可复用到其他项目。
+
+## L1 格式与解析层
+
+目录：
+
+- `VmProtect/modules/elfkit/core`
+- `VmProtect/modules/elfkit/patchbayModel`
+- `VmProtect/modules/elfkit/api`
+
+职责：
+
+- ELF 文件读取、函数视图、翻译模型、bundle 读写。
+- patch 视角下的 ELF 模型、校验器、section/program 抽象。
+- 对上暴露窄接口（`zElfKit`、`zPatchbayApi`、`zElfReadFacade`）。
+
+## L2 领域能力层
+
+目录：
+
+- `VmProtect/modules/patchbay/foundation`
+- `VmProtect/modules/patchbay/format`
+- `VmProtect/modules/patchbay/domain`
+
+职责：
+
+- alias 表构建。
+- gnu/sysv hash 重建。
+- patchbay payload 写回、dynamic 指针更新、布局校验、CRC 更新。
+
+## L3 流程编排层
+
+目录：
+
+- `VmProtect/modules/pipeline/core`
+
+职责：
+
+- 参数解析与配置合并（`zPipelineCli/zPipelineRun`）。
+- 覆盖率阶段（analyze + report）。
+- 导出阶段（export）。
+- 注入与 patch 阶段（patch）。
+
+核心编排可理解为：
+
+- `analyze -> report -> export -> embed -> patch -> verify`
+
+## L4 应用入口层
+
+目录：
+
+- `VmProtect/app/zMain.cpp`
 - `tools/`
-  - 自动化脚本（构建、回归、安装、logcat 判定）。
 - `demo/`
-  - 最小验证工程。
 
----
+职责：
 
-## 3. 核心原理（重点）
+- CLI 主入口、patchbay 子命令分流。
+- 回归脚本与交付门禁。
+- Android demo 验证接管效果。
 
-### 3.1 原理 A：函数语义先“数据化”，再“执行化”
+## 5. VmEngine 侧分层（运行时）
 
-不是在运行时直接改原始函数机器码，而是离线先把函数转成可被 VM 消费的数据：
+`VmEngine/app/src/main/cpp/CMakeLists.txt` 里同样按层组织：
 
-- `fun_xxx.txt`：未编码文本表示，便于排查和教学对照。
-- `fun_xxx.bin`：编码后的运行时载荷。
-- `branch_addr_list.txt`：多函数共享的分支地址表。
+- `L0 foundation`：日志、文件、链接器基础能力
+- `L1 format`：payload/函数/patchbay 元数据解析
+- `L2 domain`：VM 执行、opcode、类型系统、符号接管
+- `L3 pipeline`：route4 初始化、生命周期、JNI 入口
 
-本质上是“先做可重建的数据模型，再做执行”。
+这是离线工具与运行时在“分层思想”上的对齐点。
 
----
+## 6. 新人上手：先跑通最短路径
 
-### 3.2 原理 B：同一语义，多种载体，逐层验证
-
-同一批函数有三种主要承载方式：
-
-1. `assets/*.txt`（未编码文本）
-2. `assets/*.bin`（编码二进制）
-3. `libdemo_expand.so`（容器承载编码数据）
-
-运行时仅保留 route4（内嵌 payload + 导出接管）单路线校验，历史 route1/2/3 代码已从主工程移除。
-
----
-
-### 3.3 原理 C：等价性验证不是“是否崩溃”，而是“结果一致”
-
-`VmEngine` 当前仅保留 route4 启动链路：
-
-- `route4_reference_from_assets`
-- `route_embedded_expand_so`
-- `route_symbol_takeover`
-
-关键思想：
-
-- route4 启动时先从 `assets/*.txt` 提取函数地址并加载固定期望值，作为 takeover 对照基线。
-- route4 L1/L2 必须同时通过，才能认定当前加固链路健康。
-- 主链路保持单路径，降低分叉逻辑与维护成本。
-
----
-
-### 3.4 原理 D：embed 采用“尾部附加 + footer”而不是改写主体布局
-
-Route4 L1 不是重排整个 ELF，而是把 `libdemo_expand.so` 作为 payload 追加到 `libvmengine.so` 末尾，并写入 footer 元数据：
-
-- magic/version
-- payload_size
-- payload_crc32
-
-优点：
-
-- 对原有段布局扰动小。
-- 可做完整性校验（CRC）。
-- 可支持“已有 payload 时替换”。
-
----
-
-### 3.5 原理 E：patchbay 采用“预留区改写”，降低全局 ELF 重排风险
-
-Route4 L2 的关键不是“随意改 ELF”，而是提前在目标 so 预留 `.vmp_patchbay` 区域，再在该区域内更新：
-
-- `dynsym`
-- `dynstr`
-- `gnu hash / sysv hash`
-- `versym`
-
-并把新增导出映射到统一实现符号（默认 `z_takeover_dispatch_by_id`）。
-
-这比“后处理全文件重构”风险更可控，尤其在 Android linker 兼容性上更稳。
-
----
-
-### 3.6 原理 F：当前已统一单工具模型，减少分叉复杂度
-
-当前工程已经收敛为：
-
-- Stage3 固定通过 `VmProtect.exe` 内置 patchbay 执行。
-- 不再走外部 patch 工具覆盖链路。
-
-这样做的目的：
-
-- 降低配置分叉和环境差异。
-- 回归路径更确定，问题定位更直接。
-
----
-
-## 4. 你应掌握的“输入/输出契约”
-
-### 4.1 VmProtect 主流程输入
-
-- 必须提供输入 so：
-  - `--input-so <path>`
-- 加固路线（vmengine embed/patch）必须显式提供 4 个核心参数：
-  - `--input-so <path>`：被加固 so（donor）路径
-  - `--vmengine-so <path>`：`libvmengine.so` 路径
-  - `--function <symbol>`（可重复）：被加固函数符号
-  - `--output-so <path>`：加固后输出 so 路径
-- 其余参数可继续使用默认值（`output-dir/expanded-so/shared-branch-file/coverage-report` 等）。
-
-### 4.2 VmProtect 主流程输出（典型）
-
-- `fun_*.txt`
-- `fun_*.bin`
-- `branch_addr_list.txt`
-- `libdemo_expand.so`
-- `coverage_report.md`
-
-### 4.3 Stage3 patchbay 子命令（核心）
-
-常用命令：
+## 6.1 构建 VmProtect
 
 ```powershell
-VmProtect.exe export_alias_from_patchbay <input_elf> <donor_elf> <output_elf> <impl_symbol> [--allow-validate-fail] [--only-fun-java]
+cmake -S VmProtect -B VmProtect/cmake-build-debug -G Ninja
+cmake --build VmProtect/cmake-build-debug --target VmProtect -j 12
 ```
 
----
-
-## 5. 快速上手（先跑通）
-
-在仓库根目录：
+查看参数：
 
 ```powershell
-python tools/run_regression.py --project-root .
+VmProtect/cmake-build-debug/VmProtect.exe --help
 ```
 
-如果要把导出接管路径也包含在回归中：
+## 6.2 仅跑导出+覆盖率（不做 vmengine 加固）
+
+```powershell
+VmProtect/cmake-build-debug/VmProtect.exe `
+  --input-so VmProtect/libdemo.so `
+  --function fun_add `
+  --function fun_for
+```
+
+## 6.3 跑完整加固路线（embed + patch）
+
+```powershell
+VmProtect/cmake-build-debug/VmProtect.exe `
+  --input-so VmProtect/libdemo.so `
+  --vmengine-so VmEngine/app/build/intermediates/cxx/Debug/2z4j1d3z/obj/arm64-v8a/libvmengine.so `
+  --output-so VmEngine/app/build/intermediates/cxx/Debug/2z4j1d3z/obj/arm64-v8a/libvmengine_patch.so `
+  --patch-donor-so VmProtect/libdemo.so `
+  --patch-impl-symbol vm_takeover_slot_0000 `
+  --function fun_add `
+  --function fun_for
+```
+
+## 6.4 跑设备回归
 
 ```powershell
 python tools/run_regression.py --project-root . --patch-vmengine-symbols
 ```
 
-如果要做“可交付一键门禁检查”（回归 + demo 冒烟串行）：
+交付门禁：
 
 ```powershell
 python tools/run_delivery_check.py --project-root .
 ```
 
----
+## 7. 关键产物说明
 
-## 6. 教学实验（建议顺序）
+- `coverage_report.md`：翻译覆盖率与失败原因。
+- `branch_addr_list.txt`：共享分支地址列表。
+- `*.txt` / `*.bin`：函数级中间产物。
+- `libdemo_expand.so`：离线导出的 payload so。
+- `*.embed.tmp.so`：embed 阶段临时产物。
+- `libvmengine_patch.so`：最终可部署的 patch 后 vmengine。
 
-### 实验 1：只跑离线导出
+## 8. 你最需要先理解的三个文件
 
-```powershell
-VmProtect\cmake-build-debug\VmProtect.exe --input-so VmProtect/libdemo.so --function fun_add --function fun_for
-```
-
-观察：
-
-1. 是否生成 `fun_add.txt/bin`、`fun_for.txt/bin`。
-2. `coverage_report.md` 的覆盖统计是否合理。
-
-### 实验 2：跑 Android 全链路
-
-```powershell
-cd VmEngine
-gradlew.bat installDebug -PvmpEnabled=true -PvmpFunctions=fun_add,fun_for
-```
-
-教学目的：理解 Stage1~Stage3 如何在 Gradle 内串联。
-
----
-
-## 7. 回归判定（不要只看安装成功）
-
-`tools/run_regression.py` 重点检查以下 marker（route4-only）：
-
-- `route4_reference_from_assets result=1`
-- `route_embedded_expand_so result=1 state=0`
-- `route_symbol_takeover result=1`
-
-只要这些关键结果不成立，就不能算“方案成立”。
-
----
-
-## 8. 常见问题与原理定位
-
-1. `input so is empty (use --input-so)`
-   - 含义：主流程没有输入契约，不会再用隐式默认路径兜底。
-   - 处理：补 `--input-so`。
-
-2. `input so not found: ...`
-   - 含义：路径存在性检查失败。
-   - 处理：改为绝对路径或确认相对路径基准目录。
-
-3. `VmProtect executable not found (build VmProtect first)`
-   - 含义：回归脚本找不到工具二进制。
-   - 处理：先构建 `VmProtect`，或修正工具路径。
-
-4. `hardening route requires --output-so (protected output so path)`
-   - 含义：进入加固路线后，未显式传入加固输出路径。
-   - 处理：补 `--output-so <path>`。
-
-5. `hardening route requires explicit --function <symbol> (repeatable)`
-   - 含义：进入加固路线后，未显式传入函数符号。
-   - 处理：补至少一个 `--function <name>`。
-
-6. `route_symbol_takeover` 不一致
-   - 含义：导出接管后的符号行为与基线不一致。
-   - 排查优先级：
-     1. donor 导出是否符合预期。
-     2. impl symbol 是否正确（默认 `z_takeover_dispatch_by_id`）。
-     3. patchbay 是否实际追加了目标导出。
-
----
-
-## 9. 关键代码入口（按原理查）
-
-- `VmProtect/app/main.cpp`
-  - CLI 契约、embed、patchbay 调用。
-- `VmProtect/modules/patchbay/app/main.cpp`
-  - patchbay 子命令实现入口。
+- `VmProtect/app/zMain.cpp`
+  这是离线主入口，先看总流程。
+- `VmProtect/modules/pipeline/core/zPipelinePatch.cpp`
+  这是从导出到 embed/patch 的关键衔接层。
 - `VmEngine/app/src/main/cpp/zVmInitCore.cpp`
-  - route4 初始化主流程（embedded expand + symbol takeover）。
-- `VmEngine/app/src/main/cpp/zVmInitLifecycle.cpp`
-  - 运行时生命周期入口与 `vm_init` 状态机。
-- `VmEngine/app/src/main/cpp/zPatchBay.h`
-  - `.vmp_patchbay` 预留区结构定义说明。
-- `VmEngine/app/build.gradle`
-  - Stage1~Stage3 的 Gradle 串联逻辑。
-- `tools/run_regression.py`
-  - 端到端自动回归入口。
+  这是运行时从嵌入 payload 到 takeover 生效的核心入口。
 
----
+## 9. 常见认知误区
 
-## 10. 一句话总结这套方案
+- 误区 1：`VmProtect` 只是“改导出表”
+  实际上它先做函数翻译与 payload 打包，再做注入与可选 patch。
 
-先把函数语义离线“数据化”，再通过可控的 embed 与导出接管把执行路径切换到 VM，并以 route4 启动回归确保主链路可重复、可验证。
+- 误区 2：patch 后一定要重排整份 ELF
+  当前方案尽量利用 `.vmp_patchbay` 预留区做低破坏更新。
+
+- 误区 3：运行时只是 `dlopen` 一个 so
+  运行时还包含 payload 读取、缓存预热、slot 映射恢复和 dispatch 执行链。
+
+## 10. 后续扩展建议
+
+如果你准备继续扩展项目，建议优先按下面顺序阅读和改动：
+
+1. 先改 `pipeline` 编排层，不直接改底层格式层。
+2. 需要新增 ELF 能力时，优先加到 `elfkit`，通过 API 层对外暴露。
+3. 需要改接管策略时，优先在 `patchbay/domain` 与 `VmEngine/zSymbolTakeover` 对齐设计。
+4. 每次改动后都跑 `tools/run_regression.py`，避免“能编译但链路不通”。
+
