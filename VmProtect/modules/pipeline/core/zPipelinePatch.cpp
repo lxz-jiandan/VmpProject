@@ -13,8 +13,8 @@
 
 // 引入 CRC32 校验算法。
 #include "zChecksum.h"
-// 引入 patchbay 进程内入口。
-#include "zPatchbayEntry.h"
+// 引入 patchbay donor 领域 API。
+#include "zPatchbayDonor.h"
 // 引入文件读写与存在性判断工具。
 #include "zFile.h"
 // 引入日志能力。
@@ -108,22 +108,6 @@ bool parseExistingEmbeddedPayload(const std::vector<uint8_t>& vmengineBytes,
     // 记录旧 payload 长度，便于日志输出替换语义。
     *outOldPayloadSize = static_cast<size_t>(footer.payloadSize);
     return true;
-}
-
-// 在同进程内调用 patchbay 子命令入口，避免额外进程开销。
-int runPatchbayCommandInProcess(const std::vector<std::string>& args) {
-    // 参数数组为空时直接返回错误码。
-    if (args.empty()) {
-        return -1;
-    }
-    // 组装 C 风格 argv。
-    std::vector<char*> argv;
-    argv.reserve(args.size());
-    for (const std::string& arg : args) {
-        argv.push_back(const_cast<char*>(arg.c_str()));
-    }
-    // 直接调用内嵌入口函数。
-    return vmprotectPatchbayEntry(static_cast<int>(argv.size()), argv.data());
 }
 
 // 结束匿名命名空间。
@@ -237,29 +221,22 @@ bool runPatchbayExportFromDonor(const std::string& inputSo,
         return false;
     }
 
-    // 组装 patchbay CLI 参数。
-    std::vector<std::string> cmd = {
-        "VmProtect.exe",
-        "export_alias_from_patchbay",
-        inputSo,
-        donorSo,
-        outputSo,
-        implSymbol,
-    };
-    // 按调用方要求，允许校验失败继续。
-    if (allowValidateFail) {
-        cmd.emplace_back("--allow-validate-fail");
-    }
-    // 非全量 patch 时只处理 Java 导出函数。
-    if (!patchAllExports) {
-        cmd.emplace_back("--only-fun-java");
-    }
+    // 组装 donor API 请求对象。
+    zPatchbayDonorRequest request;
+    request.inputSoPath = inputSo;
+    request.donorSoPath = donorSo;
+    request.outputSoPath = outputSo;
+    request.implSymbol = implSymbol;
+    request.onlyFunJava = !patchAllExports;
+    request.allowValidateFail = allowValidateFail;
 
-    // 在进程内执行 patchbay 命令。
-    const int rc = runPatchbayCommandInProcess(cmd);
-    // 返回码非 0 视为失败。
-    if (rc != 0) {
-        LOGE("patchbay command failed rc=%d", rc);
+    // 执行 donor API。
+    zPatchbayDonorResult runResult;
+    if (!runPatchbayExportAliasFromDonor(request, &runResult)) {
+        LOGE("patchbay donor api failed: status=%d rc=%d error=%s",
+             static_cast<int>(runResult.status),
+             runResult.exitCode,
+             runResult.error.empty() ? "(unknown)" : runResult.error.c_str());
         return false;
     }
     // 命令成功后再次校验输出文件确实生成。
@@ -269,7 +246,7 @@ bool runPatchbayExportFromDonor(const std::string& inputSo,
     }
 
     // 输出完成摘要，便于问题排查。
-    LOGI("patchbay export completed: tool=embedded input=%s output=%s donor=%s impl=%s patchAllExports=%d",
+    LOGI("patchbay export completed: tool=domain_api input=%s output=%s donor=%s impl=%s patchAllExports=%d",
          inputSo.c_str(),
          outputSo.c_str(),
          donorSo.c_str(),

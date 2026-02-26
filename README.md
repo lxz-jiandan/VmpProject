@@ -8,7 +8,7 @@ VmProject 是一个面向 Android ARM64 `so` 的“离线加固 + 运行时接�
 
 配套目录：
 
-- `tools`：回归、交付门禁、辅助生成脚本
+- `tools`：回归与构建辅助脚本
 - `demo`：演示与端到端验证
 
 本文基于当前代码现状（含最近重构）编写，重点是让新同学能快速理解：
@@ -202,8 +202,8 @@ bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
 
 1. embed：将 `libdemo_expand.so` 追加到 `vmengine so` 尾部，写入 footer（`magic/version/size/crc`）。
 2. patch（可选）：
-   - 当提供 `--patch-donor-so` 时，调用内嵌 patchbay 子命令：
-     `export_alias_from_patchbay`
+   - 当提供 `--patch-donor-so` 时，直接调用 patchbay donor 领域 API
+     （`zPatchbayDonor.cpp`，CLI 与 pipeline 共享同一实现）
    - 中间会先生成 `*.embed.tmp.so`，再产出最终 `--output-so`。
 
 ---
@@ -227,6 +227,7 @@ bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
 
 ### 主实现文件
 
+- donor 领域 API：`VmProtect/modules/patchbay/domain/zPatchbayDonor.cpp`
 - alias 构建：`VmProtect/modules/patchbay/domain/zPatchbayAliasTables.cpp`
 - hash 重建：`VmProtect/modules/patchbay/format/zPatchbayHash.cpp`
 - 主流程：`VmProtect/modules/patchbay/domain/zPatchbayExport.cpp`
@@ -516,7 +517,7 @@ VmProtect/cmake-build-debug/VmProtect.exe `
   --function fun_for
 ```
 
-## 3.3 设备回归与交付门禁
+## 3.3 设备回归
 
 回归：
 
@@ -524,90 +525,7 @@ VmProtect/cmake-build-debug/VmProtect.exe `
 python tools/run_regression.py --project-root . --patch-vmengine-symbols
 ```
 
-交付门禁：
+构建辅助脚本（由构建系统直接调用）：
 
-```powershell
-python tools/run_delivery_check.py --project-root .
-```
-
-详细说明：`tools/README.md`
-
----
-
-## 常见问题与排查
-
-## 4.1 `invalid vmengine export naming`
-
-排查文件：`VmProtect/modules/patchbay/app/zMain.cpp`  
-含义：vmengine 导出命名规则校验失败（patchbay 严格模式）
-
-## 4.2 `patchbay command failed rc=3`
-
-常见原因：
-
-- donor/vmengine 导出冲突
-- impl symbol 不合法
-- patch 校验失败
-
-排查顺序：
-
-1. `VmProtect/modules/patchbay/app/zMain.cpp`
-2. `VmProtect/modules/patchbay/domain/zPatchbayExport.cpp`
-3. `VmProtect/modules/patchbay/domain/zPatchbayPatchApply.cpp`
-
-## 4.3 `embedded payload not found`
-
-排查文件：
-
-- `VmEngine/app/src/main/cpp/zVmInitCore.cpp`
-- `VmEngine/app/src/main/cpp/zEmbeddedPayload.cpp`
-
-重点确认：
-
-- 部署的是否为 embed 后产物（而不是原始 vmengine so）
-
-## 4.4 `no takeover slots found in dynsym`
-
-排查文件：`VmEngine/app/src/main/cpp/zElfTakeoverDynsym.cpp`  
-重点确认：
-
-1. patch 是否成功
-2. 符号是否被 strip
-3. 导出规则是否还保留 `vm_takeover_slot_xxxx`
-
-## 4.5 IDA 报告 section 重叠
-
-优先确认：
-
-1. 分析对象是否为最新输出文件
-2. patchbay section/header 同步是否成功
-3. 回归脚本中的 ELF 布局检查是否通过
-
----
-
-## 新人建议阅读顺序
-
-1. `VmProtect/app/zMain.cpp`
-2. `VmProtect/modules/pipeline/core/zPipelineRun.cpp`
-3. `VmProtect/modules/pipeline/core/zPipelineExport.cpp`
-4. `VmProtect/modules/pipeline/core/zPipelinePatch.cpp`
-5. `VmProtect/modules/patchbay/app/zMain.cpp`
-6. `VmProtect/modules/patchbay/domain/zPatchbayPatchApply.cpp`
-7. `VmEngine/app/src/main/cpp/zVmInitLifecycle.cpp`
-8. `VmEngine/app/src/main/cpp/zVmInitCore.cpp`
-9. `VmEngine/app/src/main/cpp/zSymbolTakeover.cpp`
-10. `VmEngine/app/src/main/cpp/zVmEngine.cpp`
-
----
-
-## 结语
-
-当前工程已经形成较清晰的“双系统协作”结构：
-
-1. `VmProtect` 负责产物正确性与补丁策略。
-2. `VmEngine` 负责运行时恢复、接管与执行正确性。
-
-后续扩展建议始终遵循两条原则：
-
-1. 先守住协议兼容（bundle/footer/patchbay header）
-2. 每次改动后做端到端回归（不是只看编译通过）
+- `tools/gen_takeover_stubs.py`
+- `tools/embed_expand_into_vmengine.py`

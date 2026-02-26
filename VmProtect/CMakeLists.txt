@@ -124,6 +124,7 @@ set(PATCHBAY_DOMAIN_SOURCES
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayAliasTables.cpp
     ${VMP_ELFKIT_DIR}/api/zPatchbayApi.cpp
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayRules.cpp
+    ${PATCHBAY_TOOL_DIR}/domain/zPatchbayDonor.cpp
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayPatchApply.cpp
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayExport.cpp
 )
@@ -157,14 +158,19 @@ foreach(patchbay_obj_target
     )
 endforeach()
 
-add_library(vmp_patchbay STATIC
+add_library(vmp_patchbay_domain STATIC
     $<TARGET_OBJECTS:patchbay_foundation_obj>
     $<TARGET_OBJECTS:patchbay_format_obj>
-    $<TARGET_OBJECTS:patchbay_domain_obj>
+    $<TARGET_OBJECTS:patchbay_domain_obj>)
+target_link_libraries(vmp_patchbay_domain PUBLIC
+    vmprotect_base
+)
+
+add_library(vmp_patchbay_app STATIC
     $<TARGET_OBJECTS:patchbay_app_obj>
 )
-target_link_libraries(vmp_patchbay PUBLIC
-    vmprotect_base
+target_link_libraries(vmp_patchbay_app PUBLIC
+    vmp_patchbay_domain
 )
 
 add_library(vmprotect_pipeline STATIC ${VM_PROTECT_PIPELINE_SOURCES})
@@ -175,7 +181,7 @@ target_link_libraries(vmprotect_pipeline PUBLIC
     vmprotect_base
     vmprotect_format
     vmprotect_elfkit
-    vmp_patchbay
+    vmp_patchbay_domain
 )
 
 add_executable(VmProtect
@@ -186,6 +192,7 @@ target_include_directories(VmProtect PRIVATE
 )
 target_link_libraries(VmProtect PRIVATE
     vmprotect_pipeline
+    vmp_patchbay_app
 )
 
 

@@ -7,14 +7,8 @@
  */
 
 #include "zPatchbayEntry.h"
-// 引入 patch ELF 访问 API。
-#include "zElfReadFacade.h"
-// 引入 patchbay 导出主流程。
-#include "zPatchbayExport.h"
-// 引入命名规则与槽位命名规则。
-#include "zPatchbayRules.h"
-// 引入 alias/payload 类型定义。
-#include "zPatchbayTypes.h"
+// 引入 donor API（领域层）。
+#include "zPatchbayDonor.h"
 // 引入日志接口。
 #include "zLog.h"
 
@@ -24,12 +18,6 @@
 #include <cstring>
 // 引入字符串类型。
 #include <string>
-// 引入哈希集合。
-#include <unordered_set>
-// 引入 move 语义。
-#include <utility>
-// 引入数组容器。
-#include <vector>
 
 // 打印命令行帮助。
 static void printUsage(const char* exeName) {
@@ -93,140 +81,30 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
             return 2;
         }
 
-        // 加载 donor ELF。
-        vmp::elfkit::zElfReadFacade donor(argv[3]);
-        if (!donor.isLoaded()) {
-            LOGE("failed to load donor ELF: %s", argv[3]);
-            return 2;
+        // 组装 donor API 请求对象。
+        zPatchbayDonorRequest request;
+        request.inputSoPath = argv[2];
+        request.donorSoPath = argv[3];
+        request.outputSoPath = argv[4];
+        request.implSymbol = argv[5];
+        request.onlyFunJava = onlyFunJava;
+        request.allowValidateFail = allowValidateFail;
+
+        // 执行 donor 领域流程。
+        zPatchbayDonorResult runResult;
+        if (!runPatchbayExportAliasFromDonor(request, &runResult)) {
+            LOGE("export_alias_from_patchbay failed: status=%d rc=%d error=%s",
+                 static_cast<int>(runResult.status),
+                 runResult.exitCode,
+                 runResult.error.empty() ? "(unknown)" : runResult.error.c_str());
+            return runResult.exitCode;
         }
 
-        // 收集 donor 的动态导出信息。
-        std::vector<vmp::elfkit::PatchDynamicExportInfo> donorExports;
-        std::string collectError;
-        if (!donor.collectDefinedDynamicExportInfos(&donorExports, &collectError)) {
-            LOGE("collect donor exports failed: %s",
-                 collectError.empty() ? "(unknown)" : collectError.c_str());
-            return 2;
-        }
-
-        // only_fun_java 模式下只保留 fun_* 和 Java_* 导出。
-        if (onlyFunJava) {
-            std::vector<vmp::elfkit::PatchDynamicExportInfo> filtered;
-            filtered.reserve(donorExports.size());
-            for (const vmp::elfkit::PatchDynamicExportInfo& info : donorExports) {
-                if (isFunOrJavaSymbol(info.name)) {
-                    filtered.push_back(info);
-                }
-            }
-            donorExports.swap(filtered);
-        }
-
-        // donor 至少要有一个可用导出。
-        if (donorExports.empty()) {
-            LOGE("donor has no defined dynamic exports: %s", argv[3]);
-            return 2;
-        }
-
-        // 加载 input ELF。
-        vmp::elfkit::zElfReadFacade inputElf(argv[2]);
-        if (!inputElf.isLoaded()) {
-            LOGE("failed to load input ELF: %s", argv[2]);
-            return 2;
-        }
-
-        // 收集 input 已有导出（含 value），再投影为名称列表。
-        std::vector<vmp::elfkit::PatchDynamicExportInfo> inputExportInfos;
-        if (!inputElf.collectDefinedDynamicExportInfos(&inputExportInfos, &collectError)) {
-            LOGE("collect input exports failed: %s",
-                 collectError.empty() ? "(unknown)" : collectError.c_str());
-            return 2;
-        }
-        std::vector<std::string> inputExports;
-        inputExports.reserve(inputExportInfos.size());
-        for (const vmp::elfkit::PatchDynamicExportInfo& info : inputExportInfos) {
-            inputExports.push_back(info.name);
-        }
-
-        // 校验 vmengine 导出命名规则，不合法直接终止。
-        if (!validateVmengineExportNamingRules(inputExports, &collectError)) {
-            LOGE("invalid vmengine export naming: %s",
-                 collectError.empty() ? "(unknown)" : collectError.c_str());
-            return 3;
-        }
-
-        // 把 input 导出放进 set，提升查重效率。
-        std::unordered_set<std::string> inputExportSet;
-        inputExportSet.reserve(inputExports.size());
-        for (const std::string& name : inputExports) {
-            inputExportSet.insert(name);
-        }
-
-        // 严格模式：donor 与 vmengine 导出重名时直接失败。
-        std::vector<std::string> duplicateExports;
-        duplicateExports.reserve(donorExports.size());
-        for (const vmp::elfkit::PatchDynamicExportInfo& exportInfo : donorExports) {
-            if (inputExportSet.find(exportInfo.name) != inputExportSet.end()) {
-                duplicateExports.push_back(exportInfo.name);
-            }
-        }
-        if (!duplicateExports.empty()) {
-            LOGE("export conflict detected between donor and vmengine: count=%zu",
-                 duplicateExports.size());
-            constexpr size_t kDetailLimit = 16;
-            for (size_t detailIndex = 0;
-                 detailIndex < duplicateExports.size() && detailIndex < kDetailLimit;
-                 ++detailIndex) {
-                LOGE("conflict export[%zu]: %s",
-                     detailIndex,
-                     duplicateExports[detailIndex].c_str());
-            }
-            if (duplicateExports.size() > kDetailLimit) {
-                LOGE("... and %zu more conflict exports",
-                     duplicateExports.size() - kDetailLimit);
-            }
-            return 3;
-        }
-
-        // 构建 alias 列表：donor 每个导出都映射到 impl 或 takeover slot。
-        std::vector<AliasPair> pairs;
-        pairs.reserve(donorExports.size());
-        const bool useSlotMode = isTakeoverSlotModeImpl(argv[5]);
-        for (size_t exportIndex = 0; exportIndex < donorExports.size(); ++exportIndex) {
-            AliasPair pair;
-            pair.exportName = donorExports[exportIndex].name;
-            pair.implName =
-                useSlotMode ? buildTakeoverSlotSymbolName(static_cast<uint32_t>(exportIndex))
-                            : std::string(argv[5]);
-            // key 字段承载 donor st_value（route4 key 语义）。
-            pair.exportKey = donorExports[exportIndex].value;
-            pairs.push_back(std::move(pair));
-        }
-
-        // 槽位模式输出额外日志。
-        if (useSlotMode) {
+        // 槽位模式输出额外摘要日志。
+        if (runResult.slotMode) {
             LOGI("export_alias_from_patchbay slot mode enabled: slot_prefix=%s slot_needed=%zu",
                  argv[5],
-                 pairs.size());
-        }
-
-        // 输出开始日志。
-        LOGI("export_alias_from_patchbay start: donorExports=%zu inputExports=%zu toAppend=%zu impl=%s onlyFunJava=%d",
-             donorExports.size(),
-             inputExports.size(),
-             pairs.size(),
-             argv[5],
-             onlyFunJava ? 1 : 0);
-
-        // 执行 patchbay 导出 patch。
-        std::string patchError;
-        if (!exportAliasSymbolsPatchbay(argv[2],
-                                        argv[4],
-                                        pairs,
-                                        allowValidateFail,
-                                        &patchError)) {
-            LOGE("export_alias_from_patchbay failed: %s",
-                 patchError.empty() ? "(unknown)" : patchError.c_str());
-            return 3;
+                 runResult.appendCount);
         }
 
         // 输出成功日志。
