@@ -91,6 +91,8 @@ bool zLinker::OpenElf(const char* path) {
 
     // 新一轮加载前先清理上一次输入文件句柄与映射。
     CloseElf();
+    // 标记输入来源为“文件 mmap”。
+    input_source_ = InputSourceType::kFileMmap;
     // 保存路径用于日志和后续定位。
     path_ = path;
 
@@ -120,6 +122,39 @@ bool zLinker::OpenElf(const char* path) {
         return false;
     }
 
+    return true;
+}
+
+bool zLinker::OpenElfFromMemory(const char* soName, const uint8_t* soBytes, size_t soSize) {
+    // 参数校验：名称、字节指针、字节长度都必须有效。
+    if (soName == nullptr || soName[0] == '\0') {
+        LOGE("OpenElfFromMemory: soName is null");
+        return false;
+    }
+    if (soBytes == nullptr || soSize == 0) {
+        LOGE("OpenElfFromMemory: invalid so bytes");
+        return false;
+    }
+
+    // 新一轮加载前先清理旧输入状态。
+    CloseElf();
+    // 标记输入来源为“内存副本”。
+    input_source_ = InputSourceType::kMemoryBuffer;
+    // 记录名称用于日志与 soinfo key 推导。
+    path_ = soName;
+
+    // 复制一份输入字节，确保后续解析期间地址稳定且可持续访问。
+    memory_file_copy_.assign(soBytes, soBytes + soSize);
+    if (memory_file_copy_.empty()) {
+        LOGE("OpenElfFromMemory: copy so bytes failed");
+        CloseElf();
+        return false;
+    }
+
+    // 复用现有解析路径：mapped_file_/file_size_ 与文件路径加载保持一致语义。
+    mapped_file_ = memory_file_copy_.data();
+    file_size_ = memory_file_copy_.size();
+    fd_ = -1;
     return true;
 }
 
@@ -209,8 +244,11 @@ bool zLinker::ReadElf() {
 void zLinker::CloseElf() {
     // CloseElf 只清理“输入文件相关资源”，不回收已加载到内存的 so 映像。
     // 这样 LoadLibrary 结束后，运行态映像仍可被 VM 调用。
-    if (mapped_file_ != nullptr) {
+    if (mapped_file_ != nullptr && input_source_ == InputSourceType::kFileMmap) {
         munmap(mapped_file_, file_size_);
+        mapped_file_ = nullptr;
+    } else if (mapped_file_ != nullptr) {
+        // 内存输入模式下 mapped_file_ 指向 memory_file_copy_，这里只需清空指针。
         mapped_file_ = nullptr;
     }
 
@@ -227,6 +265,8 @@ void zLinker::CloseElf() {
     file_size_ = 0;
     phdr_num_ = 0;
     path_.clear();
+    memory_file_copy_.clear();
+    input_source_ = InputSourceType::kNone;
     std::memset(&header_, 0, sizeof(header_));
 }
 
@@ -1008,19 +1048,8 @@ ElfW(Addr) zLinker::FindSymbolAddress(const char* name, soinfo* si) {
     return (addr != nullptr) ? reinterpret_cast<ElfW(Addr)>(addr) : 0;
 }
 
-bool zLinker::LoadLibrary(const char* path) {
-    // 对外主入口：串联“读取 -> 映射 -> 预链接 -> 重定位 -> 构造执行”。
-    if (path == nullptr || path[0] == '\0') {
-        LOGE("zLinker::LoadLibrary path is null");
-        return false;
-    }
-
-    LOGI("Loading library: %s", path);
-
+bool zLinker::LoadPreparedElf(const char* soName) {
     // 加载流程严格分阶段执行，便于定位失败点并保持状态一致性。
-    if (!OpenElf(path)) {
-        return false;
-    }
     if (!ReadElf()) {
         CloseElf();
         return false;
@@ -1039,8 +1068,8 @@ bool zLinker::LoadLibrary(const char* path) {
     }
 
     // soinfo key 采用 basename，避免不同路径同名库被重复装载的复杂分支。
-    const char* basename = std::strrchr(path, '/');
-    basename = (basename != nullptr) ? (basename + 1) : path;
+    const char* basename = std::strrchr(soName, '/');
+    basename = (basename != nullptr) ? (basename + 1) : soName;
     loaded_si_ = GetOrCreateSoinfo(basename);
     if (loaded_si_ == nullptr) {
         CloseElf();
@@ -1066,8 +1095,40 @@ bool zLinker::LoadLibrary(const char* path) {
 
     // 输入 ELF 文件句柄/映射可以关闭，运行时映像仍保留在 load_start_。
     CloseElf();
-    LOGI("Successfully loaded %s", path);
+    LOGI("Successfully loaded %s", soName);
     return true;
+}
+
+bool zLinker::LoadLibrary(const char* path) {
+    // 对外主入口：串联“读取 -> 映射 -> 预链接 -> 重定位 -> 构造执行”。
+    if (path == nullptr || path[0] == '\0') {
+        LOGE("zLinker::LoadLibrary path is null");
+        return false;
+    }
+
+    LOGI("Loading library from file: %s", path);
+    if (!OpenElf(path)) {
+        return false;
+    }
+    return LoadPreparedElf(path);
+}
+
+bool zLinker::LoadLibraryFromMemory(const char* soName, const uint8_t* soBytes, size_t soSize) {
+    // 对外内存入口：输入 ELF 字节，不依赖文件系统路径。
+    if (soName == nullptr || soName[0] == '\0') {
+        LOGE("zLinker::LoadLibraryFromMemory soName is null");
+        return false;
+    }
+    if (soBytes == nullptr || soSize == 0) {
+        LOGE("zLinker::LoadLibraryFromMemory invalid so bytes");
+        return false;
+    }
+
+    LOGI("Loading library from memory: %s size=%zu", soName, soSize);
+    if (!OpenElfFromMemory(soName, soBytes, soSize)) {
+        return false;
+    }
+    return LoadPreparedElf(soName);
 }
 
 soinfo* zLinker::GetSoinfo(const char* name) {

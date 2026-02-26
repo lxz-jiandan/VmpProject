@@ -5,7 +5,7 @@
  * - 输入：assets 文件名。
  * - 输出：本地文件路径或内存字节。
  */
-#include "zAssestManager.h"
+#include "zAssetManager.h"
 
 #include <vector>
 #include <fcntl.h>

@@ -49,7 +49,8 @@ foreach (layer_target
         vm_l2_domain
         vm_l3_pipeline)
     target_include_directories(${layer_target} PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR})
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${VMPROJECT_ROOT})
     target_compile_definitions(${layer_target} PRIVATE
             $<$<BOOL:${VM_TRACE}>:VM_TRACE=1>
             $<$<NOT:$<BOOL:${VM_TRACE}>>:VM_TRACE=0>

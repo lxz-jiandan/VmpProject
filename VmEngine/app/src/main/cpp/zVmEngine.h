@@ -127,6 +127,8 @@ public:
 
     // 使用 zLinker 加载 so。
     bool LoadLibrary(const char* path);
+    // 使用 zLinker 从内存字节直接加载 so。
+    bool LoadLibraryFromMemory(const char* soName, const uint8_t* soBytes, size_t soSize);
     // 查询已加载 so 的 soinfo。
     soinfo* GetSoinfo(const char* name);
     // 设置模块级共享 branch_addr_list（覆盖函数内同名数据）。

@@ -151,6 +151,18 @@ bool zVmEngine::LoadLibrary(const char* path) {
     return linker_->LoadLibrary(path);
 }
 
+// 从内存字节加载 so（不依赖落盘路径）。
+bool zVmEngine::LoadLibraryFromMemory(const char* soName, const uint8_t* soBytes, size_t soSize) {
+    // 链接器内部状态修改需串行化。
+    std::lock_guard<std::mutex> lock(linker_mutex_);
+    // 延迟初始化 linker。
+    if (!linker_) {
+        linker_ = std::make_unique<zLinker>();
+    }
+    // 委托给 linker 的内存加载入口。
+    return linker_->LoadLibraryFromMemory(soName, soBytes, soSize);
+}
+
 // 查询 soinfo。
 soinfo* zVmEngine::GetSoinfo(const char* name) {
     // 统一通过 linker 查询，避免外层持有裸引用。

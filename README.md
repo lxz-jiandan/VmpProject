@@ -1,82 +1,71 @@
 # VmProject
 
 VmProject 是一个面向 Android ARM64 `so` 的“离线加固 + 运行时接管”工程。  
-当前仓库的核心由两部分组成：
+当前主路线是 `route4`，由两个核心子系统组成：
 
-1. `VmProtect`：离线处理工具，负责函数分析、导出 payload、embed、patchbay。
-2. `VmEngine`：运行时引擎，负责加载 payload、恢复接管映射并解释执行。
+1. `VmProtect`：离线工具，负责分析函数、导出 VM payload、把 payload 嵌入 `VmEngine`，并完成导出符号接管补丁。
+2. `VmEngine`：运行时引擎，负责读取嵌入 payload、恢复接管映射、执行 VM 指令并转发外部调用。
 
-配套目录：
+本文按当前仓库代码现状编写，目标是让新同学快速建立完整认知：  
+工程做什么、模块如何分层、核心流程如何跑通、难点在哪里、怎么构建和回归。
 
-- `tools`：回归与构建辅助脚本（核心：`run_regression.py`、`embed_expand_into_vmengine.py`、`gen_takeover_stubs.py`）
-- `demo`：演示与端到端验证
+## 1. 端到端总览
 
-本文基于当前代码现状（含最近重构）编写，重点是让新同学能快速理解：
+`route4` 的主链路如下：
 
-1. 工程做什么
-2. 两个子系统如何协作
-3. 核心模块与协议是什么
-4. 如何构建、回归、排查问题
+1. 对原始 donor so（例如 `VmProtect/libdemo.so`）做函数分析与导出。
+2. 生成函数编码产物（`*.txt` / `*.bin`）与 `libdemo_expand.so`。
+3. 将 `libdemo_expand.so` 以尾部 payload 形式嵌入 `VmEngine` 的 `libvmengine.so`。
+4. 对嵌入后的 `vmengine so` 执行 patchbay：新增 donor 导出名，映射到 `vm_takeover_entry_xxxx` 跳板。
+5. App 启动后，`VmEngine` 自动 `vm_init()`：
+   - 从自身尾部提取 `libdemo_expand.so`；
+   - 用自定义 linker 装载；
+   - 预热函数缓存；
+   - 从 patched dynsym 恢复 `entryId -> funAddr`；
+   - 建立 `vm_takeover_dispatch_by_id` 分发能力。
+6. 外部调用 donor 导出名时，进入接管分发，最终由 VM 执行对应函数。
 
----
+## 2. 仓库目录（顶层）
 
-## 快速总览
-
-端到端主路线是 `route4`：
-
-```text
-input so + function list
-   -> VmProtect analyze/report/export
-   -> libdemo_expand.so
-   -> embed into libvmengine.so
-   -> (optional) patchbay export alias
-   -> patched vmengine so
-   -> app load vmengine
-   -> vm_init
-   -> read embedded payload
-   -> preload function cache
-   -> recover entryId -> funAddr
-   -> vm_takeover_entry_xxxx -> vm_takeover_dispatch_by_id -> VM execute
-```
+- `VmProtect`：离线工具（Windows CMake 可执行程序）。
+- `VmEngine`：Android App + native VM 运行时。
+- `demo`：设备侧验证 App（对照 `libdemo.so` 与 `libdemo_ref.so`）。
+- `shared`：跨端共享协议（当前核心是 patchbay 协议头）。
+- `tools`：回归和构建辅助脚本（核心是 `run_regression.py`、`embed_expand_into_vmengine.py`）。
 
 ---
 
 ## 第一大块：VmProtect（离线系统）
 
-## 1.1 当前职责边界
+## 1. 职责边界
 
-`VmProtect` 不只是“改导出表”，而是完整离线流水线：
+`VmProtect` 的职责不是单点 patch，而是完整离线流水线：
 
-1. 读取输入 ELF。
-2. 收集目标函数并做覆盖率/翻译状态分析。
-3. 导出函数编码产物并打包 `libdemo_expand.so`。
-4. 把 payload embed 到 `vmengine so` 尾部。
-5. 需要时执行 patchbay，对导出符号做接管映射补丁。
+1. 读取输入 ELF，解析函数符号。
+2. 做覆盖率和翻译可行性分析，输出 `coverage_report.md`。
+3. 导出函数产物（文本/编码 bin）并打包为 `libdemo_expand.so`。
+4. 把 `libdemo_expand.so` embed 到 `vmengine so` 尾部。
+5. 需要时执行 patchbay，完成 donor 导出名接管注入，输出最终 `--output-so`。
 
-入口文件：`VmProtect/app/zMain.cpp`
+入口是 `VmProtect/app/zMain.cpp`。  
+如果首参数是 patchbay 子命令，会直接分流到 patchbay 入口；否则走主 pipeline。
 
----
+## 2. 架构分层与目录
 
-## 1.2 架构层级（按当前目录）
-
-### L0 基础能力层
+### 2.1 L0 基础层（无业务语义）
 
 路径：`VmProtect/modules/base/core`
 
-当前基础模块已经统一，不再存在旧的 `modules/foundation`：
+主要文件：
 
-- 文件读写：`zFile.h` / `zFile.cpp`
-  - 命名空间：`vmp::base::file`
-- 日志：`zLog.h` / `zLog.cpp`
-- 编码与字节工具：`zCodec/zBitCodec/zBytes/zChecksum/zHash`
+- `zFile.*`：文件读写、存在性、目录创建。
+- `zLog.*`：日志。
+- `zBytes.*`：字节区间校验、写入辅助。
+- `zCodec.*`、`zBitCodec.*`：编解码工具。
+- `zChecksum.*`、`zHash.*`：校验与 hash 工具。
+- `zEmbeddedPayloadTail.*`：嵌入 payload footer 协议（离线侧）。
 
-特点：
-
-- 无业务语义，可复用；
-- 文件能力统一走 `base::file`；
-- 已移除历史薄封装（如 `zIo`、`zIoUtils`、`zPatchbayIo`）。
-
-### L1 格式与解析层
+### 2.2 L1 格式与解析层
 
 路径：
 
@@ -86,11 +75,11 @@ input so + function list
 
 职责：
 
-- ELF 读取与函数视图；
-- 函数翻译中间模型；
-- patch 视角下的 ELF 模型与校验器。
+- ELF 读取与函数视图（`zElf.*`、`zFunction.*`）。
+- 函数翻译中间产物和导出打包（`zFunctionData.*`、`zSoBinBundle.*`）。
+- patch 场景 ELF 模型、布局与校验（`zPatchElf*` 系列）。
 
-### L2 领域能力层
+### 2.3 L2 领域能力层
 
 路径：
 
@@ -101,382 +90,331 @@ input so + function list
 
 职责：
 
-- alias 构建；
-- GNU/SYSV hash 重建；
-- patchbay 落盘与 `.dynamic` 指针更新；
-- patchbay 子命令入口编排。
+- donor 导出采集、命名规则校验、冲突检测。
+- alias 表构建（dynsym/dynstr/versym 追加）。
+- GNU/SysV hash 重建。
+- patch 落盘（优先重构路径，失败回退 `.vmp_patchbay` 原位路径）。
+- patchbay 子命令入口。
 
-### L3 流程编排层
+### 2.4 L3 流程编排层
 
 路径：`VmProtect/modules/pipeline/core`
 
 职责：
 
-- CLI 解析；
-- 配置合并与校验；
-- 覆盖率分析与报告；
-- 导出产物；
-- embed + patch 编排。
+- CLI 解析（`zPipelineCli.cpp`）。
+- 配置合并与合法性校验（`zPipelineRun.cpp`）。
+- 覆盖率分析与报告（`zPipelineCoverage.cpp`）。
+- 导出产物（`zPipelineExport.cpp`）。
+- embed + patch 编排（`zPipelinePatch.cpp`）。
 
-### L4 应用入口层
+### 2.5 L4 应用入口层
 
 路径：`VmProtect/app/zMain.cpp`
 
 职责：
 
-- 主 CLI 入口；
+- 主命令入口。
 - patchbay 子命令分流。
 
----
+## 3. 主流程（对应源码）
 
-## 1.3 主流程细节（源码映射）
+### 3.1 CLI 解析与必填约束
 
-### 步骤 1：CLI 解析
-
-文件：`VmProtect/modules/pipeline/core/zPipelineCli.cpp`
-
-支持主参数：
+CLI 实现在 `VmProtect/modules/pipeline/core/zPipelineCli.cpp`，主参数包括：
 
 - `--input-so`
 - `--output-dir`
 - `--expanded-so`
 - `--shared-branch-file`
+- `--coverage-report`
+- `--function`（可重复）
+- `--coverage-only`
+- `--analyze-all`
 - `--vmengine-so`
 - `--output-so`
 - `--patch-donor-so`
 - `--patch-impl-symbol`
 - `--patch-all-exports`
-- `--patch-no-allow-validate-fail`
-- `--coverage-report`
-- `--function`（可重复）
-- `--coverage-only`
-- `--analyze-all`
+- `--patch-allow-validate-fail`
 
-### 步骤 2：配置合并与合法性校验
+“加固路线”触发条件定义在 `VmProtect/modules/pipeline/core/zPipelineRun.cpp`：  
+只要出现以下任一参数，就进入加固路线：
 
-文件：
+- `--vmengine-so`
+- `--output-so`
+- `--patch-donor-so`
 
-- `VmProtect/modules/pipeline/core/zPipelineTypes.h`
-- `VmProtect/modules/pipeline/core/zPipelineRun.cpp`
+加固路线下必须显式传入：
 
-关键规则：
+1. `--input-so`
+2. `--vmengine-so`
+3. `--output-so`
+4. `--function`（至少一个，且必须显式传，不允许回落默认函数集）
 
-1. 若进入“加固路线”（`--vmengine-so/--output-so/--patch-donor-so` 任一出现），则必须显式传：
-   - `--input-so`
-   - `--vmengine-so`
-   - `--output-so`
-   - `--function`
-2. `--function` 未显式传时，仅在非加固路线下才使用默认函数集（定义于 `zPipelineTypes.cpp`）。
+### 3.2 覆盖率分析
 
-### 步骤 3：覆盖率与翻译状态
+实现：`VmProtect/modules/pipeline/core/zPipelineCoverage.cpp`
 
-文件：`VmProtect/modules/pipeline/core/zPipelineCoverage.cpp`
+拆分为两个阶段：
 
-产出：
+1. `runCoverageAnalyzeFlow(...)`
+   - 指令支持统计（capstone）。
+   - 函数翻译状态收集（`prepareTranslation`）。
+2. `runCoverageReportFlow(...)`
+   - 只负责写 `coverage_report.md`。
 
-- `coverage_report.md`（默认名）
+这保证了“分析逻辑”和“报告写出逻辑”职责分离。
 
-内容包含：
+### 3.3 导出产物
 
-- 指令支持/不支持统计；
-- 函数级翻译状态；
-- 错误信息聚合。
+实现：`VmProtect/modules/pipeline/core/zPipelineExport.cpp`
 
-### 步骤 4：导出 payload
+核心动作：
 
-文件：`VmProtect/modules/pipeline/core/zPipelineExport.cpp`
+1. 收集目标函数。
+2. 校验每个函数翻译可行性。
+3. 汇总共享分支地址。
+4. 对每个函数输出：
+   - `<function>.txt`
+   - `<function>.bin`
+5. 用 `zSoBinBundleWriter::writeExpandedSo(...)` 生成 `libdemo_expand.so`。
 
-动作：
+### 3.4 embed 与 patch 编排
 
-1. 导出 `<function>.txt` 与 `<function>.bin`
-2. 汇总共享分支地址列表
-3. 调 `zSoBinBundleWriter::writeExpandedSo(...)` 生成 `libdemo_expand.so`
+实现：`VmProtect/modules/pipeline/core/zPipelinePatch.cpp`
 
-bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
+1. embed 阶段：
+   - 把 `libdemo_expand.so` 追加到 `vmengine so` 尾部；
+   - 写入 footer（`magic/version/size/crc`）。
+2. patch 阶段（可选）：
+   - 当指定 `--patch-donor-so` 时，调用 donor 领域 API：
+     `runPatchbayExportAliasFromDonor(...)`；
+   - 不经过 shell 命令，直接 API 调用。
 
-### 步骤 5：embed + patch
+## 4. 难点一：符号注入原理（VmProtect 侧）
 
-文件：`VmProtect/modules/pipeline/core/zPipelinePatch.cpp`
+这部分对应 `VmProtect/modules/patchbay/domain`，是离线侧最关键的协议逻辑。
 
-动作：
+### 4.1 donor 导出转 alias 对
 
-1. embed：将 `libdemo_expand.so` 追加到 `vmengine so` 尾部，写入 footer（`magic/version/size/crc`）。
-2. patch（可选）：
-   - 当提供 `--patch-donor-so` 时，直接调用 patchbay donor 领域 API
-     （`zPatchbayDonor.cpp`，CLI 与 pipeline 共享同一实现）
-   - 中间会先生成 `*.embed.tmp.so`，再产出最终 `--output-so`。
+在 `zPatchbayDonor.cpp` 中：
 
----
+1. 收集 donor 动态导出。
+2. 稳定排序后分配 entry（保证不同机器顺序稳定）。
+3. 构建 `AliasPair`：
+   - `exportName = donor 导出名`
+   - `implName = vm_takeover_entry_xxxx`（entry 模式）或显式实现符号
+   - `exportKey = donor.st_value`
 
-## 1.4 PatchBay 设计要点（离线）
+这里明确约定：`exportKey` 最终写入新导出符号的 `st_size` 字段。
 
-### 子命令入口
+### 4.2 dyn 表构建与待回填绑定
 
-文件：`VmProtect/modules/patchbay/app/zMain.cpp`
+在 `zPatchbayAliasTables.cpp` 中：
 
-当前保留的子命令：
+1. 追加/复用 entry 符号（`vm_takeover_entry_xxxx`）。
+2. 追加 alias 导出符号。
+3. entry 模式下先把 `st_value` 置为 0（占位）。
+4. 记录 `pendingTakeoverBindings`：
+   - 哪个 dynsym 索引需要回填；
+   - 回填到哪个 `entryId`。
+5. alias 符号 `st_size` 写入 `exportKey`（即 donor `st_value`）。
 
-- `export_alias_from_patchbay`
+### 4.3 跳板注入与 dynsym 回填
 
-### 关键规则
+在 `zPatchbayPatchApply.cpp` 中：
 
-1. donor 与 vmengine 导出重名会直接失败。
-2. 默认仅处理 `fun_*` 与 `Java_*`（除非显式 `--patch-all-exports`）。
-3. `vm_takeover_entry_xxxx` entry 模式支持批量映射。
-4. `exportKey` 用 donor 符号 `st_value` 承载，写入新增导出的 `st_size` 字段。
+1. 根据 `pendingTakeoverBindings` 生成 ARM64 跳板 blob。
+2. 每个 entry 的跳板写入 `w2=entryId` 后跳到 `vm_takeover_dispatch_by_id`。
+3. 回填 dynsym `st_value = 对应跳板地址`。
+4. 重建 `gnu hash/sysv hash/versym`。
+5. 改写 `.dynamic` 的 `DT_SYMTAB/DT_STRTAB/DT_GNU_HASH/DT_HASH/DT_VERSYM` 指针。
 
-### 主实现文件
+### 4.4 两种落盘路径
 
-- donor 领域 API：`VmProtect/modules/patchbay/domain/zPatchbayDonor.cpp`
-- alias 构建：`VmProtect/modules/patchbay/domain/zPatchbayAliasTables.cpp`
-- hash 重建：`VmProtect/modules/patchbay/format/zPatchbayHash.cpp`
-- 主流程：`VmProtect/modules/patchbay/domain/zPatchbayExport.cpp`
-- 落盘与 dynamic 更新：`VmProtect/modules/patchbay/domain/zPatchbayPatchApply.cpp`
+`applyPatchbayAliasPayload(...)` 先尝试重构路径，再回退 patchbay 原位路径：
 
-### 协议结构
+1. 重构路径：直接在文件尾追加新 dyn 表区域并更新 PT_LOAD 覆盖。
+2. 回退路径：若存在 `.vmp_patchbay`，在预留区原位改写。
 
-离线协议头定义：`VmProtect/modules/patchbay/domain/zPatchbayTypes.h`  
-运行时镜像定义：`VmEngine/app/src/main/cpp/zPatchBay.h`
-
-硬约束：
-
-- 结构大小必须一致（`sizeof(...) == 148`）
-- 布局字段必须一致（magic/version/offset/capacity/used/crc 等）
-
----
-
-## 1.5 当前产物与文件
-
-离线阶段常见产物：
-
-- `coverage_report.md`
-- `branch_addr_list.txt`
-- `<function>.txt`
-- `<function>.bin`
-- `libdemo_expand.so`
-- `<output-so>.embed.tmp.so`
-- `libvmengine_patch.so`（或你指定的 `--output-so`）
+当前主路线优先重构路径，容量不受 `.vmp_patchbay` 固定区限制。
 
 ---
 
-## 第二大块：VmEngine（运行时系统，详细）
+## 第二大块：VmEngine（运行时系统）
 
-这一部分是新人理解成本最高的区域，也是影响“加固是否真正生效”的关键。
+## 1. 职责边界
 
-## 2.1 构建时行为（CMake）
+`VmEngine` 负责把离线产物真正执行起来：
 
-文件：`VmEngine/app/src/main/cpp/CMakeLists.txt`
+1. 在 so 加载时自动触发 `vm_init()`。
+2. 从自身尾部读取 embedded payload。
+3. 直接从内存加载 embedded `libdemo_expand.so`（不再先落盘）。
+4. 预热函数缓存和共享分支地址表。
+5. 从 patched dynsym 恢复 `entryId -> funAddr`。
+6. 对外提供统一接管分发 `vm_takeover_dispatch_by_id(...)`。
 
-### 分层编译（对象层）
+## 2. 运行时分层（CMake 视角）
 
-- L0 `vm_l0_foundation`
-- L1 `vm_l1_format`
-- L2 `vm_l2_domain`
-- L3 `vm_l3_pipeline`
+`VmEngine/app/src/main/cpp/CMakeLists.txt` 按对象层组织：
 
-### 构建时自动动作
+- `vm_l0_foundation`：日志、资产、linker、文件字节读写。
+- `vm_l1_format`：函数模型、bundle、embedded payload、takeover dynsym 解析、patchbay 协议镜像。
+- `vm_l2_domain`：VM 执行器、opcode、类型系统、接管状态。
+- `vm_l3_pipeline`：初始化配置与 route4 编排。
 
-1. 若 `VMENGINE_ROUTE4_EMBED_PAYLOAD=ON`（默认开）：
-   - post-build 调用 `tools/embed_expand_into_vmengine.py`
-   - 把 `assets/libdemo_expand.so` embed 到 `libvmengine.so` 尾部
+最终合并成 `libvmengine.so`，并通过 `vmengine.exports.map` 限制只导出 `vm_*`。
 
-### 导出可见性
+## 3. 初始化生命周期
 
-- map 文件：`VmEngine/app/src/main/cpp/vmengine.exports.map`
-- 规则：仅导出 `vm_*`，其他默认隐藏
-
----
-
-## 2.2 初始化生命周期与状态机
-
-文件：`VmEngine/app/src/main/cpp/zVmInitLifecycle.cpp`
-
-关键导出：
-
-- `vm_init()`
-- `vm_get_init_state()`
-
-构造器触发：
-
-- `vm_library_ctor` 在 so 加载后自动调用 `vm_init()`
+实现：`VmEngine/app/src/main/cpp/zVmInitLifecycle.cpp`
 
 状态机：
 
-- `0`：未初始化
-- `1`：初始化中
-- `2`：初始化成功
-- `3`：初始化失败
+1. `0` 未初始化
+2. `1` 初始化中
+3. `2` 初始化成功
+4. `3` 初始化失败
 
-并发策略：
+`vm_library_ctor` 会在 so 加载后自动调用 `vm_init()`。  
+并发策略是“原子状态 + 互斥串行化 + JNI 线程 attach/detach”。
 
-1. 原子状态 + 快速路径（ready/failed）
-2. 互斥锁串行化初始化
-3. 动态获取 `JNIEnv`，必要时 attach/detach 当前线程
+## 4. route4 初始化核心
 
----
+实现：`VmEngine/app/src/main/cpp/zVmInitCore.cpp`
 
-## 2.3 Route4 核心初始化链路
+`runVmInitCore(JNIEnv* env)` 的主顺序：
 
-文件：`VmEngine/app/src/main/cpp/zVmInitCore.cpp`
-
-函数：`runVmInitCore(JNIEnv* env)`
-
-执行顺序：
-
-1. 清理旧状态：
-   - `engine.clearCache()`
-   - `engine.clearSharedBranchAddrs(...)`
-   - `zSymbolTakeoverClear()`
+1. 清理旧状态（缓存、共享分支表、takeover 映射）。
 2. 执行 `route_embedded_expand_so`：
-   - 读取宿主 vmengine 尾部 payload
-   - 落盘 `libdemo_expand_embedded.so`
-   - 加载并预热函数缓存
-3. 恢复 takeover 映射：
-   - 从 patched vmengine dynsym 恢复 `entryId -> funAddr`
-   - 初始化符号接管表
-4. 任一关键环节失败，初始化失败
+   - 定位当前 vmengine so 路径；
+   - 从尾部读取 payload；
+   - 通过 `zLinker` 的内存加载入口直接装载；
+   - 预热函数缓存与共享分支表。
+3. 执行 `route_symbol_takeover`：
+   - 从 patched vmengine dynsym 恢复条目；
+   - 调 `zSymbolTakeoverInit(...)` 建立全局映射。
+
+成功日志关键 marker：
+
+- `route_embedded_expand_so result=1 state=0`
+- `route_symbol_takeover result=1`
+
+## 5. takeover 恢复与分发闭环
+
+### 5.1 dynsym 恢复
+
+实现：`VmEngine/app/src/main/cpp/zElfTakeoverDynsym.cpp`
+
+当前策略是“dynamic table 优先，section table 兜底”：
+
+1. 优先从 `PT_DYNAMIC` + `DT_*` 构建 dynsym 视图（兼容 strip 场景）。
+2. dynamic 失败时才回退 section 解析。
+3. 两遍扫描：
+   - 第一遍：解析 `vm_takeover_entry_xxxx`，建立 `st_value -> entryId`。
+   - 第二遍：扫描普通导出符号，用 `st_value` 反查 `entryId`，从 `st_size` 读取 `funAddr`。
+
+输出结构是 `zTakeoverSymbolEntry { entryId, funAddr }`。
+
+### 5.2 接管状态提交与 dispatch
+
+实现：`VmEngine/app/src/main/cpp/zSymbolTakeover.cpp`
+
+1. `zSymbolTakeoverInit(...)` 校验并提交 `entryId -> funAddr` 映射。
+2. `vm_takeover_dispatch_by_id(a,b,symbol_id)`：
+   - 若未初始化，先惰性 `vm_init()`；
+   - `symbol_id` 作为 `entryId` 查表；
+   - 调 `zVmEngine::execute(...)` 执行真实 VM 函数。
 
 ---
 
-## 2.4 embedded payload 读取机制
+## 6. 难点二：VmEngine 对 `BL` 指令的处理
 
-文件：`VmEngine/app/src/main/cpp/zEmbeddedPayload.cpp`
+这一点对应离线导出与运行时执行的跨阶段一致性。
 
-读取流程：
+### 6.1 离线阶段
 
-1. 读取 host so 全字节
-2. 从文件尾反向解析 footer
-3. 校验 `magic/version/payloadSize/payloadCrc32`
-4. 提取 payload 返回
+在 `VmProtect/modules/pipeline/core/zPipelineExport.cpp` 中：
 
-状态返回：
+1. 每个函数执行 `remapBlToSharedBranchAddrs(...)`。
+2. 本地 branch 索引统一 remap 到共享索引。
+3. 共享地址表写入 `libdemo_expand.so` bundle。
 
-- `kOk`
-- `kNotFound`（没有嵌入）
-- `kInvalid`（格式或校验错误）
+### 6.2 运行时装载阶段
 
-离线写入点对应：
+在 `VmEngine/app/src/main/cpp/zVmInitCore.cpp` 和 `zVmEngine.cpp` 中：
 
-- `VmProtect/modules/pipeline/core/zPipelinePatch.cpp`
+1. 读取 bundle 得到共享分支地址表。
+2. `engine.setSharedBranchAddrs(soName, ...)` 写入映射。
+3. 执行前按目标 so `base` 修正地址，形成进程内绝对调用地址。
 
----
+### 6.3 执行阶段
 
-## 2.5 payload 预热与函数缓存
+在 `VmEngine/app/src/main/cpp/zVmOpcodes.cpp` 中：
 
-### bundle 读取
+1. `op_bl` 读取 `branchId`。
+2. 从 `ctx->branch_addr_list[branchId]` 拿目标地址。
+3. 通过 `call_native_with_x8(...)` 执行 `blr` 调用，保留 x0..x7/x8 ABI 语义。
+4. 返回值回写到 x0。
 
-文件：`VmEngine/app/src/main/cpp/zSoBinBundle.cpp`
-
-解析出：
-
-- `zSoBinEntry` 列表（`fun_addr + encoded_data`）
-- 共享分支地址列表
-
-### 预热逻辑
-
-在 `zVmInitCore.cpp` 的 `preloadExpandedSoBundle(...)` 中：
-
-1. `engine.setSharedBranchAddrs(...)`
-2. 每条 payload 构建 `zFunction`
-3. `loadEncodedData(...)`
-4. `setFunctionAddress(...)`
-5. `engine.cacheFunction(...)`
+如果 `branchId` 越界或地址表为空，会立即报错并停机，避免错误跳转。
 
 ---
 
-## 2.6 takeover 恢复与分发
+## 7. 难点三：VmEngine 自定义 Linker 设计
 
-### dynsym 恢复（关键）
+实现：`VmEngine/app/src/main/cpp/zLinker.cpp`
 
-文件：`VmEngine/app/src/main/cpp/zElfTakeoverDynsym.cpp`
+`zLinker::LoadLibrary(...)` 串联完整加载流程：
 
-两遍扫描：
+1. `OpenElf`
+2. `ReadElf`
+3. `ReserveAddressSpace`
+4. `LoadSegments`
+5. `FindPhdr`
+6. `UpdateSoinfo`
+7. `PrelinkImage`（解析 `DT_*`）
+8. `ProtectSegments`
+9. `LinkImage`（重定位 + init）
 
-1. 找 `vm_takeover_entry_XXXX`，建立 `st_value -> entryId`
-2. 扫普通导出符号，用同 `st_value` 反查 `entryId`，从 `st_size` 取 key（当前语义为 `funAddr`）
+### 7.1 动态段解析
 
-输出：`std::vector<zTakeoverSymbolEntry>`
-当前结构字段：`entryId`、`funAddr`
+`ParseDynamic(...)` 解析并缓存：
 
-### 接管状态机
+- `DT_SYMTAB/DT_STRTAB`
+- `DT_GNU_HASH/DT_HASH`
+- `DT_RELA/DT_JMPREL`
+- `DT_INIT/DT_INIT_ARRAY`
+- `DT_NEEDED`
 
-文件：`VmEngine/app/src/main/cpp/zSymbolTakeover.cpp`
+### 7.2 符号解析顺序
 
-`zSymbolTakeoverInit(...)`：
+`FindSymbolAddress(...)` 顺序如下：
 
-1. 校验条目合法性（非空、entryId 不重复、地址有效）
-2. 校验目标 so 已被 linker 感知
-3. 提交全局映射 `entryId -> funAddr`
+1. 当前 so（GNU hash 优先，再 SysV hash）
+2. `DT_NEEDED` 依赖库（`RTLD_NOLOAD + dlsym`）
+3. `RTLD_DEFAULT` 全局兜底
 
-### 分发入口
+### 7.3 当前重定位支持范围（AArch64）
 
-统一入口：
+`ProcessRelaRelocation(...)` 重点支持：
 
-- `vm_takeover_dispatch_by_id(int a, int b, uint32_t symbol_id)`
+- `R_AARCH64_ABS64`
+- `R_AARCH64_GLOB_DAT`
+- `R_AARCH64_JUMP_SLOT`
+- `R_AARCH64_RELATIVE`
+- `R_AARCH64_IRELATIVE`
 
-策略：
-
-1. 若 `vm_init` 未 ready，先惰性初始化
-2. `symbol_id` 作为 `entryId` 查映射
-3. 调 `zVmEngine::execute(...)` 执行对应函数
-
----
-
-## 2.7 VM 执行引擎（zVmEngine）
-
-文件：
-
-- 声明：`VmEngine/app/src/main/cpp/zVmEngine.h`
-- 实现：`VmEngine/app/src/main/cpp/zVmEngine.cpp`
-
-核心能力：
-
-1. 缓存管理（`funAddr -> zFunction*`）
-2. 链接器桥接（`zLinker`）
-3. 共享分支地址表管理
-4. 双形态执行入口：
-   - 按 `soName + funAddr + params`
-   - 按底层 `VMContext` 字段
-
-执行路径摘要：
-
-1. 命中缓存函数
-2. 分配寄存器管理器并写入参数
-3. 合成 `VMContext`
-4. `dispatch()` 循环执行 opcode
-5. 返回 `ret_value`
-
-并发控制：
-
-- cache：`shared_timed_mutex`
-- linker：`mutex`
-- shared branch map：`mutex`
+这个 linker 直接决定了 route4 是否能在设备上稳定加载并执行。
 
 ---
 
-## 2.8 PatchBay 运行时预留区
+## 构建与运行
 
-文件：
+## 1. 构建 VmProtect
 
-- `VmEngine/app/src/main/cpp/zPatchBay.h`
-- `VmEngine/app/src/main/cpp/zPatchBay.cpp`
-
-设计目标：
-
-1. 在编译期放置 `.vmp_patchbay` 预留区
-2. 离线补丁时尽量原位写入，避免重排整 ELF
-3. 通过 header 记录各区偏移/容量/used/crc
-
-当前 entry 策略：
-
-- 编译期不再预置固定 entry 桩（旧的 128 槽方案已移除）
-- 离线 patch 阶段按需重构 dynsym，并为任意 entryId 动态合成跳板
-
----
-
-## 构建与回归
-
-## 3.1 构建 VmProtect
+在项目根目录执行：
 
 ```powershell
 cmake -S VmProtect -B VmProtect/cmake-build-debug -G Ninja
@@ -489,9 +427,9 @@ cmake --build VmProtect/cmake-build-debug --target VmProtect -j 12
 VmProtect/cmake-build-debug/VmProtect.exe --help
 ```
 
-## 3.2 常见离线命令
+## 2. 常用离线命令
 
-### 仅分析与导出（不做 vmengine 加固）
+### 2.1 仅导出（不做 vmengine 加固）
 
 ```powershell
 VmProtect/cmake-build-debug/VmProtect.exe `
@@ -500,27 +438,92 @@ VmProtect/cmake-build-debug/VmProtect.exe `
   --function fun_for
 ```
 
-### 完整加固路线（embed + patch）
+### 2.2 完整加固路线（embed + patch）
 
 ```powershell
 VmProtect/cmake-build-debug/VmProtect.exe `
   --input-so VmProtect/libdemo.so `
-  --vmengine-so VmEngine/app/build/intermediates/cxx/Debug/2z4j1d3z/obj/arm64-v8a/libvmengine.so `
-  --output-so VmEngine/app/build/intermediates/cxx/Debug/2z4j1d3z/obj/arm64-v8a/libvmengine_patch.so `
+  --vmengine-so VmEngine/app/build/intermediates/cxx/Debug/<hash>/obj/arm64-v8a/libvmengine.so `
+  --output-so VmEngine/app/build/intermediates/cxx/Debug/<hash>/obj/arm64-v8a/libvmengine_patch.so `
   --patch-donor-so VmProtect/libdemo.so `
   --patch-impl-symbol vm_takeover_entry_0000 `
   --function fun_add `
   --function fun_for
 ```
 
-## 3.3 设备回归
+说明：
 
-回归：
+1. `--vmengine-so` 是“待嵌入/待补丁的 vmengine so 输入路径”。
+2. `--output-so` 是“最终输出路径”，必须显式给出。
+3. 加固路线必须显式 `--function`，不会回落默认函数列表。
+4. `--patch-allow-validate-fail` 默认关闭（严格模式）。
+
+## 3. 设备回归
+
+推荐命令：
 
 ```powershell
 python tools/run_regression.py --project-root . --patch-vmengine-symbols
 ```
 
-构建辅助脚本（由构建系统直接调用）：
+脚本会执行：
 
-- `tools/embed_expand_into_vmengine.py`
+1. 构建并运行 VmProtect 导出。
+2. patch vmengine 符号导出（主路线参数自动组装）。
+3. 安装 `VmEngine` debug 包并启动。
+4. 检查启动日志 marker。
+
+通过判据（必须同时命中）：
+
+1. `route_embedded_expand_so result=1 state=0`
+2. `route_symbol_takeover result=1`
+
+---
+
+## Demo 说明
+
+`demo` 是设备侧验收工程：
+
+1. 会把受保护库注入为 `libdemo.so`。
+2. 同时打包 donor 参考库为 `libdemo_ref.so`。
+3. JNI 桥 `demo/app/src/main/cpp/zVmpBridge.cpp` 对多个 `fun_*` 做对照验证。
+4. 输出 `PASS/FAIL` 文本并写入 logcat（`VMP_DEMO_CHECK`）。
+
+---
+
+## 常见排障入口
+
+1. `route_embedded_expand_so` 失败  
+排查 `VmEngine/app/src/main/cpp/zEmbeddedPayload.cpp` 与 `zVmInitCore.cpp`，重点看 footer 解析和 CRC。
+
+2. `route_symbol_takeover` 失败  
+排查 `VmEngine/app/src/main/cpp/zElfTakeoverDynsym.cpp` 与 `zSymbolTakeover.cpp`，重点看 dynsym 两遍扫描是否拿到 `entryId` 和 `st_size` key。
+
+3. 调用期 `op_bl invalid branch target`  
+排查 `VmProtect/modules/pipeline/core/zPipelineExport.cpp` 的共享地址导出，以及 `VmEngine/app/src/main/cpp/zVmEngine.cpp` 地址修正逻辑。
+
+4. patch 产物校验失败  
+排查 `VmProtect/modules/patchbay/domain/zPatchbayPatchApply.cpp`，重点看重构路径的 PT_LOAD 覆盖和 `DT_*` 回写。
+
+---
+
+## 关键文件索引（便于快速跳转）
+
+- VmProtect 主入口：`VmProtect/app/zMain.cpp`
+- CLI：`VmProtect/modules/pipeline/core/zPipelineCli.cpp`
+- 配置校验：`VmProtect/modules/pipeline/core/zPipelineRun.cpp`
+- 覆盖率：`VmProtect/modules/pipeline/core/zPipelineCoverage.cpp`
+- 导出：`VmProtect/modules/pipeline/core/zPipelineExport.cpp`
+- embed/patch 编排：`VmProtect/modules/pipeline/core/zPipelinePatch.cpp`
+- donor API：`VmProtect/modules/patchbay/domain/zPatchbayDonor.cpp`
+- alias 构建：`VmProtect/modules/patchbay/domain/zPatchbayAliasTables.cpp`
+- patch 落盘：`VmProtect/modules/patchbay/domain/zPatchbayPatchApply.cpp`
+- VmEngine 初始化：`VmEngine/app/src/main/cpp/zVmInitCore.cpp`
+- 生命周期：`VmEngine/app/src/main/cpp/zVmInitLifecycle.cpp`
+- dynsym 恢复：`VmEngine/app/src/main/cpp/zElfTakeoverDynsym.cpp`
+- takeover 分发：`VmEngine/app/src/main/cpp/zSymbolTakeover.cpp`
+- VM 执行：`VmEngine/app/src/main/cpp/zVmEngine.cpp`
+- opcode（含 `OP_BL`）：`VmEngine/app/src/main/cpp/zVmOpcodes.cpp`
+- 自定义 linker：`VmEngine/app/src/main/cpp/zLinker.cpp`
+- 共享协议：`shared/patchbay/zPatchbayProtocol.h`
+- 回归脚本：`tools/run_regression.py`

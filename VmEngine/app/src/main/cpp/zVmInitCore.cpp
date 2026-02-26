@@ -9,14 +9,10 @@
 // std::vector。
 #include <vector>
 
-// 获取 Android files 目录。
-#include "zAssestManager.h"
 // 从 so 中提取 takeover 元数据。
 #include "zElfTakeoverDynsym.h"
 // 读取嵌入 payload 的工具。
 #include "zEmbeddedPayload.h"
-// 文件读写工具。
-#include "zFileBytes.h"
 // zFunction 编码载体。
 #include "zFunction.h"
 // 日志。
@@ -65,15 +61,20 @@ bool preloadExpandedSoBundle(
     zVmEngine& engine,
     const char* so_name,
     const char* route_tag,
-    const std::string& expand_so_path
+    const uint8_t* expand_so_bytes,
+    size_t expand_so_size
 ) {
     // expand so 里导出的函数条目。
     std::vector<zSoBinEntry> entries;
     // 共享分支地址表（用于 OP_BL 目标映射）。
     std::vector<uint64_t> shared_branch_addrs;
     // 先读取 expand so 容器。
-    if (!zSoBinBundleReader::readFromExpandedSo(expand_so_path, entries, shared_branch_addrs)) {
-        LOGE("[%s] preload readFromExpandedSo failed: %s", route_tag, expand_so_path.c_str());
+    if (!zSoBinBundleReader::readFromExpandedSoBytes(
+            expand_so_bytes,
+            expand_so_size,
+            entries,
+            shared_branch_addrs)) {
+        LOGE("[%s] preload readFromExpandedSoBytes failed", route_tag);
         return false;
     }
     // 空容器通常表示构建链路异常。
@@ -115,6 +116,8 @@ bool preloadExpandedSoBundle(
 
 // route_embedded_expand_so: 从 vmengine so 中提取嵌入 payload 并激活。
 EmbeddedExpandRouteStatus test_loadEmbeddedExpandedSo(JNIEnv* env, zVmEngine& engine) {
+    // 当前内存直装路线不再依赖 JNI files 目录路径。
+    (void)env;
     // 先定位当前 vmengine so 路径。
     std::string vmengine_path;
     if (!resolveCurrentLibraryPath(reinterpret_cast<void*>(&test_loadEmbeddedExpandedSo), vmengine_path)) {
@@ -141,27 +144,15 @@ EmbeddedExpandRouteStatus test_loadEmbeddedExpandedSo(JNIEnv* env, zVmEngine& en
         return EmbeddedExpandRouteStatus::kFail;
     }
 
-    // 获取应用 files 目录。
-    std::string files_dir;
-    if (!zAssetManager::getCurrentFilesDirPath(env, files_dir)) {
-        LOGE("[route_embedded_expand_so] getCurrentFilesDirPath failed");
-        return EmbeddedExpandRouteStatus::kFail;
-    }
-    // 确保目录末尾有 '/'。
-    if (!files_dir.empty() && files_dir.back() != '/') {
-        files_dir.push_back('/');
-    }
-    // 组合嵌入 expand so 的落盘路径（全局变量供后续流程复用）。
-    g_libdemo_expand_embedded_so_path = files_dir + kEmbeddedExpandSoName;
+    // 记录内存加载标识，便于调试定位 route4 数据源。
+    g_libdemo_expand_embedded_so_path = std::string("<memory>:") + kEmbeddedExpandSoName;
 
-    // 把 payload 落盘成独立 so 文件。
-    if (!zFileBytes::writeFileBytes(g_libdemo_expand_embedded_so_path, embedded_payload)) {
-        LOGE("[route_embedded_expand_so] write payload failed: %s", g_libdemo_expand_embedded_so_path.c_str());
-        return EmbeddedExpandRouteStatus::kFail;
-    }
-    // 通过自定义链接器加载该 so。
-    if (!engine.LoadLibrary(g_libdemo_expand_embedded_so_path.c_str())) {
-        LOGE("[route_embedded_expand_so] custom linker load failed: %s", g_libdemo_expand_embedded_so_path.c_str());
+    // 直接从内存字节加载该 so，避免“先落盘再加载”。
+    if (!engine.LoadLibraryFromMemory(kEmbeddedExpandSoName,
+                                      embedded_payload.data(),
+                                      embedded_payload.size())) {
+        LOGE("[route_embedded_expand_so] custom linker load from memory failed: %s",
+             kEmbeddedExpandSoName);
         return EmbeddedExpandRouteStatus::kFail;
     }
 
@@ -170,7 +161,8 @@ EmbeddedExpandRouteStatus test_loadEmbeddedExpandedSo(JNIEnv* env, zVmEngine& en
             engine,
             kEmbeddedExpandSoName,
             "route_embedded_expand_so",
-            g_libdemo_expand_embedded_so_path)) {
+            embedded_payload.data(),
+            embedded_payload.size())) {
         return EmbeddedExpandRouteStatus::kFail;
     }
     // 全流程成功。

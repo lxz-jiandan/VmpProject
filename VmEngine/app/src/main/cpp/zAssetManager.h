@@ -1,12 +1,12 @@
 /*
  * [VMP_FLOW_NOTE] 文件级流程注释
- * - Asset 管理接口声明（历史命名保留）。
+ * - Asset 管理接口声明。
  * - 加固链路位置：运行时 I/O 接口层。
  * - 输入：JNI 环境与资产名。
  * - 输出：统一文件/字节访问能力。
  */
-#ifndef Z_ASSEST_MANAGER_H
-#define Z_ASSEST_MANAGER_H
+#ifndef Z_ASSET_MANAGER_H
+#define Z_ASSET_MANAGER_H
 
 #include <jni.h>                  // JNI 基础类型。
 #include <string>                 // std::string。
@@ -49,4 +49,4 @@ private:
     static AAssetManager* getAssetManagerFromContext(JNIEnv* env, jobject context);
 };
 
-#endif // Z_ASSEST_MANAGER_H
+#endif // Z_ASSET_MANAGER_H

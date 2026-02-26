@@ -104,10 +104,10 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             cli.patchAllExports = true;
             continue;
         }
-        // 是否关闭 allow-validate-fail。
-        if (arg == "--patch-no-allow-validate-fail") {
+        // 显式开启 allow-validate-fail（默认严格模式关闭该能力）。
+        if (arg == "--patch-allow-validate-fail") {
             cli.patchAllowValidateFailSet = true;
-            cli.patchAllowValidateFail = false;
+            cli.patchAllowValidateFail = true;
             continue;
         }
         // 仅覆盖率模式。
@@ -160,8 +160,8 @@ void printUsage() {
         << "  --patch-impl-symbol <name>   Impl symbol used by export_alias_from_patchbay\n"
         // 全量导出开关。
         << "  --patch-all-exports          Patch all donor exports (default: only fun_* and Java_*)\n"
-        // validate fail 开关。
-        << "  --patch-no-allow-validate-fail Disable --allow-validate-fail during patch\n"
+        // validate fail 开关（默认严格）。
+        << "  --patch-allow-validate-fail   Allow patch flow to continue when validate fails\n"
         // branch 地址文件。
         << "  --shared-branch-file <file>  Shared branch list output file name\n"
         // 覆盖率报告。

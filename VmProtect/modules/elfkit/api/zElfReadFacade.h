@@ -1,8 +1,8 @@
 // 防止头文件重复包含。
 #pragma once
 
-// 引入 patchbay 只读 ELF API 类型定义。
-#include "zPatchbayApi.h"
+// 引入 patchbay 只读查询所需稳定数据类型。
+#include "zPatchbayApiTypes.h"
 
 // 引入字符串类型。
 #include <string>
@@ -20,33 +20,39 @@ namespace vmp::elfkit {
 class zElfReadFacade {
 public:
     // 按路径加载 ELF。
-    explicit zElfReadFacade(const char* elfPath) : image_(elfPath) {}
+    explicit zElfReadFacade(const char* elfPath);
+    // 析构释放内部对象。
+    ~zElfReadFacade();
+    // 禁止拷贝。
+    zElfReadFacade(const zElfReadFacade&) = delete;
+    // 禁止拷贝赋值。
+    zElfReadFacade& operator=(const zElfReadFacade&) = delete;
+    // 支持移动构造。
+    zElfReadFacade(zElfReadFacade&& other) noexcept;
+    // 支持移动赋值。
+    zElfReadFacade& operator=(zElfReadFacade&& other) noexcept;
 
     // ELF 是否加载成功。
-    bool isLoaded() const { return image_.isLoaded(); }
+    bool isLoaded() const;
 
     // 执行结构校验。
-    bool validate(std::string* error = nullptr) const { return image_.validate(error); }
+    bool validate(std::string* error = nullptr) const;
 
     // 解析指定符号。
-    bool resolveSymbol(const char* symbolName, PatchSymbolInfo* outInfo) const {
-        return image_.resolveSymbol(symbolName, outInfo);
-    }
+    bool resolveSymbol(const char* symbolName, PatchSymbolInfo* outInfo) const;
 
     // 收集已定义动态导出（含 value）。
     bool collectDefinedDynamicExportInfos(std::vector<PatchDynamicExportInfo>* outExports,
-                                          std::string* error) const {
-        return image_.collectDefinedDynamicExportInfos(outExports, error);
-    }
+                                          std::string* error) const;
 
     // 查询 patchbay 关键节快照。
-    bool queryRequiredSections(PatchRequiredSections* out, std::string* error) const {
-        return image_.queryRequiredSections(out, error);
-    }
+    bool queryRequiredSections(PatchRequiredSections* out, std::string* error) const;
 
 private:
-    // 底层只读 ELF 对象。
-    PatchElfImage image_;
+    // 内部实现对象，屏蔽底层 PatchElfImage。
+    class Impl;
+    // 内部实现指针。
+    Impl* impl_ = nullptr;
 };
 
 // 结束命名空间。

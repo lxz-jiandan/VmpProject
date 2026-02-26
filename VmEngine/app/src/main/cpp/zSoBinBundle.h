@@ -32,6 +32,13 @@ public:
         std::vector<zSoBinEntry>& out_entries,
         std::vector<uint64_t>& out_shared_branch_addrs
     );
+    // 直接从内存字节读取并解析 bundle（避免先写临时文件）。
+    static bool readFromExpandedSoBytes(
+        const uint8_t* soBytes,
+        size_t soSize,
+        std::vector<zSoBinEntry>& out_entries,
+        std::vector<uint64_t>& out_shared_branch_addrs
+    );
 };
 
 #endif // Z_SO_BIN_BUNDLE_H

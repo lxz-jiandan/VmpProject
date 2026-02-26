@@ -54,6 +54,153 @@ constexpr uint32_t kSoBinBundleVersion = 1;
 
 } // namespace
 
+namespace {
+
+// 解析 expand so 字节中的 bundle。
+bool parseExpandedSoBundleBytes(
+    const std::vector<uint8_t>& fileBytes,
+    const char* sourceTag,
+    std::vector<zSoBinEntry>& outEntries,
+    std::vector<uint64_t>& outSharedBranchAddrs
+) {
+    // 文件至少要容纳一个 footer。
+    if (fileBytes.size() < sizeof(SoBinBundleFooter)) {
+        LOGE("readFromExpandedSo file too small: %s", sourceTag);
+        return false;
+    }
+
+    // 从文件尾部解析 footer。
+    SoBinBundleFooter footer{};
+    const size_t footerOffset = fileBytes.size() - sizeof(SoBinBundleFooter);
+    if (!zFileBytes::readPodAt(fileBytes, footerOffset, footer)) {
+        LOGE("readFromExpandedSo failed to read footer");
+        return false;
+    }
+    // 校验尾部魔数与版本。
+    if (footer.magic != kSoBinBundleFooterMagic || footer.version != kSoBinBundleVersion) {
+        LOGE("readFromExpandedSo invalid footer magic/version");
+        return false;
+    }
+
+    // bundle 最小长度必须覆盖 header + footer。
+    const uint64_t minBundleSize =
+        static_cast<uint64_t>(sizeof(SoBinBundleHeader) + sizeof(SoBinBundleFooter));
+    // 长度非法（过小或越界）直接拒绝。
+    if (footer.bundle_size < minBundleSize || footer.bundle_size > fileBytes.size()) {
+        LOGE("readFromExpandedSo invalid bundle_size=%llu",
+             static_cast<unsigned long long>(footer.bundle_size));
+        return false;
+    }
+
+    // 根据 bundle_size 反推出 header 起始位置。
+    const size_t bundleStart = fileBytes.size() - static_cast<size_t>(footer.bundle_size);
+    SoBinBundleHeader header{};
+    // 读取头部。
+    if (!zFileBytes::readPodAt(fileBytes, bundleStart, header)) {
+        LOGE("readFromExpandedSo failed to read header");
+        return false;
+    }
+    // 校验头部魔数与版本。
+    if (header.magic != kSoBinBundleHeaderMagic || header.version != kSoBinBundleVersion) {
+        LOGE("readFromExpandedSo invalid header magic/version");
+        return false;
+    }
+
+    // 计算 header + entry 表 + branch 表 + footer 的最小前缀长度。
+    const uint64_t requiredPrefix =
+        static_cast<uint64_t>(sizeof(SoBinBundleHeader)) +
+        static_cast<uint64_t>(header.payload_count) * sizeof(SoBinBundleEntry) +
+        static_cast<uint64_t>(header.branch_addr_count) * sizeof(uint64_t) +
+        sizeof(SoBinBundleFooter);
+    // 最小前缀都超出 bundle_size，说明表项计数异常。
+    if (requiredPrefix > footer.bundle_size) {
+        LOGE("readFromExpandedSo invalid payload_count=%u", header.payload_count);
+        return false;
+    }
+
+    // 用于检测 fun_addr 是否重复。
+    std::unordered_set<uint64_t> seenFunAddrs;
+    // 预留输出容量，减少扩容开销。
+    outEntries.reserve(header.payload_count);
+
+    // entry 表起点（紧跟 header）。
+    const size_t entryTableOffset = bundleStart + sizeof(SoBinBundleHeader);
+    // branch 地址表起点（紧跟 entry 表）。
+    const size_t branchAddrTableOffset =
+        entryTableOffset + static_cast<size_t>(header.payload_count) * sizeof(SoBinBundleEntry);
+    // 载荷数据区最小起点（紧跟 branch 地址表）。
+    const uint64_t payloadDataBeginMin =
+        static_cast<uint64_t>(branchAddrTableOffset) +
+        static_cast<uint64_t>(header.branch_addr_count) * sizeof(uint64_t);
+    // 载荷数据区上界（不含 footer）。
+    const uint64_t payloadDataEnd =
+        static_cast<uint64_t>(bundleStart) + footer.bundle_size - sizeof(SoBinBundleFooter);
+
+    // 预留共享 branch 地址输出容量。
+    outSharedBranchAddrs.reserve(header.branch_addr_count);
+    // 读取共享 branch 地址表。
+    for (uint32_t i = 0; i < header.branch_addr_count; ++i) {
+        uint64_t branchAddr = 0;
+        const size_t branchAddrOffset = branchAddrTableOffset + static_cast<size_t>(i) * sizeof(uint64_t);
+        if (!zFileBytes::readPodAt(fileBytes, branchAddrOffset, branchAddr)) {
+            LOGE("readFromExpandedSo failed to read branch_addr index=%u", i);
+            return false;
+        }
+        outSharedBranchAddrs.push_back(branchAddr);
+    }
+
+    // 逐条读取函数 entry 并拷贝对应 payload 数据。
+    for (uint32_t i = 0; i < header.payload_count; ++i) {
+        SoBinBundleEntry rawEntry{};
+        const size_t entryOffset = entryTableOffset + static_cast<size_t>(i) * sizeof(SoBinBundleEntry);
+        if (!zFileBytes::readPodAt(fileBytes, entryOffset, rawEntry)) {
+            LOGE("readFromExpandedSo failed to read entry index=%u", i);
+            return false;
+        }
+        if (rawEntry.fun_addr == 0 || rawEntry.data_size == 0) {
+            LOGE("readFromExpandedSo invalid entry index=%u", i);
+            return false;
+        }
+        // fun_addr 必须唯一。
+        if (!seenFunAddrs.insert(rawEntry.fun_addr).second) {
+            LOGE("readFromExpandedSo duplicated fun_addr=0x%llx",
+                 static_cast<unsigned long long>(rawEntry.fun_addr));
+            return false;
+        }
+
+        // 把相对偏移换算成文件绝对偏移区间。
+        const uint64_t absDataBegin = static_cast<uint64_t>(bundleStart) + rawEntry.data_offset;
+        const uint64_t absDataEnd = absDataBegin + rawEntry.data_size;
+        // 校验区间必须落在 payload 数据区内。
+        if (absDataBegin < payloadDataBeginMin ||
+            absDataEnd > payloadDataEnd ||
+            absDataBegin >= absDataEnd) {
+            LOGE("readFromExpandedSo out-of-range entry index=%u", i);
+            return false;
+        }
+
+        zSoBinEntry entry;
+        // 复制函数地址。
+        entry.fun_addr = rawEntry.fun_addr;
+        // 按 data_size 分配输出缓冲。
+        entry.encoded_data.resize(static_cast<size_t>(rawEntry.data_size));
+        // 拷贝函数编码字节。
+        std::memcpy(entry.encoded_data.data(),
+                    fileBytes.data() + static_cast<size_t>(absDataBegin),
+                    entry.encoded_data.size());
+        // 写入输出列表。
+        outEntries.push_back(std::move(entry));
+    }
+
+    LOGI("readFromExpandedSo success: source=%s payload_count=%zu branch_addr_count=%zu",
+         sourceTag,
+         outEntries.size(),
+         outSharedBranchAddrs.size());
+    return true;
+}
+
+} // namespace
+
 bool zSoBinBundleReader::readFromExpandedSo(
     const std::string& so_path,
     std::vector<zSoBinEntry>& out_entries,
@@ -69,135 +216,32 @@ bool zSoBinBundleReader::readFromExpandedSo(
         LOGE("readFromExpandedSo failed to read file: %s", so_path.c_str());
         return false;
     }
-    // 文件至少要容纳一个 footer。
-    if (file_bytes.size() < sizeof(SoBinBundleFooter)) {
-        LOGE("readFromExpandedSo file too small: %s", so_path.c_str());
+    return parseExpandedSoBundleBytes(file_bytes,
+                                      so_path.c_str(),
+                                      out_entries,
+                                      out_shared_branch_addrs);
+}
+
+bool zSoBinBundleReader::readFromExpandedSoBytes(
+    const uint8_t* soBytes,
+    size_t soSize,
+    std::vector<zSoBinEntry>& outEntries,
+    std::vector<uint64_t>& outSharedBranchAddrs
+) {
+    // 先清空输出，避免失败时残留旧数据。
+    outEntries.clear();
+    outSharedBranchAddrs.clear();
+
+    // 入参校验：内存地址和大小必须有效。
+    if (soBytes == nullptr || soSize == 0) {
+        LOGE("readFromExpandedSoBytes invalid input bytes");
         return false;
     }
 
-    // 从文件尾部解析 footer。
-    SoBinBundleFooter footer{};
-    const size_t footer_offset = file_bytes.size() - sizeof(SoBinBundleFooter);
-    if (!zFileBytes::readPodAt(file_bytes, footer_offset, footer)) {
-        LOGE("readFromExpandedSo failed to read footer");
-        return false;
-    }
-    // 校验尾部魔数与版本。
-    if (footer.magic != kSoBinBundleFooterMagic || footer.version != kSoBinBundleVersion) {
-        LOGE("readFromExpandedSo invalid footer magic/version");
-        return false;
-    }
-
-    // bundle 最小长度必须覆盖 header + footer。
-    const uint64_t min_bundle_size =
-        static_cast<uint64_t>(sizeof(SoBinBundleHeader) + sizeof(SoBinBundleFooter));
-    // 长度非法（过小或越界）直接拒绝。
-    if (footer.bundle_size < min_bundle_size || footer.bundle_size > file_bytes.size()) {
-        LOGE("readFromExpandedSo invalid bundle_size=%llu",
-             static_cast<unsigned long long>(footer.bundle_size));
-        return false;
-    }
-
-    // 根据 bundle_size 反推出 header 起始位置。
-    const size_t bundle_start = file_bytes.size() - static_cast<size_t>(footer.bundle_size);
-    SoBinBundleHeader header{};
-    // 读取头部。
-    if (!zFileBytes::readPodAt(file_bytes, bundle_start, header)) {
-        LOGE("readFromExpandedSo failed to read header");
-        return false;
-    }
-    // 校验头部魔数与版本。
-    if (header.magic != kSoBinBundleHeaderMagic || header.version != kSoBinBundleVersion) {
-        LOGE("readFromExpandedSo invalid header magic/version");
-        return false;
-    }
-
-    // 计算 header + entry 表 + branch 表 + footer 的最小前缀长度。
-    const uint64_t required_prefix =
-        static_cast<uint64_t>(sizeof(SoBinBundleHeader)) +
-        static_cast<uint64_t>(header.payload_count) * sizeof(SoBinBundleEntry) +
-        static_cast<uint64_t>(header.branch_addr_count) * sizeof(uint64_t) +
-        sizeof(SoBinBundleFooter);
-    // 最小前缀都超出 bundle_size，说明表项计数异常。
-    if (required_prefix > footer.bundle_size) {
-        LOGE("readFromExpandedSo invalid payload_count=%u", header.payload_count);
-        return false;
-    }
-
-    // 用于检测 fun_addr 是否重复。
-    std::unordered_set<uint64_t> seen_fun_addrs;
-    // 预留输出容量，减少扩容开销。
-    out_entries.reserve(header.payload_count);
-
-    // entry 表起点（紧跟 header）。
-    const size_t entry_table_offset = bundle_start + sizeof(SoBinBundleHeader);
-    // branch 地址表起点（紧跟 entry 表）。
-    const size_t branch_addr_table_offset =
-        entry_table_offset + static_cast<size_t>(header.payload_count) * sizeof(SoBinBundleEntry);
-    // 载荷数据区最小起点（紧跟 branch 地址表）。
-    const uint64_t payload_data_begin_min =
-        static_cast<uint64_t>(branch_addr_table_offset) +
-        static_cast<uint64_t>(header.branch_addr_count) * sizeof(uint64_t);
-    // 载荷数据区上界（不含 footer）。
-    const uint64_t payload_data_end = static_cast<uint64_t>(bundle_start) + footer.bundle_size - sizeof(SoBinBundleFooter);
-
-    // 预留共享 branch 地址输出容量。
-    out_shared_branch_addrs.reserve(header.branch_addr_count);
-    // 读取共享 branch 地址表。
-    for (uint32_t i = 0; i < header.branch_addr_count; ++i) {
-        uint64_t branch_addr = 0;
-        const size_t branch_addr_offset = branch_addr_table_offset + static_cast<size_t>(i) * sizeof(uint64_t);
-        if (!zFileBytes::readPodAt(file_bytes, branch_addr_offset, branch_addr)) {
-            LOGE("readFromExpandedSo failed to read branch_addr index=%u", i);
-            return false;
-        }
-        out_shared_branch_addrs.push_back(branch_addr);
-    }
-
-    // 逐条读取函数 entry 并拷贝对应 payload 数据。
-    for (uint32_t i = 0; i < header.payload_count; ++i) {
-        SoBinBundleEntry raw_entry{};
-        const size_t entry_offset = entry_table_offset + static_cast<size_t>(i) * sizeof(SoBinBundleEntry);
-        if (!zFileBytes::readPodAt(file_bytes, entry_offset, raw_entry)) {
-            LOGE("readFromExpandedSo failed to read entry index=%u", i);
-            return false;
-        }
-        if (raw_entry.fun_addr == 0 || raw_entry.data_size == 0) {
-            LOGE("readFromExpandedSo invalid entry index=%u", i);
-            return false;
-        }
-        // fun_addr 必须唯一。
-        if (!seen_fun_addrs.insert(raw_entry.fun_addr).second) {
-            LOGE("readFromExpandedSo duplicated fun_addr=0x%llx",
-                 static_cast<unsigned long long>(raw_entry.fun_addr));
-            return false;
-        }
-
-        // 把相对偏移换算成文件绝对偏移区间。
-        const uint64_t abs_data_begin = static_cast<uint64_t>(bundle_start) + raw_entry.data_offset;
-        const uint64_t abs_data_end = abs_data_begin + raw_entry.data_size;
-        // 校验区间必须落在 payload 数据区内。
-        if (abs_data_begin < payload_data_begin_min ||
-            abs_data_end > payload_data_end ||
-            abs_data_begin >= abs_data_end) {
-            LOGE("readFromExpandedSo out-of-range entry index=%u", i);
-            return false;
-        }
-
-        zSoBinEntry entry;
-        // 复制函数地址。
-        entry.fun_addr = raw_entry.fun_addr;
-        // 按 data_size 分配输出缓冲。
-        entry.encoded_data.resize(static_cast<size_t>(raw_entry.data_size));
-        // 拷贝函数编码字节。
-        std::memcpy(entry.encoded_data.data(), file_bytes.data() + static_cast<size_t>(abs_data_begin), entry.encoded_data.size());
-        // 写入输出列表。
-        out_entries.push_back(std::move(entry));
-    }
-
-    LOGI("readFromExpandedSo success: path=%s payload_count=%zu branch_addr_count=%zu",
-         so_path.c_str(),
-         out_entries.size(),
-         out_shared_branch_addrs.size());
-    return true;
+    // 复用统一解析逻辑：拷贝到本地字节数组后按既有校验流程处理。
+    std::vector<uint8_t> fileBytes(soBytes, soBytes + soSize);
+    return parseExpandedSoBundleBytes(fileBytes,
+                                      "<memory>",
+                                      outEntries,
+                                      outSharedBranchAddrs);
 }

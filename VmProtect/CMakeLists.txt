@@ -60,6 +60,7 @@ set(VM_PROTECT_PIPELINE_SOURCES
 )
 
 set(VM_PROTECT_INCLUDE_DIRS
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${VMP_BASE_SRC_DIR}
     ${VMP_ELFKIT_CORE_DIR}
@@ -124,6 +125,7 @@ set(PATCHBAY_FORMAT_SOURCES
 set(PATCHBAY_DOMAIN_SOURCES
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayAliasTables.cpp
     ${VMP_ELFKIT_DIR}/api/zPatchbayApi.cpp
+    ${VMP_ELFKIT_DIR}/api/zElfReadFacade.cpp
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayRules.cpp
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayDonor.cpp
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayPatchApply.cpp
@@ -145,6 +147,8 @@ foreach(patchbay_obj_target
         patchbay_domain_obj
         patchbay_app_obj)
     target_include_directories(${patchbay_obj_target} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/..
+        ${CMAKE_CURRENT_SOURCE_DIR}
         ${VMP_BASE_SRC_DIR}
         ${VMP_ELFKIT_CORE_DIR}
         ${VMP_ELFKIT_SRC_DIR}

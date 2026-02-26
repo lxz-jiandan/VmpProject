@@ -42,8 +42,8 @@ struct VmProtectConfig {
     std::string patchImplSymbol = "vm_takeover_entry_0000";
     // 是否 patch donor 全部导出。
     bool patchAllExports = false;
-    // patch 后验证失败时是否允许放行。
-    bool patchAllowValidateFail = true;
+    // patch 后验证失败时是否允许放行（默认严格，不放行）。
+    bool patchAllowValidateFail = false;
 };
 
 // CLI 覆盖项集合。
@@ -86,7 +86,7 @@ struct CliOverrides {
     // patchAllowValidateFail 是否被显式设置。
     bool patchAllowValidateFailSet = false;
     // patchAllowValidateFail 目标值。
-    bool patchAllowValidateFail = true;
+    bool patchAllowValidateFail = false;
 };
 
 // 单个函数覆盖率行。

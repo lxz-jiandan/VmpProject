@@ -12,6 +12,7 @@
 #include "zLog.h"
 
 // 引入字符串与容器类型。
+#include <algorithm>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -79,6 +80,22 @@ std::string buildConflictSummary(const std::vector<std::string>& duplicateExport
         summary += " [" + std::to_string(detailIndex) + "]=" + duplicateExports[detailIndex];
     }
     return summary;
+}
+
+// 对 donor 导出做稳定排序，避免 entryId 受 dynsym 原始顺序波动影响。
+void sortDonorExportsForStableEntryIds(std::vector<vmp::elfkit::PatchDynamicExportInfo>* donorExports) {
+    if (donorExports == nullptr || donorExports->empty()) {
+        return;
+    }
+    std::stable_sort(donorExports->begin(),
+                     donorExports->end(),
+                     [](const vmp::elfkit::PatchDynamicExportInfo& lhs,
+                        const vmp::elfkit::PatchDynamicExportInfo& rhs) {
+                         if (lhs.name != rhs.name) {
+                             return lhs.name < rhs.name;
+                         }
+                         return lhs.value < rhs.value;
+                     });
 }
 
 // 结束匿名命名空间。
@@ -200,6 +217,9 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
         }
         donorExports.swap(filteredExports);
     }
+
+    // 统一排序后再分配 entryId，确保不同构建机/链接顺序下结果稳定。
+    sortDonorExportsForStableEntryIds(&donorExports);
 
     // donor 导出为空时直接失败。
     if (donorExports.empty()) {

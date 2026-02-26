@@ -115,6 +115,8 @@ public:
 
     // 端到端加载入口：打开 ELF -> 映射段 -> 解析动态段 -> 重定位 -> 调 init。
     bool LoadLibrary(const char* path);
+    // 从内存字节直接加载 ELF（避免先落盘）。
+    bool LoadLibraryFromMemory(const char* soName, const uint8_t* soBytes, size_t soSize);
 
     // 按 so 名称查询已加载模块信息（不触发加载）。
     soinfo* GetSoinfo(const char* name);
@@ -123,8 +125,12 @@ private:
     // ELF 文件读取阶段。
     // 打开并映射输入 ELF 文件。
     bool OpenElf(const char* path);
+    // 从内存副本构建输入 ELF 视图。
+    bool OpenElfFromMemory(const char* soName, const uint8_t* soBytes, size_t soSize);
     // 读取 ELF Header + 校验 + 程序头表。
     bool ReadElf();
+    // 在 OpenElf/OpenElfFromMemory 成功后，执行统一加载流程。
+    bool LoadPreparedElf(const char* soName);
     // 关闭并清理输入 ELF 相关资源。
     void CloseElf();
     // 读取 ELF Header。
@@ -180,6 +186,13 @@ private:
     unsigned ElfHash(const char* name) const;
 
 private:
+    // 输入来源类型：文件映射 or 内存副本。
+    enum class InputSourceType : uint8_t {
+        kNone = 0,
+        kFileMmap = 1,
+        kMemoryBuffer = 2,
+    };
+
     // 当前加载任务的临时状态（每次 LoadLibrary 会刷新）。
     // 输入路径（日志与诊断使用）。
     std::string path_;
@@ -189,6 +202,10 @@ private:
     size_t file_size_ = 0;
     // 输入文件只读映射地址。
     void* mapped_file_ = nullptr;
+    // 输入来源类型。
+    InputSourceType input_source_ = InputSourceType::kNone;
+    // 内存加载时持有 ELF 字节副本，保证解析期间指针稳定。
+    std::vector<uint8_t> memory_file_copy_;
     // 输入 ELF 头缓存。
     ElfW(Ehdr) header_{};
     // 输入程序头表副本。
