@@ -12,7 +12,7 @@
 #include <vector>
 
 // 引入 IO 基础工具函数。
-#include "zIoUtils.h"
+#include "zFile.h"
 // 引入日志工具。
 #include "zLog.h"
 // 引入 pipeline 路径拼接工具。
@@ -205,7 +205,7 @@ bool exportProtectedPackage(const VmProtectConfig& config,
         // 记录函数地址，供运行时定位。
         payload.funAddr = static_cast<uint64_t>(function.getOffset());
         // 读取编码后的二进制字节。
-        if (!readFileBytes(binPath.c_str(), payload.encodedBytes) ||
+        if (!base::file::readFileBytes(binPath.c_str(), &payload.encodedBytes) ||
             payload.encodedBytes.empty()) {
             LOGE("failed to read encoded payload: %s", binPath.c_str());
             return false;
@@ -234,6 +234,7 @@ bool exportProtectedPackage(const VmProtectConfig& config,
 
 // 结束 vmp 命名空间。
 }  // namespace vmp
+
 
 
 

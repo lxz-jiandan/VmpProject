@@ -1,4 +1,4 @@
-/*
+﻿/*
  * [VMP_FLOW_NOTE] 文件级流程注释
  * - zFunction dump 导出实现（文本/未编码二进制/编码二进制）。
  * - 加固链路位置：离线导出与调试回归。
@@ -10,7 +10,7 @@
 // 引入字节编解码工具。
 #include "zCodec.h"
 // 引入文件读写工具。
-#include "zIo.h"
+#include "zFile.h"
 // 引入日志接口。
 #include "zLog.h"
 
@@ -508,7 +508,7 @@ bool zFunction::dump(const char* filePath, DumpMode mode) const {
             return false;
         }
         // 落盘。
-        return vmp::base::io::writeFileBytes(filePath, unencoded_bytes);
+        return vmp::base::file::writeFileBytes(filePath, unencoded_bytes);
     }
 
     // 其它模式同样需要未编码缓存。
@@ -553,7 +553,7 @@ bool zFunction::dump(const char* filePath, DumpMode mode) const {
         }
 
         // 落盘编码结果。
-        return vmp::base::io::writeFileBytes(filePath, encoded);
+        return vmp::base::file::writeFileBytes(filePath, encoded);
     }
 
     // 模式三：未编码文本导出。
@@ -563,3 +563,4 @@ bool zFunction::dump(const char* filePath, DumpMode mode) const {
     // 写文本内容。
     return writeUnencodedToStream(out, unencoded);
 }
+

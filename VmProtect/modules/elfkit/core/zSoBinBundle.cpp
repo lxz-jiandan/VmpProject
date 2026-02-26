@@ -8,7 +8,7 @@
 #include "zSoBinBundle.h"
 
 #include "zCodec.h"
-#include "zIo.h"
+#include "zFile.h"
 #include "zLog.h"
 
 #include <unordered_set>  // fun_addr 去重校验。
@@ -94,7 +94,7 @@ bool zSoBinBundleWriter::writeExpandedSo(
 
     // 读取基础 so 字节。
     std::vector<uint8_t> soBytes;
-    if (!vmp::base::io::readFileBytes(inputSoPath, &soBytes)) {
+    if (!vmp::base::file::readFileBytes(inputSoPath, &soBytes)) {
         LOGE("read input so failed: %s", inputSoPath);
         return false;
     }
@@ -189,7 +189,7 @@ bool zSoBinBundleWriter::writeExpandedSo(
     appendFooter(&outBytes, footer);
 
     // 落盘输出 expanded so。
-    if (!vmp::base::io::writeFileBytes(outputSoPath, outBytes)) {
+    if (!vmp::base::file::writeFileBytes(outputSoPath, outBytes)) {
         LOGE("write output so failed: %s", outputSoPath);
         return false;
     }
@@ -202,5 +202,6 @@ bool zSoBinBundleWriter::writeExpandedSo(
          static_cast<unsigned int>(sharedBranchAddrs.size()));
     return true;
 }
+
 
 

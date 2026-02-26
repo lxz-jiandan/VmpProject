@@ -1,4 +1,4 @@
-﻿/*
+/*
  * [VMP_FLOW_NOTE] 文件级流程注释
  * - 离线工具日志实现，统一调试/错误输出。
  * - 加固链路位置：离线工具观测层。
@@ -53,5 +53,3 @@ void zLogPrint(int level, const char* tag, const char* fileName, const char* fun
     // 这里不主动 flush，沿用 C 运行时标准缓冲策略。
     (void)MAX_SEGMENT_LEN;
 }
-
-

@@ -16,8 +16,6 @@ set_target_properties(capstone_static PROPERTIES
 )
 
 set(VMP_APP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/app")
-set(VMP_FOUNDATION_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/foundation")
-set(VMP_FOUNDATION_SRC_DIR "${VMP_FOUNDATION_DIR}/core")
 set(VMP_PIPELINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/pipeline")
 set(VMP_PIPELINE_SRC_DIR "${VMP_PIPELINE_DIR}/core")
 set(VMP_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/base")
@@ -29,17 +27,13 @@ set(VMP_ELFKIT_PATCHBAY_MODEL_DIR "${VMP_ELFKIT_DIR}/patchbayModel")
 set(VMP_PATCHBAY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/patchbay")
 
 set(VM_PROTECT_BASE_SOURCES
-    ${VMP_BASE_SRC_DIR}/zIo.cpp
+    ${VMP_BASE_SRC_DIR}/zFile.cpp
+    ${VMP_BASE_SRC_DIR}/zLog.cpp
     ${VMP_BASE_SRC_DIR}/zChecksum.cpp
     ${VMP_BASE_SRC_DIR}/zCodec.cpp
     ${VMP_BASE_SRC_DIR}/zBitCodec.cpp
     ${VMP_BASE_SRC_DIR}/zBytes.cpp
     ${VMP_BASE_SRC_DIR}/zHash.cpp
-)
-
-set(VM_PROTECT_FOUNDATION_SOURCES
-    ${VMP_FOUNDATION_SRC_DIR}/zLog.cpp
-    ${VMP_FOUNDATION_SRC_DIR}/zIoUtils.cpp
 )
 
 set(VM_PROTECT_FORMAT_SOURCES
@@ -67,7 +61,6 @@ set(VM_PROTECT_PIPELINE_SOURCES
 set(VM_PROTECT_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${VMP_BASE_SRC_DIR}
-    ${VMP_FOUNDATION_SRC_DIR}
     ${VMP_ELFKIT_CORE_DIR}
     ${VMP_ELFKIT_SRC_DIR}
     ${VMP_ELFKIT_PATCHBAY_MODEL_DIR}
@@ -83,21 +76,13 @@ target_include_directories(vmprotect_base PUBLIC
     ${VM_PROTECT_INCLUDE_DIRS}
 )
 
-add_library(vmprotect_foundation STATIC ${VM_PROTECT_FOUNDATION_SOURCES})
-target_include_directories(vmprotect_foundation PUBLIC
-    ${VM_PROTECT_INCLUDE_DIRS}
-)
-target_link_libraries(vmprotect_foundation PUBLIC
-    vmprotect_base
-)
-
 add_library(vmprotect_format STATIC ${VM_PROTECT_FORMAT_SOURCES})
 target_include_directories(vmprotect_format PUBLIC
     ${VM_PROTECT_INCLUDE_DIRS}
 )
 target_link_libraries(vmprotect_format PUBLIC
     capstone_static
-    vmprotect_foundation
+    vmprotect_base
 )
 
 add_library(vmprotect_elfkit STATIC
@@ -112,7 +97,6 @@ target_link_libraries(vmprotect_elfkit PUBLIC
 
 set(PATCHBAY_TOOL_DIR "${VMP_PATCHBAY_DIR}")
 set(PATCHBAY_FOUNDATION_SOURCES
-    ${PATCHBAY_TOOL_DIR}/foundation/zPatchbayIo.cpp
     ${PATCHBAY_TOOL_DIR}/foundation/zPatchbayCrc.cpp
 )
 
@@ -160,7 +144,6 @@ foreach(patchbay_obj_target
         patchbay_app_obj)
     target_include_directories(${patchbay_obj_target} PRIVATE
         ${VMP_BASE_SRC_DIR}
-        ${VMP_FOUNDATION_SRC_DIR}
         ${VMP_ELFKIT_CORE_DIR}
         ${VMP_ELFKIT_SRC_DIR}
         ${VMP_ELFKIT_PATCHBAY_MODEL_DIR}
@@ -182,7 +165,6 @@ add_library(vmp_patchbay STATIC
 )
 target_link_libraries(vmp_patchbay PUBLIC
     vmprotect_base
-    vmprotect_foundation
 )
 
 add_library(vmprotect_pipeline STATIC ${VM_PROTECT_PIPELINE_SOURCES})
@@ -190,7 +172,7 @@ target_include_directories(vmprotect_pipeline PUBLIC
     ${VM_PROTECT_INCLUDE_DIRS}
 )
 target_link_libraries(vmprotect_pipeline PUBLIC
-    vmprotect_foundation
+    vmprotect_base
     vmprotect_format
     vmprotect_elfkit
     vmp_patchbay

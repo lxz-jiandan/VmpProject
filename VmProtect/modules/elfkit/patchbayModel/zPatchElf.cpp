@@ -1,6 +1,6 @@
 ﻿#include "zPatchElf.h"
 #include "zLog.h"
-#include "zIo.h"
+#include "zFile.h"
 
 // 错误信息字符串。
 #include <string>
@@ -27,7 +27,7 @@ bool PatchElf::save(const char* outputPath) {
         return false;
     }
     // 把 file_image_ 写入目标文件。
-    if (!vmp::base::io::writeFileBytes(outputPath, file_image_)) {
+    if (!vmp::base::file::writeFileBytes(outputPath, file_image_)) {
         LOGE("Failed to write output file: %s", outputPath);
         return false;
     }
@@ -67,4 +67,5 @@ bool PatchElf::reconstructionImpl() {
     LOGE("reconstructionImpl is removed from current patchbay runtime");
     return false;
 }
+
 

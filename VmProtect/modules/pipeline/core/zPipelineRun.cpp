@@ -4,8 +4,8 @@
 // 引入动态数组容器。
 #include <vector>
 
-// 引入文件工具（exists/mkdir）。
-#include "zIoUtils.h"
+// 引入文件工具（exists/mkdir/read/write）。
+#include "zFile.h"
 // 引入日志工具。
 #include "zLog.h"
 // 引入去重工具函数。
@@ -115,12 +115,12 @@ bool validateConfig(const VmProtectConfig& config, const CliOverrides& cli) {
         return false;
     }
     // 输入 so 必须存在。
-    if (!fileExists(config.inputSo)) {
+    if (!base::file::fileExists(config.inputSo)) {
         LOGE("input so not found: %s", config.inputSo.c_str());
         return false;
     }
     // 指定 vmengine so 时必须存在。
-    if (!config.vmengineSo.empty() && !fileExists(config.vmengineSo)) {
+    if (!config.vmengineSo.empty() && !base::file::fileExists(config.vmengineSo)) {
         LOGE("vmengine so not found: %s", config.vmengineSo.c_str());
         return false;
     }
@@ -130,12 +130,12 @@ bool validateConfig(const VmProtectConfig& config, const CliOverrides& cli) {
         return false;
     }
     // donor so 必须存在。
-    if (!config.patchDonorSo.empty() && !fileExists(config.patchDonorSo)) {
+    if (!config.patchDonorSo.empty() && !base::file::fileExists(config.patchDonorSo)) {
         LOGE("patch donor so not found: %s", config.patchDonorSo.c_str());
         return false;
     }
     // 输出目录不存在时尝试创建。
-    if (!ensureDirectory(config.outputDir)) {
+    if (!base::file::ensureDirectory(config.outputDir)) {
         LOGE("failed to create output dir: %s", config.outputDir.c_str());
         return false;
     }
@@ -170,4 +170,5 @@ std::vector<std::string> buildFunctionNameList(const VmProtectConfig& config,
 
 // 结束命名空间。
 }  // namespace vmp
+
 

@@ -1,5 +1,5 @@
-// 引入基础文件 IO 接口声明。
-#include "zIo.h"
+﻿// 引入基础文件 IO 接口声明。
+#include "zFile.h"
 
 // 引入文件系统 API。
 #include <filesystem>
@@ -10,7 +10,7 @@
 namespace fs = std::filesystem;
 
 // 进入基础 IO 命名空间。
-namespace vmp::base::io {
+namespace vmp::base::file {
 
 // 判断 path 是否存在且是普通文件。
 bool fileExists(const std::string& path) {
@@ -113,4 +113,5 @@ bool writeFileBytes(const std::string& path, const std::vector<uint8_t>& data) {
 }
 
 // 结束命名空间。
-}  // namespace vmp::base::io
+}  // namespace vmp::base::file
+

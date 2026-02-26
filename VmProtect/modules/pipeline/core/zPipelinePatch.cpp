@@ -1,4 +1,4 @@
-#include "zPipelinePatch.h"
+﻿#include "zPipelinePatch.h"
 
 // 引入固定宽度整型格式支持。
 #include <cinttypes>
@@ -16,7 +16,7 @@
 // 引入 patchbay 进程内入口。
 #include "zPatchbayEntry.h"
 // 引入文件读写与存在性判断工具。
-#include "zIoUtils.h"
+#include "zFile.h"
 // 引入日志能力。
 #include "zLog.h"
 // 引入输出路径拼接工具。
@@ -134,12 +134,12 @@ bool embedExpandedSoIntoVmengine(const std::string& vmengineSo,
                                  const std::string& payloadSo,
                                  const std::string& outputSo) {
     // 校验 vmengine so 是否存在。
-    if (!fileExists(vmengineSo)) {
+    if (!base::file::fileExists(vmengineSo)) {
         LOGE("vmengine so not found: %s", vmengineSo.c_str());
         return false;
     }
     // 校验 payload so 是否存在。
-    if (!fileExists(payloadSo)) {
+    if (!base::file::fileExists(payloadSo)) {
         LOGE("payload so not found: %s", payloadSo.c_str());
         return false;
     }
@@ -151,13 +151,13 @@ bool embedExpandedSoIntoVmengine(const std::string& vmengineSo,
 
     // 读取 vmengine so 全量字节。
     std::vector<uint8_t> vmengineBytes;
-    if (!readFileBytes(vmengineSo.c_str(), vmengineBytes)) {
+    if (!base::file::readFileBytes(vmengineSo.c_str(), &vmengineBytes)) {
         LOGE("failed to read vmengine so: %s", vmengineSo.c_str());
         return false;
     }
     // 读取 payload so 全量字节。
     std::vector<uint8_t> payloadBytes;
-    if (!readFileBytes(payloadSo.c_str(), payloadBytes) || payloadBytes.empty()) {
+    if (!base::file::readFileBytes(payloadSo.c_str(), &payloadBytes) || payloadBytes.empty()) {
         LOGE("failed to read payload so: %s", payloadSo.c_str());
         return false;
     }
@@ -190,7 +190,7 @@ bool embedExpandedSoIntoVmengine(const std::string& vmengineSo,
     out.insert(out.end(), footerBytes, footerBytes + sizeof(EmbeddedPayloadFooter));
 
     // 写出最终 so 文件。
-    if (!writeFileBytes(outputSo, out)) {
+    if (!base::file::writeFileBytes(outputSo, out)) {
         LOGE("failed to write output so: %s", outputSo.c_str());
         return false;
     }
@@ -217,7 +217,7 @@ bool runPatchbayExportFromDonor(const std::string& inputSo,
                                 bool patchAllExports,
                                 bool allowValidateFail) {
     // 校验输入 so 存在。
-    if (!fileExists(inputSo)) {
+    if (!base::file::fileExists(inputSo)) {
         LOGE("patch input so not found: %s", inputSo.c_str());
         return false;
     }
@@ -227,7 +227,7 @@ bool runPatchbayExportFromDonor(const std::string& inputSo,
         return false;
     }
     // 校验 donor so 存在。
-    if (!fileExists(donorSo)) {
+    if (!base::file::fileExists(donorSo)) {
         LOGE("patch donor so not found: %s", donorSo.c_str());
         return false;
     }
@@ -263,7 +263,7 @@ bool runPatchbayExportFromDonor(const std::string& inputSo,
         return false;
     }
     // 命令成功后再次校验输出文件确实生成。
-    if (!fileExists(outputSo)) {
+    if (!base::file::fileExists(outputSo)) {
         LOGE("patch output not found: %s", outputSo.c_str());
         return false;
     }
@@ -322,6 +322,7 @@ bool runVmengineProtectFlow(const VmProtectConfig& config) {
 
 // 结束 vmp 命名空间。
 }  // namespace vmp
+
 
 
 

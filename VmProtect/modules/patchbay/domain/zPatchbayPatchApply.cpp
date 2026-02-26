@@ -2,10 +2,10 @@
 
 // 引入字节区域读写与边界校验工具。
 #include "zBytes.h"
+// 引入基础文件读写工具。
+#include "zFile.h"
 // 引入 patchbay CRC 计算工具。
 #include "zPatchbayCrc.h"
-// 引入文件读写工具。
-#include "zPatchbayIo.h"
 // 引入 ELF 布局校验工具。
 #include "zPatchbayLayout.h"
 // 引入日志接口。
@@ -288,7 +288,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     // [阶段 1] 读取 patchbay header 并校验容量/区间。
     // 读取输入文件原始字节，后续在内存中原地修改。
     std::vector<uint8_t> newFile;
-    if (!loadFileBytes(inputPath, &newFile)) {
+    if (!vmp::base::file::readFileBytes(inputPath, &newFile)) {
         if (error != nullptr) {
             *error = "failed to read input bytes";
         }
@@ -595,7 +595,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
     }
 
     // 写出 output 文件。
-    if (!saveFileBytes(outputPath, newFile)) {
+    if (!vmp::base::file::writeFileBytes(outputPath, newFile)) {
         if (error != nullptr) {
             *error = "failed to write output file";
         }

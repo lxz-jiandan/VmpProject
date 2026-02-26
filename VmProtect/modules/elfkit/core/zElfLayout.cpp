@@ -7,7 +7,7 @@
  */
 #include "zElf.h"
 // 文件写入工具。
-#include "zIo.h"
+#include "zFile.h"
 // 日志输出工具。
 #include "zLog.h"
 // sort。
@@ -565,7 +565,7 @@ bool zElf::relocateAndExpandPht(int extraEntries, const char* outputPath) {
     LOGI("\n[Phase 7] Write Output File");
 
     // 把组装好的新文件一次性写出。
-    if (!vmp::base::io::writeFileBytes(outputPath, new_file_bytes)) {
+    if (!vmp::base::file::writeFileBytes(outputPath, new_file_bytes)) {
         LOGE("Failed to open output file: %s", outputPath);
         return false;
     }
@@ -580,5 +580,6 @@ bool zElf::relocateAndExpandPht(int extraEntries, const char* outputPath) {
 
     return true;
 }
+
 
 

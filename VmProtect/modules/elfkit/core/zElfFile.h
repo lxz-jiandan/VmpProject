@@ -1,8 +1,8 @@
-#ifndef VMP_ELFKIT_INTERNAL_ELF_FILE_H
+﻿#ifndef VMP_ELFKIT_INTERNAL_ELF_FILE_H
 #define VMP_ELFKIT_INTERNAL_ELF_FILE_H
 
 // 引入基础文件 IO 能力。
-#include "zIo.h"
+#include "zFile.h"
 // 引入 ELF ABI 常量与结构定义。
 #include "zElfAbi.h"
 
@@ -66,7 +66,7 @@ inline bool loadElfFileBytes(const char* path, std::vector<uint8_t>* out, std::s
     // 临时字节容器。
     std::vector<uint8_t> bytes;
     // 读取失败或文件为空都视为错误。
-    if (!vmp::base::io::readFileBytes(path, &bytes) || bytes.empty()) {
+    if (!vmp::base::file::readFileBytes(path, &bytes) || bytes.empty()) {
         return fail(error, "failed to read elf file");
     }
     // 移动写入输出缓冲。
@@ -200,3 +200,4 @@ inline bool parseElfFileView64Aarch64(const uint8_t* bytes,
 }  // namespace vmp::elfkit::internal
 
 #endif  // VMP_ELFKIT_INTERNAL_ELF_FILE_H
+
