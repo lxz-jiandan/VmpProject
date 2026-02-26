@@ -1,4 +1,4 @@
-﻿/*
+/*
  * [VMP_FLOW_NOTE] 文件级流程注释
  * - 把函数 payload 和共享 branch 表打包进 expand so 尾部。
  * - 加固链路位置：离线导出封装阶段。

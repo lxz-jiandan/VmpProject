@@ -1,4 +1,4 @@
-﻿#ifndef VMP_PATCHBAY_ELF_LOADER_H
+#ifndef VMP_PATCHBAY_ELF_LOADER_H
 #define VMP_PATCHBAY_ELF_LOADER_H
 
 // PatchElf 前向声明：头文件只暴露接口，不引入完整定义。

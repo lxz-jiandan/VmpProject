@@ -1,4 +1,4 @@
-﻿#include "zPatchbayApi.h"
+#include "zPatchbayApi.h"
 
 // 引入 PatchElf 核心模型。
 #include "zPatchElf.h"
@@ -324,7 +324,6 @@ bool PatchElfImage::queryRequiredSections(PatchRequiredSections* out, std::strin
     const int gnuHashIndex = sht.getByName(".gnu.hash");
     const int hashIndex = sht.getByName(".hash");
     const int dynamicIndex = sht.getByName(".dynamic");
-    const int patchbayIndex = sht.getByName(".vmp_patchbay");
 
     // 关键必需节缺失时失败。
     if (dynsymIndex < 0 || dynstrIndex < 0 || versymIndex < 0 ||
@@ -372,12 +371,6 @@ bool PatchElfImage::queryRequiredSections(PatchRequiredSections* out, std::strin
     if (hashIndex >= 0) {
         out->hasHash = true;
         out->hash = buildSectionView(sht.get((size_t)hashIndex), hashIndex);
-    }
-
-    // 回填可选 .vmp_patchbay 节视图。
-    if (patchbayIndex >= 0) {
-        out->hasPatchbay = true;
-        out->patchbay = buildSectionView(sht.get((size_t)patchbayIndex), patchbayIndex);
     }
     return true;
 }

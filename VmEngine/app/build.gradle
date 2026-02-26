@@ -12,15 +12,15 @@ def vmpAutoBuildTool = ((project.findProperty("vmpAutoBuildTool") ?: "false").to
 // VmProtect 工具路径，可被 -PvmpToolExe 覆盖。
 def vmpToolExe = file((project.findProperty("vmpToolExe")
         ?: "${vmpProjectRoot}/VmProtect/cmake-build-debug/VmProtect.exe").toString())
-// 输入 so（通常是 demo donor so）。
+// 输入 so（通常是 demo origin so）。
 def vmpInputSo = file((project.findProperty("vmpInputSo")
         ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
 // VmProtect CMake 项目目录。
 def vmProtectProjectDir = file("${vmpProjectRoot}/VmProtect")
 // VmProtect 默认构建目录。
 def vmProtectBuildDir = file("${vmProtectProjectDir}/cmake-build-debug")
-// patch donor so：为 patchbay 提供实现符号来源。
-def vmpPatchDonorSo = file((project.findProperty("vmpPatchDonorSo")
+// patch origin so：为 patchbay 提供实现符号来源。
+def vmpPatchOriginSo = file((project.findProperty("vmpPatchOriginSo")
         ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
 // patch 注入实现函数名。
 def vmpPatchImplSymbol = (project.findProperty("vmpPatchImplSymbol")
@@ -157,14 +157,14 @@ tasks.register("runVmProtectPipelineDebug") {
         if (!vmpInputSo.exists()) {
             throw new GradleException("vmp input so not found: ${vmpInputSo}")
         }
-        if (!vmpPatchDonorSo.exists()) {
-            throw new GradleException("vmp donor so not found: ${vmpPatchDonorSo}")
+        if (!vmpPatchOriginSo.exists()) {
+            throw new GradleException("vmp origin so not found: ${vmpPatchOriginSo}")
         }
         // 加固路线核心参数要求：函数符号必须显式传入，禁止落回 VmProtect 内部默认函数集。
         def selectedFunctions = parseVmpFunctions()
         if (selectedFunctions.isEmpty()) {
             throw new GradleException(
-                    "vmpFunctions is required in hardening route. " +
+                    "vmpFunctions is required in protect route. " +
                             "Pass -PvmpFunctions=fun_add,fun_for,...")
         }
 
@@ -178,6 +178,8 @@ tasks.register("runVmProtectPipelineDebug") {
         def cmd = [
                 // 外部工具路径。
                 vmpToolExe.absolutePath,
+                // 显式路线模式：加固全流程。
+                "--mode", "protect",
                 // route4 必填参数：输入 so 与输出目录。
                 "--input-so", vmpInputSo.absolutePath,
                 "--output-dir", vmpOutputDir.absolutePath,
@@ -189,8 +191,8 @@ tasks.register("runVmProtectPipelineDebug") {
                 // vmengine so 与最终输出 so。
                 "--vmengine-so", hostSo.absolutePath,
                 "--output-so", protectedHostSo.absolutePath,
-                // patch donor 及实现符号。
-                "--patch-donor-so", vmpPatchDonorSo.absolutePath,
+                // patch origin 及实现符号。
+                "--patch-origin-so", vmpPatchOriginSo.absolutePath,
                 "--patch-impl-symbol", vmpPatchImplSymbol,
         ]
         if (vmpPatchAllExports) {
@@ -307,3 +309,4 @@ dependencies {
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 }
+

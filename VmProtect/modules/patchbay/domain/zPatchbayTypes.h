@@ -1,11 +1,6 @@
 #ifndef VMPROTECT_PATCHBAY_TYPES_H
 #define VMPROTECT_PATCHBAY_TYPES_H
 
-// 引入 ELF ABI 基础类型（Elf64_*）。
-#include "zElfAbi.h"
-// 引入跨端共享 PatchBay 协议定义。
-#include "shared/patchbay/zPatchbayProtocol.h"
-
 // 引入基础整型定义。
 #include <cstdint>
 // 引入字符串类型。
@@ -17,7 +12,7 @@ struct AliasPair {
     std::string exportName;
     // exportName 最终要指向的实现符号名。
     std::string implName;
-    // 若非 0，则写入新增符号 st_size（用于承载 key=donor.st_value）。
+    // 若非 0，则写入新增符号 st_size（用于承载 key=origin.st_value）。
     uint64_t exportKey = 0;
 };
 
@@ -29,11 +24,5 @@ struct PendingTakeoverSymbolBinding {
     uint32_t entryId = 0;
 };
 
-// PatchBay 协议头：统一复用 shared/patchbay 定义。
-using PatchBayHeader = vmp::patchbay::protocol::PatchBayHeader;
-// PatchBay 魔数常量。
-constexpr uint32_t kPatchBayMagic = vmp::patchbay::protocol::kPatchBayMagic;
-// PatchBay 协议版本常量。
-constexpr uint16_t kPatchBayVersion = vmp::patchbay::protocol::kPatchBayVersion;
-
 #endif // VMPROTECT_PATCHBAY_TYPES_H
+

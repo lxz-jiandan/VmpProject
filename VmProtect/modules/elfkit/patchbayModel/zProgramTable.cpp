@@ -1,4 +1,4 @@
-﻿#include "zProgramTable.h"
+#include "zProgramTable.h"
 
 // 从原始 phdr 数组构建模型对象序列。
 void zElfProgramHeaderTable::fromRaw(const Elf64_Phdr* raw, size_t count) {

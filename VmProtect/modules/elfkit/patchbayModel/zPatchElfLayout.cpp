@@ -1,4 +1,4 @@
-﻿// 布局打印与 PHT 迁移实现：用于 patchbay 视角下的 ELF 结构可视化与结构调整。
+// 布局打印与 PHT 迁移实现：用于 patchbay 视角下的 ELF 结构可视化与结构调整。
 #include "zPatchElf.h"
 // 对齐/页大小等工具。
 #include "zPatchElfUtils.h"

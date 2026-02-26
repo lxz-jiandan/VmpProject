@@ -229,6 +229,8 @@ def runVmProtectExport(project_root: Path, env: dict, functions):
     # 组装 VmProtect 导出命令（基础参数）。
     export_cmd = [
         str(target_exe),
+        "--mode",
+        "export",
         "--input-so",
         str(vmprotect_dir / "libdemo.so"),
     ]
@@ -389,7 +391,7 @@ def patchVmEngineSymbolsWithVmProtectRoute(
     project_root: Path,
     vmengine_dir: Path,
     env: dict,
-    donor_so: Path,
+    origin_so: Path,
     impl_symbol: str,
     only_fun_java: bool,
     functions,
@@ -399,8 +401,8 @@ def patchVmEngineSymbolsWithVmProtectRoute(
     # 2) 用 VmProtect 主流程对 vmengine 执行 embed+patch，产出独立 libvmengine_patch.so；
     # 3) 临时把 patch 结果部署到 libvmengine.so 供 installDebug 打包；
     # 4) 回归后再恢复原始 libvmengine.so，避免污染后续构建输入。
-    if not donor_so.exists():
-        raise RuntimeError(f"donor so not found: {donor_so}")
+    if not origin_so.exists():
+        raise RuntimeError(f"origin so not found: {origin_so}")
 
     # 先删除旧产物，避免 patch 到陈旧文件。
     removeExistingVmEngineOutputs(vmengine_dir)
@@ -445,23 +447,25 @@ def patchVmEngineSymbolsWithVmProtectRoute(
         if backup_so.exists():
             backup_so.unlink()
         # 组装 VmProtect 主流程命令：
-        # input=donor_so, vmengine=target_so, output=patched_so, impl=impl_symbol。
+        # input=origin_so, vmengine=target_so, output=patched_so, impl=impl_symbol。
         cmd = [
             patch_tool,
+            "--mode",
+            "protect",
             "--input-so",
-            str(donor_so),
+            str(origin_so),
             "--output-dir",
             str(route_out_dir),
             "--vmengine-so",
             str(target_so),
             "--output-so",
             str(patched_so),
-            "--patch-donor-so",
-            str(donor_so),
+            "--patch-origin-so",
+            str(origin_so),
             "--patch-impl-symbol",
             impl_symbol,
         ]
-        # 是否 patch donor 的全部导出：仅在开启时追加开关。
+        # 是否 patch origin 的全部导出：仅在开启时追加开关。
         if not only_fun_java:
             cmd.append("--patch-all-exports")
         # 加固路线必须显式传入函数集合。
@@ -521,11 +525,11 @@ def main():
         action="store_true",
         help="Patch libvmengine.so with VmProtect main route before installDebug",
     )
-    # donor so 路径参数。
+    # origin so 路径参数。
     parser.add_argument(
-        "--patch-donor-so",
+        "--patch-origin-so",
         default="VmProtect/libdemo.so",
-        help="Donor .so path (relative to project root or absolute)",
+        help="Origin .so path (relative to project root or absolute)",
     )
     # patch 实现符号名参数。
     parser.add_argument(
@@ -533,11 +537,11 @@ def main():
         default="vm_takeover_entry_0000",
         help="Implementation symbol/prefix used by VmProtect patch stage",
     )
-    # 是否 patch donor 的全部导出。
+    # 是否 patch origin 的全部导出。
     parser.add_argument(
         "--patch-all-exports",
         action="store_true",
-        help="Patch all donor exports (default only patches fun_* and Java_*)",
+        help="Patch all origin exports (default only patches fun_* and Java_*)",
     )
     # 函数导出清单参数。
     parser.add_argument(
@@ -572,17 +576,17 @@ def main():
 
     # 2) Optionally patch vmengine symbol exports before install.
     if args.patch_vmengine_symbols:
-        # donor 路径对象化。
-        donor = Path(args.patch_donor_so)
+        # origin 路径对象化。
+        origin = Path(args.patch_origin_so)
         # 相对路径时按 project_root 解析。
-        if not donor.is_absolute():
-            donor = root / donor
+        if not origin.is_absolute():
+            origin = root / origin
         # 执行 patch 流程。
         staged_for_install = patchVmEngineSymbolsWithVmProtectRoute(
             project_root=root,
             vmengine_dir=vmengine_dir,
             env=env,
-            donor_so=donor,
+            origin_so=origin,
             impl_symbol=args.patch_impl_symbol,
             only_fun_java=not args.patch_all_exports,
             functions=args.functions,
@@ -691,3 +695,4 @@ if __name__ == "__main__":
         # 兜底异常输出，确保 CI 能看到明确错误信息。
         print(f"[ERROR] {exc}", file=sys.stderr)
         raise SystemExit(1)
+

@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.18)
 project(VmProtect)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -69,7 +69,6 @@ set(VM_PROTECT_INCLUDE_DIRS
     ${VMP_PATCHBAY_DIR}/app
     ${VMP_PATCHBAY_DIR}/domain
     ${VMP_PATCHBAY_DIR}/format
-    ${VMP_PATCHBAY_DIR}/foundation
     ${VMP_PIPELINE_SRC_DIR}
 )
 
@@ -98,10 +97,6 @@ target_link_libraries(vmprotect_elfkit PUBLIC
 )
 
 set(PATCHBAY_TOOL_DIR "${VMP_PATCHBAY_DIR}")
-set(PATCHBAY_FOUNDATION_SOURCES
-    ${PATCHBAY_TOOL_DIR}/foundation/zPatchbayCrc.cpp
-)
-
 set(PATCHBAY_FORMAT_SOURCES
     ${VMP_ELFKIT_DIR}/patchbayModel/zPatchElf.cpp
     ${VMP_ELFKIT_DIR}/patchbayModel/zPatchElfLayout.cpp
@@ -127,7 +122,7 @@ set(PATCHBAY_DOMAIN_SOURCES
     ${VMP_ELFKIT_DIR}/api/zPatchbayApi.cpp
     ${VMP_ELFKIT_DIR}/api/zElfReadFacade.cpp
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayRules.cpp
-    ${PATCHBAY_TOOL_DIR}/domain/zPatchbayDonor.cpp
+    ${PATCHBAY_TOOL_DIR}/domain/zPatchbayOrigin.cpp
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayPatchApply.cpp
     ${PATCHBAY_TOOL_DIR}/domain/zPatchbayExport.cpp
 )
@@ -136,13 +131,11 @@ set(PATCHBAY_APP_SOURCES
     ${PATCHBAY_TOOL_DIR}/app/zMain.cpp
 )
 
-add_library(patchbay_foundation_obj OBJECT ${PATCHBAY_FOUNDATION_SOURCES})
 add_library(patchbay_format_obj OBJECT ${PATCHBAY_FORMAT_SOURCES})
 add_library(patchbay_domain_obj OBJECT ${PATCHBAY_DOMAIN_SOURCES})
 add_library(patchbay_app_obj OBJECT ${PATCHBAY_APP_SOURCES})
 
 foreach(patchbay_obj_target
-        patchbay_foundation_obj
         patchbay_format_obj
         patchbay_domain_obj
         patchbay_app_obj)
@@ -156,7 +149,6 @@ foreach(patchbay_obj_target
         ${VMP_PATCHBAY_DIR}/app
         ${VMP_PATCHBAY_DIR}/domain
         ${VMP_PATCHBAY_DIR}/format
-        ${VMP_PATCHBAY_DIR}/foundation
     )
     set_target_properties(${patchbay_obj_target} PROPERTIES
         POSITION_INDEPENDENT_CODE ON
@@ -164,7 +156,6 @@ foreach(patchbay_obj_target
 endforeach()
 
 add_library(vmp_patchbay_domain STATIC
-    $<TARGET_OBJECTS:patchbay_foundation_obj>
     $<TARGET_OBJECTS:patchbay_format_obj>
     $<TARGET_OBJECTS:patchbay_domain_obj>)
 target_link_libraries(vmp_patchbay_domain PUBLIC

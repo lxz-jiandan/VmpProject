@@ -1,4 +1,4 @@
-﻿#include "zPatchElf.h"
+#include "zPatchElf.h"
 #include "zLog.h"
 #include "zFile.h"
 

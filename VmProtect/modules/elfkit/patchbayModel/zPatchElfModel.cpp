@@ -1,4 +1,4 @@
-﻿// PatchElf 模型读写接口实现：负责 header/phdr/shdr 访问、增量修改与简单封装操作。
+// PatchElf 模型读写接口实现：负责 header/phdr/shdr 访问、增量修改与简单封装操作。
 #include "zPatchElf.h"
 // 对齐与页大小推断工具。
 #include "zPatchElfUtils.h"

@@ -13,7 +13,7 @@
 // 引入字节数组容器。
 #include <vector>
 
-// 将新构建的 dynsym/dynstr/hash 等表写入 patchbay 区并更新动态指针。
+// 将新构建的 dynsym/dynstr/hash 等表通过 ELF 重建路径落盘并更新动态指针。
 // 入参：
 // - required: input ELF 中 patch 所需关键节信息。
 // - inputPath: 输入 ELF 路径。
@@ -25,12 +25,10 @@
 // - newSysvHash: 新 sysv hash 字节（无 .hash 时可为空）。
 // - pendingTakeoverBindings: dynsym 中待回填槽位绑定（symbolIndex -> entryId）。
 // - takeoverDispatchAddr: 合成槽位跳板的 dispatch 目标地址。
-// - entryUsedHint: 预计使用槽位数（用于更新头字段）。
 // - allowValidateFail: 是否允许布局校验失败继续输出。
-// - handled: 输出是否已由 patchbay 路径处理完成。
 // - error: 可选错误描述输出。
 // 返回：
-// - true: 处理成功（无论 handled 为 true/false）。
+// - true: 处理成功。
 // - false: 处理失败。
 bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& required,
                                const char* inputPath,
@@ -42,9 +40,7 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
                                const std::vector<uint8_t>& newSysvHash,
                                const std::vector<PendingTakeoverSymbolBinding>& pendingTakeoverBindings,
                                uint64_t takeoverDispatchAddr,
-                               uint32_t entryUsedHint,
                                bool allowValidateFail,
-                               bool* handled,
                                std::string* error);
 
 #endif // VMPROTECT_PATCHBAY_PATCH_APPLY_H

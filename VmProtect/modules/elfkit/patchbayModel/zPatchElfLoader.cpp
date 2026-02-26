@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file elf_loader.cpp
  * @brief ELF 文件加载和解析模块
  *

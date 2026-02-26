@@ -13,7 +13,7 @@
 
 struct zTakeoverSymbolEntry {
     uint32_t entryId = 0;   // 跳板 entry ID（由 vm_takeover_entry_xxxx 注入到 w2）。
-    uint64_t funAddr = 0;   // 对应 VM 函数入口地址（route4 中等价于 donor 导出 st_value）。
+    uint64_t funAddr = 0;   // 对应 VM 函数入口地址（route4 中等价于 origin 导出 st_value）。
 };
 
 // 初始化接管映射表：绑定主执行 so 与 entryId -> funAddr。
@@ -30,3 +30,4 @@ void zSymbolTakeoverClear();
 extern "C" int vm_takeover_dispatch_by_id(int a, int b, uint32_t symbol_id);
 
 #endif // Z_SYMBOL_TAKEOVER_H
+

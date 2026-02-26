@@ -1,4 +1,4 @@
-﻿// 引入运行编排公共接口。
+// 引入运行编排公共接口。
 #include "zPipelineRun.h"
 
 // 引入动态数组容器。
@@ -15,11 +15,9 @@
 namespace vmp {
 
 // 判断当前配置是否触发“加固路线”。
-// 约定：vmengine/output/donor 任一参数存在，即进入加固模式。
-bool isHardeningRoute(const VmProtectConfig& config) {
-    return !config.vmengineSo.empty() ||
-           !config.outputSo.empty() ||
-           !config.patchDonorSo.empty();
+// 约定：由显式 mode 控制。
+bool isProtectRoute(const VmProtectConfig& config) {
+    return config.mode == PipelineMode::kProtect;
 }
 
 // 初始化默认配置。
@@ -48,6 +46,10 @@ void applyCliOverrides(const CliOverrides& cli, VmProtectConfig& config) {
     if (!cli.sharedBranchFile.empty()) {
         config.sharedBranchFile = cli.sharedBranchFile;
     }
+    // 路线模式显式覆盖。
+    if (cli.modeSet) {
+        config.mode = cli.mode;
+    }
     // vmengine so 覆盖。
     if (!cli.vmengineSo.empty()) {
         config.vmengineSo = cli.vmengineSo;
@@ -56,9 +58,9 @@ void applyCliOverrides(const CliOverrides& cli, VmProtectConfig& config) {
     if (!cli.outputSo.empty()) {
         config.outputSo = cli.outputSo;
     }
-    // donor so 覆盖。
-    if (!cli.patchDonorSo.empty()) {
-        config.patchDonorSo = cli.patchDonorSo;
+    // origin so 覆盖。
+    if (!cli.patchOriginSo.empty()) {
+        config.patchOriginSo = cli.patchOriginSo;
     }
     // impl symbol 覆盖。
     if (!cli.patchImplSymbol.empty()) {
@@ -83,6 +85,10 @@ void applyCliOverrides(const CliOverrides& cli, VmProtectConfig& config) {
     // coverageOnly 模式覆盖。
     if (cli.coverageOnlySet) {
         config.coverageOnly = cli.coverageOnly;
+        // 兼容旧参数：仅在未显式设置 --mode 时，把 --coverage-only 映射为 coverage 模式。
+        if (cli.coverageOnly && !cli.modeSet) {
+            config.mode = PipelineMode::kCoverage;
+        }
     }
     // analyzeAll 覆盖。
     if (cli.analyzeAllSet) {
@@ -92,46 +98,61 @@ void applyCliOverrides(const CliOverrides& cli, VmProtectConfig& config) {
 
 // 校验配置合法性。
 bool validateConfig(const VmProtectConfig& config, const CliOverrides& cli) {
-    // 根据最终配置判断是否为加固路线。
-    const bool hardeningRoute = isHardeningRoute(config);
+    // 是否携带了保护参数组（由参数内容判断，不代表实际运行模式）。
+    const bool hasProtectArgs = !config.vmengineSo.empty() ||
+                                !config.outputSo.empty() ||
+                                !config.patchOriginSo.empty();
     // 输入 so 必填。
     if (config.inputSo.empty()) {
         LOGE("input so is empty (use --input-so)");
         return false;
     }
-    // 加固路线：vmengine so 必须显式传入。
-    if (hardeningRoute && config.vmengineSo.empty()) {
-        LOGE("hardening route requires --vmengine-so (vmengine so path)");
+
+    // --mode 与 --coverage-only 同时出现时，要求语义一致。
+    if (cli.modeSet && cli.coverageOnlySet && cli.coverageOnly &&
+        cli.mode != PipelineMode::kCoverage) {
+        LOGE("--coverage-only conflicts with --mode (use --mode coverage or remove --coverage-only)");
         return false;
     }
-    // 加固路线：output so 必须显式传入，不允许默认回写/推导。
-    if (hardeningRoute && config.outputSo.empty()) {
-        LOGE("hardening route requires --output-so (protected output so path)");
+
+    // coverage/export 模式下，不接受加固参数，避免“参数触发路线”的隐式行为。
+    if (config.mode == PipelineMode::kCoverage && hasProtectArgs) {
+        LOGE("mode=coverage does not allow --vmengine-so/--output-so/--patch-origin-so");
         return false;
     }
-    // 加固路线：函数符号必须显式传入，不允许走内置默认函数集。
-    if (hardeningRoute && cli.functions.empty()) {
-        LOGE("hardening route requires explicit --function <symbol> (repeatable)");
+    if (config.mode == PipelineMode::kExport && hasProtectArgs) {
+        LOGE("mode=export does not allow protect args; use --mode protect");
         return false;
     }
+
+    // protect 模式：关键参数必须显式给出。
+    if (isProtectRoute(config) && config.vmengineSo.empty()) {
+        LOGE("mode=protect requires --vmengine-so");
+        return false;
+    }
+    if (isProtectRoute(config) && config.outputSo.empty()) {
+        LOGE("mode=protect requires --output-so");
+        return false;
+    }
+    if (isProtectRoute(config) && cli.functions.empty()) {
+        LOGE("mode=protect requires explicit --function <symbol> (repeatable)");
+        return false;
+    }
+
     // 输入 so 必须存在。
     if (!base::file::fileExists(config.inputSo)) {
         LOGE("input so not found: %s", config.inputSo.c_str());
         return false;
     }
-    // 指定 vmengine so 时必须存在。
-    if (!config.vmengineSo.empty() && !base::file::fileExists(config.vmengineSo)) {
+    // protect 模式下 vmengine so 必须存在。
+    if (isProtectRoute(config) && !base::file::fileExists(config.vmengineSo)) {
         LOGE("vmengine so not found: %s", config.vmengineSo.c_str());
         return false;
     }
-    // 指定 donor 时必须同时指定 vmengine so。
-    if (!config.patchDonorSo.empty() && config.vmengineSo.empty()) {
-        LOGE("patch options require --vmengine-so");
-        return false;
-    }
-    // donor so 必须存在。
-    if (!config.patchDonorSo.empty() && !base::file::fileExists(config.patchDonorSo)) {
-        LOGE("patch donor so not found: %s", config.patchDonorSo.c_str());
+
+    // origin so（可选）存在性校验。
+    if (!config.patchOriginSo.empty() && !base::file::fileExists(config.patchOriginSo)) {
+        LOGE("patch origin so not found: %s", config.patchOriginSo.c_str());
         return false;
     }
     // 输出目录不存在时尝试创建。
@@ -170,5 +191,6 @@ std::vector<std::string> buildFunctionNameList(const VmProtectConfig& config,
 
 // 结束命名空间。
 }  // namespace vmp
+
 
 

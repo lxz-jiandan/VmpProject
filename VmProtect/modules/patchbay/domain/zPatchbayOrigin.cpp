@@ -1,4 +1,4 @@
-#include "zPatchbayDonor.h"
+#include "zPatchbayOrigin.h"
 
 // 引入 patch ELF 读取门面。
 #include "zElfReadFacade.h"
@@ -22,18 +22,18 @@
 namespace {
 
 // 按状态映射 CLI 兼容退出码。
-int mapPatchbayDonorExitCode(zPatchbayDonorStatus status) {
+int mapPatchbayOriginExitCode(zPatchbayOriginStatus status) {
     // 成功返回 0。
-    if (status == zPatchbayDonorStatus::ok) {
+    if (status == zPatchbayOriginStatus::ok) {
         return 0;
     }
     // 参数类错误返回 1。
-    if (status == zPatchbayDonorStatus::invalidInput) {
+    if (status == zPatchbayOriginStatus::invalidInput) {
         return 1;
     }
     // 加载/收集阶段错误返回 2。
-    if (status == zPatchbayDonorStatus::loadFailed ||
-        status == zPatchbayDonorStatus::collectFailed) {
+    if (status == zPatchbayOriginStatus::loadFailed ||
+        status == zPatchbayOriginStatus::collectFailed) {
         return 2;
     }
     // 其余规则/冲突/patch 错误返回 3。
@@ -41,10 +41,10 @@ int mapPatchbayDonorExitCode(zPatchbayDonorStatus status) {
 }
 
 // 统一写入结果结构。
-void fillPatchbayDonorResult(zPatchbayDonorResult* outResult,
-                             zPatchbayDonorStatus status,
+void fillPatchbayOriginResult(zPatchbayOriginResult* outResult,
+                             zPatchbayOriginStatus status,
                              const std::string& errorText,
-                             size_t donorExportCount,
+                             size_t originExportCount,
                              size_t inputExportCount,
                              size_t appendCount,
                              bool entryMode) {
@@ -54,10 +54,10 @@ void fillPatchbayDonorResult(zPatchbayDonorResult* outResult,
     }
     // 回填状态与兼容退出码。
     outResult->status = status;
-    outResult->exitCode = mapPatchbayDonorExitCode(status);
+    outResult->exitCode = mapPatchbayOriginExitCode(status);
     // 回填错误文本与统计信息。
     outResult->error = errorText;
-    outResult->donorExportCount = donorExportCount;
+    outResult->originExportCount = originExportCount;
     outResult->inputExportCount = inputExportCount;
     outResult->appendCount = appendCount;
     outResult->entryMode = entryMode;
@@ -70,7 +70,7 @@ std::string buildConflictSummary(const std::vector<std::string>& duplicateExport
         return "";
     }
     // 先写入总数。
-    std::string summary = "export conflict between donor and vmengine: count=" +
+    std::string summary = "export conflict between origin and vmengine: count=" +
                           std::to_string(duplicateExports.size());
     // 最多拼接前 8 个样例名。
     constexpr size_t kDetailLimit = 8;
@@ -82,13 +82,13 @@ std::string buildConflictSummary(const std::vector<std::string>& duplicateExport
     return summary;
 }
 
-// 对 donor 导出做稳定排序，避免 entryId 受 dynsym 原始顺序波动影响。
-void sortDonorExportsForStableEntryIds(std::vector<vmp::elfkit::PatchDynamicExportInfo>* donorExports) {
-    if (donorExports == nullptr || donorExports->empty()) {
+// 对 origin 导出做稳定排序，避免 entryId 受 dynsym 原始顺序波动影响。
+void sortOriginExportsForStableEntryIds(std::vector<vmp::elfkit::PatchDynamicExportInfo>* originExports) {
+    if (originExports == nullptr || originExports->empty()) {
         return;
     }
-    std::stable_sort(donorExports->begin(),
-                     donorExports->end(),
+    std::stable_sort(originExports->begin(),
+                     originExports->end(),
                      [](const vmp::elfkit::PatchDynamicExportInfo& lhs,
                         const vmp::elfkit::PatchDynamicExportInfo& rhs) {
                          if (lhs.name != rhs.name) {
@@ -101,12 +101,12 @@ void sortDonorExportsForStableEntryIds(std::vector<vmp::elfkit::PatchDynamicExpo
 // 结束匿名命名空间。
 }  // namespace
 
-// 运行 donor 导出 patch 流程（领域 API）。
-bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
-                                     zPatchbayDonorResult* outResult) {
+// 运行 origin 导出 patch 流程（领域 API）。
+bool runPatchbayExportAliasFromOrigin(const zPatchbayOriginRequest& request,
+                                     zPatchbayOriginResult* outResult) {
     // 先清空输出结果。
-    fillPatchbayDonorResult(outResult,
-                            zPatchbayDonorStatus::ok,
+    fillPatchbayOriginResult(outResult,
+                            zPatchbayOriginStatus::ok,
                             "",
                             0,
                             0,
@@ -115,8 +115,8 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
 
     // 校验必填参数。
     if (request.inputSoPath.empty()) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::invalidInput,
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::invalidInput,
                                 "input so path is empty",
                                 0,
                                 0,
@@ -124,10 +124,10 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
                                 false);
         return false;
     }
-    if (request.donorSoPath.empty()) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::invalidInput,
-                                "donor so path is empty",
+    if (request.originSoPath.empty()) {
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::invalidInput,
+                                "origin so path is empty",
                                 0,
                                 0,
                                 0,
@@ -135,8 +135,8 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
         return false;
     }
     if (request.outputSoPath.empty()) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::invalidInput,
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::invalidInput,
                                 "output so path is empty",
                                 0,
                                 0,
@@ -145,8 +145,8 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
         return false;
     }
     if (request.implSymbol.empty()) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::invalidInput,
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::invalidInput,
                                 "impl symbol is empty",
                                 0,
                                 0,
@@ -157,8 +157,8 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
 
     // 输入文件不存在时直接失败。
     if (!vmp::base::file::fileExists(request.inputSoPath)) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::loadFailed,
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::loadFailed,
                                 "input so not found: " + request.inputSoPath,
                                 0,
                                 0,
@@ -166,11 +166,11 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
                                 false);
         return false;
     }
-    // donor 文件不存在时直接失败。
-    if (!vmp::base::file::fileExists(request.donorSoPath)) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::loadFailed,
-                                "donor so not found: " + request.donorSoPath,
+    // origin 文件不存在时直接失败。
+    if (!vmp::base::file::fileExists(request.originSoPath)) {
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::loadFailed,
+                                "origin so not found: " + request.originSoPath,
                                 0,
                                 0,
                                 0,
@@ -178,12 +178,12 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
         return false;
     }
 
-    // 加载 donor ELF。
-    vmp::elfkit::zElfReadFacade donorElf(request.donorSoPath.c_str());
-    if (!donorElf.isLoaded()) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::loadFailed,
-                                "failed to load donor ELF: " + request.donorSoPath,
+    // 加载 origin ELF。
+    vmp::elfkit::zElfReadFacade originElf(request.originSoPath.c_str());
+    if (!originElf.isLoaded()) {
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::loadFailed,
+                                "failed to load origin ELF: " + request.originSoPath,
                                 0,
                                 0,
                                 0,
@@ -191,41 +191,41 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
         return false;
     }
 
-    // 收集 donor 动态导出。
-    std::vector<vmp::elfkit::PatchDynamicExportInfo> donorExports;
+    // 收集 origin 动态导出。
+    std::vector<vmp::elfkit::PatchDynamicExportInfo> originExports;
     std::string collectError;
-    if (!donorElf.collectDefinedDynamicExportInfos(&donorExports, &collectError)) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::collectFailed,
-                                "collect donor exports failed: " +
+    if (!originElf.collectDefinedDynamicExportInfos(&originExports, &collectError)) {
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::collectFailed,
+                                "collect origin exports failed: " +
                                     (collectError.empty() ? std::string("(unknown)") : collectError),
-                                donorExports.size(),
+                                originExports.size(),
                                 0,
                                 0,
                                 false);
         return false;
     }
 
-    // only_fun_java 模式下过滤 donor 导出集合。
+    // only_fun_java 模式下过滤 origin 导出集合。
     if (request.onlyFunJava) {
         std::vector<vmp::elfkit::PatchDynamicExportInfo> filteredExports;
-        filteredExports.reserve(donorExports.size());
-        for (const vmp::elfkit::PatchDynamicExportInfo& exportInfo : donorExports) {
+        filteredExports.reserve(originExports.size());
+        for (const vmp::elfkit::PatchDynamicExportInfo& exportInfo : originExports) {
             if (isFunOrJavaSymbol(exportInfo.name)) {
                 filteredExports.push_back(exportInfo);
             }
         }
-        donorExports.swap(filteredExports);
+        originExports.swap(filteredExports);
     }
 
     // 统一排序后再分配 entryId，确保不同构建机/链接顺序下结果稳定。
-    sortDonorExportsForStableEntryIds(&donorExports);
+    sortOriginExportsForStableEntryIds(&originExports);
 
-    // donor 导出为空时直接失败。
-    if (donorExports.empty()) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::collectFailed,
-                                "donor has no defined dynamic exports",
+    // origin 导出为空时直接失败。
+    if (originExports.empty()) {
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::collectFailed,
+                                "origin has no defined dynamic exports",
                                 0,
                                 0,
                                 0,
@@ -236,10 +236,10 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
     // 加载 input ELF。
     vmp::elfkit::zElfReadFacade inputElf(request.inputSoPath.c_str());
     if (!inputElf.isLoaded()) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::loadFailed,
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::loadFailed,
                                 "failed to load input ELF: " + request.inputSoPath,
-                                donorExports.size(),
+                                originExports.size(),
                                 0,
                                 0,
                                 false);
@@ -250,11 +250,11 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
     std::vector<vmp::elfkit::PatchDynamicExportInfo> inputExportInfos;
     collectError.clear();
     if (!inputElf.collectDefinedDynamicExportInfos(&inputExportInfos, &collectError)) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::collectFailed,
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::collectFailed,
                                 "collect input exports failed: " +
                                     (collectError.empty() ? std::string("(unknown)") : collectError),
-                                donorExports.size(),
+                                originExports.size(),
                                 0,
                                 0,
                                 false);
@@ -271,17 +271,17 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
     // 校验 vmengine 现有导出命名规则。
     std::string ruleError;
     if (!validateVmengineExportNamingRules(inputExports, &ruleError)) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::namingRuleFailed,
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::namingRuleFailed,
                                 ruleError.empty() ? std::string("(unknown)") : ruleError,
-                                donorExports.size(),
+                                originExports.size(),
                                 inputExports.size(),
                                 0,
                                 false);
         return false;
     }
 
-    // 构建 input 导出名集合，用于 donor 冲突检测。
+    // 构建 input 导出名集合，用于 origin 冲突检测。
     std::unordered_set<std::string> inputExportSet;
     inputExportSet.reserve(inputExports.size());
     for (const std::string& exportName : inputExports) {
@@ -290,17 +290,17 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
 
     // 严格模式：存在重名导出时直接失败。
     std::vector<std::string> duplicateExports;
-    duplicateExports.reserve(donorExports.size());
-    for (const vmp::elfkit::PatchDynamicExportInfo& donorExport : donorExports) {
-        if (inputExportSet.find(donorExport.name) != inputExportSet.end()) {
-            duplicateExports.push_back(donorExport.name);
+    duplicateExports.reserve(originExports.size());
+    for (const vmp::elfkit::PatchDynamicExportInfo& originExport : originExports) {
+        if (inputExportSet.find(originExport.name) != inputExportSet.end()) {
+            duplicateExports.push_back(originExport.name);
         }
     }
     if (!duplicateExports.empty()) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::exportConflict,
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::exportConflict,
                                 buildConflictSummary(duplicateExports),
-                                donorExports.size(),
+                                originExports.size(),
                                 inputExports.size(),
                                 0,
                                 false);
@@ -309,22 +309,22 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
 
     // 构建 alias 对列表。
     std::vector<AliasPair> aliasPairs;
-    aliasPairs.reserve(donorExports.size());
+    aliasPairs.reserve(originExports.size());
     const bool entryMode = isTakeoverEntryModeImpl(request.implSymbol.c_str());
-    for (size_t exportIndex = 0; exportIndex < donorExports.size(); ++exportIndex) {
+    for (size_t exportIndex = 0; exportIndex < originExports.size(); ++exportIndex) {
         AliasPair pair;
-        pair.exportName = donorExports[exportIndex].name;
+        pair.exportName = originExports[exportIndex].name;
         pair.implName = entryMode
                             ? buildTakeoverEntrySymbolName(static_cast<uint32_t>(exportIndex))
                             : request.implSymbol;
-        // route4 约定：用 st_size 承载 donor st_value 作为 export key。
-        pair.exportKey = donorExports[exportIndex].value;
+        // route4 约定：用 st_size 承载 origin st_value 作为 export key。
+        pair.exportKey = originExports[exportIndex].value;
         aliasPairs.push_back(std::move(pair));
     }
 
     // 输出启动摘要日志。
-    LOGI("patchbay donor start: donorExports=%zu inputExports=%zu toAppend=%zu impl=%s onlyFunJava=%d",
-         donorExports.size(),
+    LOGI("patchbay origin start: originExports=%zu inputExports=%zu toAppend=%zu impl=%s onlyFunJava=%d",
+         originExports.size(),
          inputExports.size(),
          aliasPairs.size(),
          request.implSymbol.c_str(),
@@ -337,10 +337,10 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
                                     aliasPairs,
                                     request.allowValidateFail,
                                     &patchError)) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::patchApplyFailed,
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::patchApplyFailed,
                                 patchError.empty() ? std::string("(unknown)") : patchError,
-                                donorExports.size(),
+                                originExports.size(),
                                 inputExports.size(),
                                 aliasPairs.size(),
                                 entryMode);
@@ -349,10 +349,10 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
 
     // 落盘后检查输出是否存在。
     if (!vmp::base::file::fileExists(request.outputSoPath)) {
-        fillPatchbayDonorResult(outResult,
-                                zPatchbayDonorStatus::outputMissing,
+        fillPatchbayOriginResult(outResult,
+                                zPatchbayOriginStatus::outputMissing,
                                 "patch output not found: " + request.outputSoPath,
-                                donorExports.size(),
+                                originExports.size(),
                                 inputExports.size(),
                                 aliasPairs.size(),
                                 entryMode);
@@ -360,20 +360,21 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
     }
 
     // 输出成功日志。
-    LOGI("patchbay donor success: input=%s donor=%s output=%s impl=%s append=%zu",
+    LOGI("patchbay origin success: input=%s origin=%s output=%s impl=%s append=%zu",
          request.inputSoPath.c_str(),
-         request.donorSoPath.c_str(),
+         request.originSoPath.c_str(),
          request.outputSoPath.c_str(),
          request.implSymbol.c_str(),
          aliasPairs.size());
 
     // 成功回填结果。
-    fillPatchbayDonorResult(outResult,
-                            zPatchbayDonorStatus::ok,
+    fillPatchbayOriginResult(outResult,
+                            zPatchbayOriginStatus::ok,
                             "",
-                            donorExports.size(),
+                            originExports.size(),
                             inputExports.size(),
                             aliasPairs.size(),
                             entryMode);
     return true;
 }
+

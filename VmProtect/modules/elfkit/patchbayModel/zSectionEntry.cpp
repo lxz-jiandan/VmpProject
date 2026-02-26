@@ -1,4 +1,4 @@
-﻿#include "zSectionEntry.h"
+#include "zSectionEntry.h"
 // memcpy/memchr。
 #include <cstring>
 

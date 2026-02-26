@@ -1,4 +1,4 @@
-﻿#include "zSectionTable.h"
+#include "zSectionTable.h"
 
 // 根据 section 类型与名称选择合适的模型派生类（所有类定义在同一文件以减少文件数量）。
 static std::unique_ptr<zSectionTableElement> createSectionElementFromShdr(const Elf64_Shdr& raw,

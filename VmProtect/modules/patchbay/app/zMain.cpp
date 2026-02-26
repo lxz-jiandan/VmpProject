@@ -7,8 +7,8 @@
  */
 
 #include "zPatchbayEntry.h"
-// 引入 donor API（领域层）。
-#include "zPatchbayDonor.h"
+// 引入 origin API（领域层）。
+#include "zPatchbayOrigin.h"
 // 引入日志接口。
 #include "zLog.h"
 
@@ -25,7 +25,7 @@ static void printUsage(const char* exeName) {
     const char* name = exeName ? exeName : "VmProtect.exe";
     std::printf("Usage:\n");
     std::printf(
-        "  %s export_alias_from_patchbay <inputElf> <donorElf> <outputElf> <implSymbol> [--allow-validate-fail] [--only-fun-java]\n",
+        "  %s export_alias_from_patchbay <inputElf> <originElf> <outputElf> <implSymbol> [--allow-validate-fail] [--only-fun-java]\n",
         name);
 }
 
@@ -56,7 +56,7 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
     // 处理 export_alias_from_patchbay。
     if (cmd == "export_alias_from_patchbay") {
         // 语法：
-        // export_alias_from_patchbay <input> <donor> <output> <impl> [opts]
+        // export_alias_from_patchbay <input> <origin> <output> <impl> [opts]
         if (argc < 6) {
             printUsage(argv[0]);
             return 1;
@@ -81,18 +81,18 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
             return 2;
         }
 
-        // 组装 donor API 请求对象。
-        zPatchbayDonorRequest request;
+        // 组装 origin API 请求对象。
+        zPatchbayOriginRequest request;
         request.inputSoPath = argv[2];
-        request.donorSoPath = argv[3];
+        request.originSoPath = argv[3];
         request.outputSoPath = argv[4];
         request.implSymbol = argv[5];
         request.onlyFunJava = onlyFunJava;
         request.allowValidateFail = allowValidateFail;
 
-        // 执行 donor 领域流程。
-        zPatchbayDonorResult runResult;
-        if (!runPatchbayExportAliasFromDonor(request, &runResult)) {
+        // 执行 origin 领域流程。
+        zPatchbayOriginResult runResult;
+        if (!runPatchbayExportAliasFromOrigin(request, &runResult)) {
             LOGE("export_alias_from_patchbay failed: status=%d rc=%d error=%s",
                  static_cast<int>(runResult.status),
                  runResult.exitCode,
@@ -120,3 +120,4 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
     printUsage(argv[0]);
     return 1;
 }
+

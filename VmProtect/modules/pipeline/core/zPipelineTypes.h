@@ -13,6 +13,16 @@
 // 进入 pipeline 顶层命名空间。
 namespace vmp {
 
+// 主流程路线模式。
+enum class PipelineMode {
+    // 仅执行覆盖率分析与报告。
+    kCoverage = 0,
+    // 执行覆盖率与导出（不做 vmengine embed/patch）。
+    kExport = 1,
+    // 执行完整保护（覆盖率 + 导出 + vmengine embed/patch）。
+    kProtect = 2,
+};
+
 // VmProtect 主流程配置。
 // 该结构体由“默认值 + CLI 覆盖”共同构成最终运行参数。
 struct VmProtectConfig {
@@ -32,15 +42,17 @@ struct VmProtectConfig {
     bool analyzeAllFunctions = false;
     // 是否仅执行覆盖率阶段。
     bool coverageOnly = false;
+    // 主流程路线模式。
+    PipelineMode mode = PipelineMode::kExport;
     // vmengine so 路径（用于 embed）。
     std::string vmengineSo;
     // 加固后输出 so 路径。
     std::string outputSo;
-    // patch donor so 路径。
-    std::string patchDonorSo;
+    // patch origin so 路径。
+    std::string patchOriginSo;
     // patch 使用的实现符号名。
     std::string patchImplSymbol = "vm_takeover_entry_0000";
-    // 是否 patch donor 全部导出。
+    // 是否 patch origin 全部导出。
     bool patchAllExports = false;
     // patch 后验证失败时是否允许放行（默认严格，不放行）。
     bool patchAllowValidateFail = false;
@@ -71,12 +83,16 @@ struct CliOverrides {
     bool analyzeAllSet = false;
     // analyzeAll 目标值。
     bool analyzeAll = false;
+    // mode 是否被显式设置。
+    bool modeSet = false;
+    // mode 目标值。
+    PipelineMode mode = PipelineMode::kExport;
     // 覆盖 vmengineSo。
     std::string vmengineSo;
     // 覆盖 outputSo。
     std::string outputSo;
-    // 覆盖 patchDonorSo。
-    std::string patchDonorSo;
+    // 覆盖 patchOriginSo。
+    std::string patchOriginSo;
     // 覆盖 patchImplSymbol。
     std::string patchImplSymbol;
     // patchAllExports 是否被显式设置。
@@ -126,5 +142,6 @@ extern const std::vector<std::string> kDefaultFunctions;
 
 // 结束命名空间。
 }  // namespace vmp
+
 
 

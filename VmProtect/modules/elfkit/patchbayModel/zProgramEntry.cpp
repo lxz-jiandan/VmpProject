@@ -1,4 +1,4 @@
-﻿#include "zProgramEntry.h"
+#include "zProgramEntry.h"
 
 // 从 ELF 原始 Program Header 构建内部模型对象。
 zProgramTableElement zProgramTableElement::fromPhdr(const Elf64_Phdr& phdr) {

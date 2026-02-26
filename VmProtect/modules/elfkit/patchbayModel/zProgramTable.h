@@ -1,4 +1,4 @@
-﻿#ifndef VMP_PATCHBAY_PROGRAM_TABLE_H
+#ifndef VMP_PATCHBAY_PROGRAM_TABLE_H
 #define VMP_PATCHBAY_PROGRAM_TABLE_H
 
 // Program Header 条目模型。

@@ -1,4 +1,4 @@
-﻿// 基础校验实现：负责 ELF 头、表项尺寸与基础边界检查。
+// 基础校验实现：负责 ELF 头、表项尺寸与基础边界检查。
 #include "zPatchElfValidator.h"
 
 // PatchElf 模型。

@@ -51,9 +51,6 @@ bool exportAliasSymbolsPatchbay(const char* inputPath,
         return false;
     }
 
-    // 记录本轮追加 alias 数量，作为槽位已使用提示。
-    const uint32_t appended = buildResult.appendedCount;
-
     // 重建 gnu hash。
     std::vector<uint8_t> newGnuHash =
         buildGnuHashPayloadFromBytes(buildResult.dynsymSymbols, buildResult.dynstrBytes);
@@ -76,8 +73,7 @@ bool exportAliasSymbolsPatchbay(const char* inputPath,
         }
     }
 
-    // 优先尝试 patchbay 原地改写路径（当前主路径）。
-    bool handledByPatchbay = false;
+    // 执行单一路径落盘（仅 ELF 重建）。
     if (!applyPatchbayAliasPayload(required,
                                    inputPath,
                                    outputPath,
@@ -88,21 +84,9 @@ bool exportAliasSymbolsPatchbay(const char* inputPath,
                                    newSysvHash,
                                    buildResult.pendingTakeoverBindings,
                                    buildResult.takeoverDispatchAddr,
-                                   appended,
                                    allowValidateFail,
-                                   &handledByPatchbay,
                                    error)) {
         return false;
     }
-
-    // patchbay 路径已经处理完成时直接成功返回。
-    if (handledByPatchbay) {
-        return true;
-    }
-
-    // 当前版本已移除 legacy minimal injection 回退路径。
-    if (error != nullptr) {
-        *error = "no .vmp_patchbay found; legacy minimal injection removed";
-    }
-    return false;
+    return true;
 }

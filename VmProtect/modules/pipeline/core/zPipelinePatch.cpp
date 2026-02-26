@@ -1,4 +1,4 @@
-﻿#include "zPipelinePatch.h"
+#include "zPipelinePatch.h"
 
 // 引入固定宽度整型格式支持。
 #include <cinttypes>
@@ -13,8 +13,8 @@
 
 // 引入 embedded payload 尾部协议工具。
 #include "zEmbeddedPayloadTail.h"
-// 引入 patchbay donor 领域 API。
-#include "zPatchbayDonor.h"
+// 引入 patchbay origin 领域 API。
+#include "zPatchbayOrigin.h"
 // 引入文件读写与存在性判断工具。
 #include "zFile.h"
 // 引入日志能力。
@@ -103,10 +103,10 @@ bool embedExpandedSoIntoVmengine(const std::string& vmengineSo,
     return true;
 }
 
-// 调用 patchbay：从 donor 导出 alias 并注入目标 so。
-bool runPatchbayExportFromDonor(const std::string& inputSo,
+// 调用 patchbay：从 origin 导出 alias 并注入目标 so。
+bool runPatchbayExportFromOrigin(const std::string& inputSo,
                                 const std::string& outputSo,
-                                const std::string& donorSo,
+                                const std::string& originSo,
                                 const std::string& implSymbol,
                                 bool patchAllExports,
                                 bool allowValidateFail) {
@@ -120,9 +120,9 @@ bool runPatchbayExportFromDonor(const std::string& inputSo,
         LOGE("patch output so is empty");
         return false;
     }
-    // 校验 donor so 存在。
-    if (!base::file::fileExists(donorSo)) {
-        LOGE("patch donor so not found: %s", donorSo.c_str());
+    // 校验 origin so 存在。
+    if (!base::file::fileExists(originSo)) {
+        LOGE("patch origin so not found: %s", originSo.c_str());
         return false;
     }
     // 校验实现符号名非空。
@@ -131,19 +131,19 @@ bool runPatchbayExportFromDonor(const std::string& inputSo,
         return false;
     }
 
-    // 组装 donor API 请求对象。
-    zPatchbayDonorRequest request;
+    // 组装 origin API 请求对象。
+    zPatchbayOriginRequest request;
     request.inputSoPath = inputSo;
-    request.donorSoPath = donorSo;
+    request.originSoPath = originSo;
     request.outputSoPath = outputSo;
     request.implSymbol = implSymbol;
     request.onlyFunJava = !patchAllExports;
     request.allowValidateFail = allowValidateFail;
 
-    // 执行 donor API。
-    zPatchbayDonorResult runResult;
-    if (!runPatchbayExportAliasFromDonor(request, &runResult)) {
-        LOGE("patchbay donor api failed: status=%d rc=%d error=%s",
+    // 执行 origin API。
+    zPatchbayOriginResult runResult;
+    if (!runPatchbayExportAliasFromOrigin(request, &runResult)) {
+        LOGE("patchbay origin api failed: status=%d rc=%d error=%s",
              static_cast<int>(runResult.status),
              runResult.exitCode,
              runResult.error.empty() ? "(unknown)" : runResult.error.c_str());
@@ -156,10 +156,10 @@ bool runPatchbayExportFromDonor(const std::string& inputSo,
     }
 
     // 输出完成摘要，便于问题排查。
-    LOGI("patchbay export completed: tool=domain_api input=%s output=%s donor=%s impl=%s patchAllExports=%d",
+    LOGI("patchbay export completed: tool=domain_api input=%s output=%s origin=%s impl=%s patchAllExports=%d",
          inputSo.c_str(),
          outputSo.c_str(),
-         donorSo.c_str(),
+         originSo.c_str(),
          implSymbol.c_str(),
          patchAllExports ? 1 : 0);
     return true;
@@ -174,13 +174,13 @@ bool runVmengineProtectFlow(const VmProtectConfig& config) {
 
     // expanded so 的完整路径。
     const std::string expandedSoPath = joinOutputPath(config, config.expandedSo);
-    // 未指定 donor：仅做 embed。
-    if (config.patchDonorSo.empty()) {
+    // 未指定 origin：仅做 embed。
+    if (config.patchOriginSo.empty()) {
         // outputSo 在加固路线下必须显式传入，直接执行 embed。
         return embedExpandedSoIntoVmengine(config.vmengineSo, expandedSoPath, config.outputSo);
     }
 
-    // 指定 donor：走 embed + patchbay 导出流程。
+    // 指定 origin：走 embed + patchbay 导出流程。
     const std::string outputSoPath = config.outputSo;
     // patch 前临时文件路径。
     const std::string embedTmpSoPath = outputSoPath + ".embed.tmp.so";
@@ -188,10 +188,10 @@ bool runVmengineProtectFlow(const VmProtectConfig& config) {
     if (!embedExpandedSoIntoVmengine(config.vmengineSo, expandedSoPath, embedTmpSoPath)) {
         return false;
     }
-    // 再执行 patchbay donor 导出流程。
-    if (!runPatchbayExportFromDonor(embedTmpSoPath,
+    // 再执行 patchbay origin 导出流程。
+    if (!runPatchbayExportFromOrigin(embedTmpSoPath,
                                     outputSoPath,
-                                    config.patchDonorSo,
+                                    config.patchOriginSo,
                                     config.patchImplSymbol,
                                     config.patchAllExports,
                                     config.patchAllowValidateFail)) {
@@ -209,6 +209,7 @@ bool runVmengineProtectFlow(const VmProtectConfig& config) {
 
 // 结束 vmp 命名空间。
 }  // namespace vmp
+
 
 
 

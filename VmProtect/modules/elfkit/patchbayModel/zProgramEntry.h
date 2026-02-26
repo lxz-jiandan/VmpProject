@@ -1,4 +1,4 @@
-﻿#ifndef VMP_PATCHBAY_PROGRAM_ENTRY_H
+#ifndef VMP_PATCHBAY_PROGRAM_ENTRY_H
 #define VMP_PATCHBAY_PROGRAM_ENTRY_H
 
 // ELF 基础类型（Elf64_Phdr / Elf64_Addr / PT_* / PF_*）。

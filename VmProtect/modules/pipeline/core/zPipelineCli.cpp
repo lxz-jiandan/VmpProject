@@ -14,6 +14,33 @@ namespace fs = std::filesystem;
 // 进入 pipeline 命名空间。
 namespace vmp {
 
+// 解析 mode 字符串到枚举值。
+bool parseModeValue(const std::string& value, PipelineMode* outMode, std::string* error) {
+    if (outMode == nullptr) {
+        if (error != nullptr) {
+            *error = "internal error: null outMode";
+        }
+        return false;
+    }
+    if (value == "coverage") {
+        *outMode = PipelineMode::kCoverage;
+        return true;
+    }
+    if (value == "export") {
+        *outMode = PipelineMode::kExport;
+        return true;
+    }
+    if (value == "protect") {
+        *outMode = PipelineMode::kProtect;
+        return true;
+    }
+    if (error != nullptr) {
+        *error = "invalid --mode value: " + value +
+                 " (expected: coverage|export|protect)";
+    }
+    return false;
+}
+
 // 对字符串列表去重并保持原始顺序。
 void deduplicateKeepOrder(std::vector<std::string>& values) {
     // 记录已出现元素。
@@ -68,6 +95,21 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             cli.sharedBranchFile = argv[++argIndex];
             continue;
         }
+        // 主流程路线模式参数。
+        if (arg == "--mode" && argIndex + 1 < argc) {
+            std::string modeError;
+            if (!parseModeValue(argv[++argIndex], &cli.mode, &modeError)) {
+                error = modeError;
+                return false;
+            }
+            cli.modeSet = true;
+            continue;
+        }
+        // mode 缺少参数值时给出明确错误。
+        if (arg == "--mode") {
+            error = "missing value for --mode (expected: coverage|export|protect)";
+            return false;
+        }
         // vmengine so 参数。
         if (arg == "--vmengine-so" && argIndex + 1 < argc) {
             cli.vmengineSo = argv[++argIndex];
@@ -78,9 +120,9 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             cli.outputSo = argv[++argIndex];
             continue;
         }
-        // patch donor so 参数。
-        if (arg == "--patch-donor-so" && argIndex + 1 < argc) {
-            cli.patchDonorSo = argv[++argIndex];
+        // patch origin so 参数。
+        if (arg == "--patch-origin-so" && argIndex + 1 < argc) {
+            cli.patchOriginSo = argv[++argIndex];
             continue;
         }
         // patch impl symbol 参数。
@@ -98,7 +140,7 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             cli.functions.emplace_back(argv[++argIndex]);
             continue;
         }
-        // 是否 patch donor 全量导出。
+        // 是否 patch origin 全量导出。
         if (arg == "--patch-all-exports") {
             cli.patchAllExportsSet = true;
             cli.patchAllExports = true;
@@ -146,20 +188,23 @@ void printUsage() {
         << "Options:\n"
         // 输入 so。
         << "  --input-so <file>            Input arm64 so path (required)\n"
+        // 流程模式。
+        << "  --mode <coverage|export|protect>\n"
+        << "                                Route mode (default: export)\n"
         // 输出目录。
         << "  --output-dir <dir>           Output directory for txt/bin/report\n"
         // expand so。
         << "  --expanded-so <file>         Expanded so output file name\n"
         // vmengine so。
-        << "  --vmengine-so <file>         Vmengine so path (required in hardening route)\n"
+        << "  --vmengine-so <file>         Vmengine so path (required in protect route)\n"
         // 输出 so。
-        << "  --output-so <file>           Protected output so path (required in hardening route)\n"
-        // donor so。
-        << "  --patch-donor-so <file>      Donor so for patchbay export fill\n"
+        << "  --output-so <file>           Protected output so path (required in protect route)\n"
+        // origin so。
+        << "  --patch-origin-so <file>      Origin so for patchbay export fill\n"
         // impl symbol。
         << "  --patch-impl-symbol <name>   Impl symbol used by export_alias_from_patchbay\n"
         // 全量导出开关。
-        << "  --patch-all-exports          Patch all donor exports (default: only fun_* and Java_*)\n"
+        << "  --patch-all-exports          Patch all origin exports (default: only fun_* and Java_*)\n"
         // validate fail 开关（默认严格）。
         << "  --patch-allow-validate-fail   Allow patch flow to continue when validate fails\n"
         // branch 地址文件。
@@ -167,16 +212,18 @@ void printUsage() {
         // 覆盖率报告。
         << "  --coverage-report <file>     Coverage report output file name\n"
         // 函数参数。
-        << "  --function <name>            Protected function symbol (repeatable, required in hardening route)\n"
+        << "  --function <name>            Protected function symbol (repeatable, required in protect route)\n"
         // 覆盖率模式。
-        << "  --coverage-only              Only generate coverage board\n"
+        << "  --coverage-only              Legacy alias of --mode coverage\n"
         // 全函数分析模式。
         << "  --analyze-all                Analyze all extracted functions\n"
-        // 加固模式说明。
+        // 模式说明。
         << "\n"
-        << "Hardening route:\n"
-        << "  Triggered when any of --vmengine-so/--output-so/--patch-donor-so is set.\n"
-        << "  In this mode, --input-so/--vmengine-so/--output-so/--function are required.\n"
+        << "Mode rules:\n"
+        << "  coverage: run coverage report only\n"
+        << "  export:   run coverage + export package\n"
+        << "  protect:  run coverage + export + vmengine embed/patch\n"
+        << "            required: --input-so --vmengine-so --output-so --function\n"
         << "\n"
         // 帮助参数。
         << "  -h, --help                   Show this help\n";
@@ -196,3 +243,4 @@ std::string joinOutputPath(const VmProtectConfig& config, const std::string& fil
 
 // 结束命名空间。
 }  // namespace vmp
+

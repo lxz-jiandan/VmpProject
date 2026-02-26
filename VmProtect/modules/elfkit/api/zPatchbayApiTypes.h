@@ -93,12 +93,7 @@ struct PatchRequiredSections {
     bool hasHash = false;
     // .dynamic 快照。
     PatchDynamicView dynamic;
-    // .vmp_patchbay 节基础信息快照（可选）。
-    PatchSectionView patchbay;
-    // 是否存在 .vmp_patchbay。
-    bool hasPatchbay = false;
 };
 
 // 结束命名空间。
 }  // namespace vmp::elfkit
-

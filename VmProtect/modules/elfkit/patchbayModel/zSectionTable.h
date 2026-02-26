@@ -1,4 +1,4 @@
-﻿#ifndef VMP_PATCHBAY_SECTION_TABLE_H
+#ifndef VMP_PATCHBAY_SECTION_TABLE_H
 #define VMP_PATCHBAY_SECTION_TABLE_H
 
 // Section 条目基类及派生类声明。

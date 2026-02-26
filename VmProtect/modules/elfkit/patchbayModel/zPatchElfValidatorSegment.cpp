@@ -1,4 +1,4 @@
-﻿// 段校验实现：负责 Program Header 与 Section/Segment 映射的一致性检查。
+// 段校验实现：负责 Program Header 与 Section/Segment 映射的一致性检查。
 #include "zPatchElfValidator.h"
 
 // PatchElf 聚合模型定义。

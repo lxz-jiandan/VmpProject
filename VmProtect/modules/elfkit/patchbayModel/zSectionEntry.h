@@ -1,4 +1,4 @@
-﻿#ifndef VMP_PATCHBAY_SECTION_ENTRY_H
+#ifndef VMP_PATCHBAY_SECTION_ENTRY_H
 #define VMP_PATCHBAY_SECTION_ENTRY_H
 
 #include "zPatchElfTypes.h"

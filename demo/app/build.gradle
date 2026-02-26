@@ -18,10 +18,10 @@ def generatedVmpJniRoot = file("$buildDir/generated/vmpJniLibs/main")
 def generatedVmpArm64Dir = file("$generatedVmpJniRoot/arm64-v8a")
 // demo 实际加载库（由受保护 vmengine so 重命名而来）。
 def generatedVmpDemoSo = file("$generatedVmpArm64Dir/libdemo.so")
-// 参考库（donor）副本，便于 demo 对照调用。
+// 参考库（origin）副本，便于 demo 对照调用。
 def generatedVmpDemoRefSo = file("$generatedVmpArm64Dir/libdemo_ref.so")
-// donor so 来源。
-def donorDemoSo = file("${vmpProjectRoot}/VmProtect/libdemo.so")
+// origin so 来源。
+def originDemoSo = file("${vmpProjectRoot}/VmProtect/libdemo.so")
 
 def resolveProtectedVmengineSo = {
     // 允许通过 -PprotectedDemoSo 指定输入，便于 CI/离线调试。
@@ -77,8 +77,8 @@ tasks.register("prepareProtectedDemoSo") {
             throw new GradleException(
                     "protected vmengine so not found. Build VmEngine first, or pass -PprotectedDemoSo=<path>")
         }
-        if (!donorDemoSo.exists()) {
-            throw new GradleException("reference demo so not found: ${donorDemoSo}")
+        if (!originDemoSo.exists()) {
+            throw new GradleException("reference demo so not found: ${originDemoSo}")
         }
 
         // 清理旧目录，避免旧 so 干扰。
@@ -94,13 +94,13 @@ tasks.register("prepareProtectedDemoSo") {
             rename { "libdemo.so" }
         }
         copy {
-            // donor so 作为对照库重命名为 libdemo_ref.so。
-            from donorDemoSo
+            // origin so 作为对照库重命名为 libdemo_ref.so。
+            from originDemoSo
             into generatedVmpArm64Dir
             rename { "libdemo_ref.so" }
         }
         println("[VMP] injected protected so: ${inputSo} -> ${generatedVmpDemoSo}")
-        println("[VMP] injected reference so: ${donorDemoSo} -> ${generatedVmpDemoRefSo}")
+        println("[VMP] injected reference so: ${originDemoSo} -> ${generatedVmpDemoRefSo}")
     }
 }
 
@@ -181,3 +181,4 @@ dependencies {
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 }
+

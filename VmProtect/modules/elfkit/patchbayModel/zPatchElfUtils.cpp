@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file elf_utils.cpp
  * @brief ELF 操作公共工具函数实现。
  *

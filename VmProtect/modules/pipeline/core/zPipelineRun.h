@@ -14,8 +14,8 @@
 // 进入 pipeline 命名空间。
 namespace vmp {
 
-// 判断当前配置是否触发“加固路线”。
-bool isHardeningRoute(const VmProtectConfig& config);
+// 判断当前配置是否为保护路线（mode=protect）。
+bool isProtectRoute(const VmProtectConfig& config);
 // 初始化默认配置（默认函数列表 + 去重）。
 void initDefaultConfig(VmProtectConfig& config);
 // 将 CLI 覆盖项应用到配置对象。

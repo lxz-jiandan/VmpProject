@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file zPatchElf.h
  * @brief PatchElf 主类 - ELF 文件操作的统一接口
  *
