@@ -19,6 +19,14 @@ struct AliasPair {
     uint64_t exportKey = 0;
 };
 
+// 待补全的 takeover 绑定：
+// - symbolIndex 指向 dynsym 中某个需要后续写回 st_value 的条目；
+// - entryId 表示该条目应绑定到哪个 takeover 槽位跳板地址。
+struct PendingTakeoverSymbolBinding {
+    uint32_t symbolIndex = 0;
+    uint32_t entryId = 0;
+};
+
 // PatchBayHeader 与 VmEngine/app/src/main/cpp/zPatchBay.h 必须严格同布局。
 // 两端需按同一二进制协议读写，否则运行时无法识别 patchbay 元数据。
 #pragma pack(push, 1)
@@ -56,9 +64,9 @@ struct PatchBayHeader {
     // versym 子区容量。
     uint32_t versymCapacity;
     // takeover 槽位总数。
-    uint32_t takeoverSlotTotal;
+    uint32_t takeoverEntryTotal;
     // 已使用 takeover 槽位数。
-    uint32_t takeoverSlotUsed;
+    uint32_t takeoverEntryUsed;
     // 首次 patch 前的原始 DT_SYMTAB 快照。
     uint64_t originalDtSymtab;
     // 首次 patch 前的原始 DT_STRTAB 快照。
@@ -80,9 +88,9 @@ struct PatchBayHeader {
     // versym 当前已使用字节数。
     uint32_t usedVersym;
     // takeover 槽位位图低 64 位。
-    uint64_t takeoverSlotBitmapLo;
+    uint64_t takeoverEntryBitmapLo;
     // takeover 槽位位图高 64 位。
-    uint64_t takeoverSlotBitmapHi;
+    uint64_t takeoverEntryBitmapHi;
     // 对 header(清零crc)+used payload 的 CRC32 校验值。
     uint32_t crc32;
 };
@@ -97,4 +105,3 @@ constexpr uint32_t kPatchBayMagic = 0x42504d56U;
 constexpr uint16_t kPatchBayVersion = 1;
 
 #endif // VMPROTECT_PATCHBAY_TYPES_H
-

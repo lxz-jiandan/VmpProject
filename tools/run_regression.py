@@ -530,7 +530,7 @@ def main():
     # patch 实现符号名参数。
     parser.add_argument(
         "--patch-impl-symbol",
-        default="vm_takeover_slot_0000",
+        default="vm_takeover_entry_0000",
         help="Implementation symbol/prefix used by VmProtect patch stage",
     )
     # 是否 patch donor 的全部导出。

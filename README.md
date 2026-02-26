@@ -8,7 +8,7 @@ VmProject 是一个面向 Android ARM64 `so` 的“离线加固 + 运行时接�
 
 配套目录：
 
-- `tools`：回归与构建辅助脚本
+- `tools`：回归与构建辅助脚本（核心：`run_regression.py`、`embed_expand_into_vmengine.py`、`gen_takeover_stubs.py`）
 - `demo`：演示与端到端验证
 
 本文基于当前代码现状（含最近重构）编写，重点是让新同学能快速理解：
@@ -35,8 +35,8 @@ input so + function list
    -> vm_init
    -> read embedded payload
    -> preload function cache
-   -> recover slot_id -> fun_addr
-   -> vm_takeover_slot_xxxx -> vm_takeover_dispatch_by_id -> VM execute
+   -> recover entryId -> funAddr
+   -> vm_takeover_entry_xxxx -> vm_takeover_dispatch_by_id -> VM execute
 ```
 
 ---
@@ -222,7 +222,7 @@ bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
 
 1. donor 与 vmengine 导出重名会直接失败。
 2. 默认仅处理 `fun_*` 与 `Java_*`（除非显式 `--patch-all-exports`）。
-3. `vm_takeover_slot_xxxx` 槽位模式支持批量映射。
+3. `vm_takeover_entry_xxxx` entry 模式支持批量映射。
 4. `exportKey` 用 donor 符号 `st_value` 承载，写入新增导出的 `st_size` 字段。
 
 ### 主实现文件
@@ -276,12 +276,7 @@ bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
 
 ### 构建时自动动作
 
-1. 生成接管槽位桩（默认 128 槽）：
-   - 脚本：`tools/gen_takeover_stubs.py`
-   - 输出：
-     - `generated/zTakeoverStubs.generated.S`
-     - `generated/zTakeoverSymbols.generated.h`
-2. 若 `VMENGINE_ROUTE4_EMBED_PAYLOAD=ON`（默认开）：
+1. 若 `VMENGINE_ROUTE4_EMBED_PAYLOAD=ON`（默认开）：
    - post-build 调用 `tools/embed_expand_into_vmengine.py`
    - 把 `assets/libdemo_expand.so` embed 到 `libvmengine.so` 尾部
 
@@ -337,7 +332,7 @@ bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
    - 落盘 `libdemo_expand_embedded.so`
    - 加载并预热函数缓存
 3. 恢复 takeover 映射：
-   - 从 patched vmengine dynsym 恢复 `slot_id -> fun_addr`
+   - 从 patched vmengine dynsym 恢复 `entryId -> funAddr`
    - 初始化符号接管表
 4. 任一关键环节失败，初始化失败
 
@@ -397,10 +392,11 @@ bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
 
 两遍扫描：
 
-1. 找 `vm_takeover_slot_XXXX`，建立 `st_value -> slot_id`
-2. 扫普通导出符号，用同 `st_value` 反查 `slot_id`，从 `st_size` 取 key（当前语义为 `fun_addr`）
+1. 找 `vm_takeover_entry_XXXX`，建立 `st_value -> entryId`
+2. 扫普通导出符号，用同 `st_value` 反查 `entryId`，从 `st_size` 取 key（当前语义为 `funAddr`）
 
 输出：`std::vector<zTakeoverSymbolEntry>`
+当前结构字段：`entryId`、`funAddr`
 
 ### 接管状态机
 
@@ -408,9 +404,9 @@ bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
 
 `zSymbolTakeoverInit(...)`：
 
-1. 校验条目合法性（非空、slot 不重复、地址有效）
+1. 校验条目合法性（非空、entryId 不重复、地址有效）
 2. 校验目标 so 已被 linker 感知
-3. 提交全局映射 `slot_id -> fun_addr`
+3. 提交全局映射 `entryId -> funAddr`
 
 ### 分发入口
 
@@ -421,7 +417,7 @@ bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
 策略：
 
 1. 若 `vm_init` 未 ready，先惰性初始化
-2. `symbol_id` 作为 `slot_id` 查映射
+2. `symbol_id` 作为 `entryId` 查映射
 3. 调 `zVmEngine::execute(...)` 执行对应函数
 
 ---
@@ -435,7 +431,7 @@ bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
 
 核心能力：
 
-1. 缓存管理（`fun_addr -> zFunction*`）
+1. 缓存管理（`funAddr -> zFunction*`）
 2. 链接器桥接（`zLinker`）
 3. 共享分支地址表管理
 4. 双形态执行入口：
@@ -471,10 +467,10 @@ bundle 写入实现：`VmProtect/modules/elfkit/core/zSoBinBundle.cpp`
 2. 离线补丁时尽量原位写入，避免重排整 ELF
 3. 通过 header 记录各区偏移/容量/used/crc
 
-当前槽位策略：
+当前 entry 策略：
 
-- 槽位总数来自生成头 `zTakeoverSymbols.generated.h`
-- 默认位图按槽位数自动展开
+- 编译期不再预置固定 entry 桩（旧的 128 槽方案已移除）
+- 离线 patch 阶段按需重构 dynsym，并为任意 entryId 动态合成跳板
 
 ---
 
@@ -512,7 +508,7 @@ VmProtect/cmake-build-debug/VmProtect.exe `
   --vmengine-so VmEngine/app/build/intermediates/cxx/Debug/2z4j1d3z/obj/arm64-v8a/libvmengine.so `
   --output-so VmEngine/app/build/intermediates/cxx/Debug/2z4j1d3z/obj/arm64-v8a/libvmengine_patch.so `
   --patch-donor-so VmProtect/libdemo.so `
-  --patch-impl-symbol vm_takeover_slot_0000 `
+  --patch-impl-symbol vm_takeover_entry_0000 `
   --function fun_add `
   --function fun_for
 ```
@@ -527,5 +523,4 @@ python tools/run_regression.py --project-root . --patch-vmengine-symbols
 
 构建辅助脚本（由构建系统直接调用）：
 
-- `tools/gen_takeover_stubs.py`
 - `tools/embed_expand_into_vmengine.py`

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # [VMP_FLOW_NOTE] 文件级流程注释
-# - 生成通用 takeover 槽位桩与槽位头文件。
+# - 生成通用 takeover entry 桩与 entry 头文件。
 # - 加固链路位置：route4 L2 代码生成阶段。
 # - 输入：槽位总数。
 # - 输出：generated stubs/header。
@@ -20,14 +20,14 @@ def emitMovW2(slot_id: int) -> List[str]:
 
 
 def slotSymbolName(slot_id: int) -> str:
-    # 槽位符号统一命名：vm_takeover_slot_0000。
-    return f"vm_takeover_slot_{slot_id:04d}"
+    # entry 符号统一命名：vm_takeover_entry_0000。
+    return f"vm_takeover_entry_{slot_id:04d}"
 
 
 def generateAsm(slot_count: int, label: str) -> str:
     out = []
     out.append("/* [VMP_FLOW_NOTE] 自动生成文件 */")
-    out.append("/* - 由 tools/gen_takeover_stubs.py 生成，定义 ARM64 通用槽位跳板。 */")
+    out.append("/* - 由 tools/gen_takeover_stubs.py 生成，定义 ARM64 通用 takeover entry 跳板。 */")
     out.append(f"/* - 来源: {label} */")
     out.append("")
     out.append("    .text")
@@ -63,8 +63,8 @@ def generateHeader(slot_count: int, label: str) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate arm64 takeover slot stubs.")
-    parser.add_argument("--slot-count", required=True, type=int, help="Total takeover slot count")
+    parser = argparse.ArgumentParser(description="Generate arm64 takeover entry stubs.")
+    parser.add_argument("--slot-count", required=True, type=int, help="Total takeover entry count")
     parser.add_argument("--source-label", default="slot-count", help="Label written into generated comments")
     parser.add_argument("--out-asm", required=True, help="Output .S path")
     parser.add_argument("--out-header", required=True, help="Output .h path")

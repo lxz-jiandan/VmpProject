@@ -46,7 +46,7 @@ void fillPatchbayDonorResult(zPatchbayDonorResult* outResult,
                              size_t donorExportCount,
                              size_t inputExportCount,
                              size_t appendCount,
-                             bool slotMode) {
+                             bool entryMode) {
     // 调用方不关心结果时可传空指针。
     if (outResult == nullptr) {
         return;
@@ -59,7 +59,7 @@ void fillPatchbayDonorResult(zPatchbayDonorResult* outResult,
     outResult->donorExportCount = donorExportCount;
     outResult->inputExportCount = inputExportCount;
     outResult->appendCount = appendCount;
-    outResult->slotMode = slotMode;
+    outResult->entryMode = entryMode;
 }
 
 // 构建冲突摘要文本（限制输出条数，避免日志过长）。
@@ -290,12 +290,12 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
     // 构建 alias 对列表。
     std::vector<AliasPair> aliasPairs;
     aliasPairs.reserve(donorExports.size());
-    const bool slotMode = isTakeoverSlotModeImpl(request.implSymbol.c_str());
+    const bool entryMode = isTakeoverEntryModeImpl(request.implSymbol.c_str());
     for (size_t exportIndex = 0; exportIndex < donorExports.size(); ++exportIndex) {
         AliasPair pair;
         pair.exportName = donorExports[exportIndex].name;
-        pair.implName = slotMode
-                            ? buildTakeoverSlotSymbolName(static_cast<uint32_t>(exportIndex))
+        pair.implName = entryMode
+                            ? buildTakeoverEntrySymbolName(static_cast<uint32_t>(exportIndex))
                             : request.implSymbol;
         // route4 约定：用 st_size 承载 donor st_value 作为 export key。
         pair.exportKey = donorExports[exportIndex].value;
@@ -323,7 +323,7 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
                                 donorExports.size(),
                                 inputExports.size(),
                                 aliasPairs.size(),
-                                slotMode);
+                                entryMode);
         return false;
     }
 
@@ -335,7 +335,7 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
                                 donorExports.size(),
                                 inputExports.size(),
                                 aliasPairs.size(),
-                                slotMode);
+                                entryMode);
         return false;
     }
 
@@ -354,6 +354,6 @@ bool runPatchbayExportAliasFromDonor(const zPatchbayDonorRequest& request,
                             donorExports.size(),
                             inputExports.size(),
                             aliasPairs.size(),
-                            slotMode);
+                            entryMode);
     return true;
 }

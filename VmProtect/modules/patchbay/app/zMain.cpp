@@ -100,9 +100,9 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
             return runResult.exitCode;
         }
 
-        // 槽位模式输出额外摘要日志。
-        if (runResult.slotMode) {
-            LOGI("export_alias_from_patchbay slot mode enabled: slot_prefix=%s slot_needed=%zu",
+        // entry 模式输出额外摘要日志。
+        if (runResult.entryMode) {
+            LOGI("export_alias_from_patchbay entry mode enabled: entry_prefix=%s entry_needed=%zu",
                  argv[5],
                  runResult.appendCount);
         }

@@ -39,7 +39,7 @@ struct VmProtectConfig {
     // patch donor so 路径。
     std::string patchDonorSo;
     // patch 使用的实现符号名。
-    std::string patchImplSymbol = "vm_takeover_slot_0000";
+    std::string patchImplSymbol = "vm_takeover_entry_0000";
     // 是否 patch donor 全部导出。
     bool patchAllExports = false;
     // patch 后验证失败时是否允许放行。

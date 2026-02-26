@@ -12,7 +12,7 @@ struct zPatchbayDonorRequest {
     std::string donorSoPath;
     // 输出 so（应用 alias patch 后的最终产物）。
     std::string outputSoPath;
-    // 实现符号（常见为 vm_takeover_slot_0000）。
+    // 实现符号（常见为 vm_takeover_entry_0000）。
     std::string implSymbol;
     // 是否只处理 fun_* 与 Java_* 导出。
     bool onlyFunJava = false;
@@ -55,7 +55,7 @@ struct zPatchbayDonorResult {
     // 实际追加 alias 数量。
     size_t appendCount = 0;
     // 是否启用槽位模式。
-    bool slotMode = false;
+    bool entryMode = false;
 };
 
 // 运行 donor 导出 patch 流程（领域 API）。

@@ -12,15 +12,15 @@
 #include <cstdint>
 
 struct zTakeoverSymbolEntry {
-    uint32_t slot_id = 0;   // 跳板槽位 ID（由 vm_takeover_slot_xxxx 注入到 w2）。
-    uint64_t fun_addr = 0;  // 对应 VM 函数入口地址（route4 中等价于 donor 导出 st_value）。
+    uint32_t entryId = 0;   // 跳板 entry ID（由 vm_takeover_entry_xxxx 注入到 w2）。
+    uint64_t funAddr = 0;   // 对应 VM 函数入口地址（route4 中等价于 donor 导出 st_value）。
 };
 
-// 初始化接管映射表：绑定主执行 so 与 slot_id -> fun_addr。
+// 初始化接管映射表：绑定主执行 so 与 entryId -> funAddr。
 bool zSymbolTakeoverInit(
-    const char* primary_so_name,
+    const char* primarySoName,
     const zTakeoverSymbolEntry* entries,
-    size_t entry_count
+    size_t entryCount
 );
 
 // 清理运行态接管状态（映射、句柄、缓存），用于回归/重复初始化场景。

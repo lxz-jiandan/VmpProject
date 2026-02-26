@@ -24,7 +24,7 @@ def vmpPatchDonorSo = file((project.findProperty("vmpPatchDonorSo")
         ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
 // patch 注入实现函数名。
 def vmpPatchImplSymbol = (project.findProperty("vmpPatchImplSymbol")
-        ?: "vm_takeover_slot_0000").toString()
+        ?: "vm_takeover_entry_0000").toString()
 // 是否对所有导出符号做 patch（默认 false）。
 def vmpPatchAllExports = ((project.findProperty("vmpPatchAllExports") ?: "false").toString().toBoolean())
 // 用户通过 -PvmpFunctions 传入逗号分隔函数列表。

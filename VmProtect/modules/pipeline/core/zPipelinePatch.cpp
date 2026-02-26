@@ -2,8 +2,8 @@
 
 // 引入固定宽度整型格式支持。
 #include <cinttypes>
-// 引入内存拷贝工具。
-#include <cstring>
+// 引入 ptrdiff_t 等基础类型定义。
+#include <cstddef>
 // 引入文件系统路径处理。
 #include <filesystem>
 // 引入字符串类型。
@@ -11,8 +11,8 @@
 // 引入动态数组容器。
 #include <vector>
 
-// 引入 CRC32 校验算法。
-#include "zChecksum.h"
+// 引入 embedded payload 尾部协议工具。
+#include "zEmbeddedPayloadTail.h"
 // 引入 patchbay donor 领域 API。
 #include "zPatchbayDonor.h"
 // 引入文件读写与存在性判断工具。
@@ -29,89 +29,6 @@ namespace fs = std::filesystem;
 
 // 进入 vmp 主命名空间。
 namespace vmp {
-
-// 进入匿名命名空间，封装本文件内部协议细节。
-namespace {
-
-// 按 1 字节对齐，确保 footer 布局可跨编译器稳定落盘。
-#pragma pack(push, 1)
-// 嵌入 payload 的尾部描述结构。
-struct EmbeddedPayloadFooter {
-    // 协议魔数，用于识别是否存在嵌入块。
-    uint32_t magic;
-    // 协议版本，便于未来升级。
-    uint32_t version;
-    // payload 字节长度。
-    uint64_t payloadSize;
-    // payload CRC32 校验值。
-    uint32_t payloadCrc32;
-    // 预留字段，当前写 0。
-    uint32_t reserved;
-};
-#pragma pack(pop)
-
-// 当前嵌入协议魔数，字符串语义为 'VME4'。
-constexpr uint32_t kEmbeddedPayloadMagic = 0x34454D56U;  // 'VME4'
-// 当前嵌入协议版本。
-constexpr uint32_t kEmbeddedPayloadVersion = 1U;
-
-// 解析 vmengine so 末尾是否已存在旧 payload，并给出基础体大小。
-bool parseExistingEmbeddedPayload(const std::vector<uint8_t>& vmengineBytes,
-                                  size_t* outBaseSize,
-                                  size_t* outOldPayloadSize) {
-    // 输出参数必须有效。
-    if (outBaseSize == nullptr || outOldPayloadSize == nullptr) {
-        return false;
-    }
-    // 默认假设“无历史 payload”，基础体就是整文件。
-    *outBaseSize = vmengineBytes.size();
-    *outOldPayloadSize = 0;
-    // 文件长度不足一个 footer，说明不可能有嵌入块。
-    if (vmengineBytes.size() < sizeof(EmbeddedPayloadFooter)) {
-        return true;
-    }
-
-    // 从文件尾部拷贝 footer。
-    EmbeddedPayloadFooter footer{};
-    const size_t footerOff = vmengineBytes.size() - sizeof(EmbeddedPayloadFooter);
-    std::memcpy(&footer, vmengineBytes.data() + footerOff, sizeof(EmbeddedPayloadFooter));
-    // 魔数/版本不匹配时，按“无嵌入块”处理，不视为错误。
-    if (footer.magic != kEmbeddedPayloadMagic || footer.version != kEmbeddedPayloadVersion) {
-        return true;
-    }
-    // 校验 payloadSize 合法性，防止越界。
-    if (footer.payloadSize == 0 ||
-        footer.payloadSize > vmengineBytes.size() - sizeof(EmbeddedPayloadFooter)) {
-        LOGE("embedded footer invalid payloadSize=%llu",
-             static_cast<unsigned long long>(footer.payloadSize));
-        return false;
-    }
-
-    // 计算 payload 起始偏移。
-    const size_t payloadBegin = vmengineBytes.size() -
-                                 sizeof(EmbeddedPayloadFooter) -
-                                 static_cast<size_t>(footer.payloadSize);
-    // 对 payload 重新计算 CRC32。
-    const uint32_t actualCrc = base::checksum::crc32Ieee(
-        vmengineBytes.data() + payloadBegin,
-        static_cast<size_t>(footer.payloadSize));
-    // CRC 不一致说明文件损坏或协议不匹配。
-    if (actualCrc != footer.payloadCrc32) {
-        LOGE("embedded footer crc mismatch expected=0x%x actual=0x%x",
-             footer.payloadCrc32,
-             actualCrc);
-        return false;
-    }
-
-    // 记录基础体大小（不含旧 payload 与 footer）。
-    *outBaseSize = payloadBegin;
-    // 记录旧 payload 长度，便于日志输出替换语义。
-    *outOldPayloadSize = static_cast<size_t>(footer.payloadSize);
-    return true;
-}
-
-// 结束匿名命名空间。
-}  // namespace
 
 // 把 expanded so 嵌入 vmengine so，输出最终可发布 so。
 bool embedExpandedSoIntoVmengine(const std::string& vmengineSo,
@@ -147,31 +64,24 @@ bool embedExpandedSoIntoVmengine(const std::string& vmengineSo,
     }
 
     // 解析 vmengine so 是否已有旧嵌入 payload。
-    size_t baseSize = vmengineBytes.size();
-    size_t oldPayloadSize = 0;
-    if (!parseExistingEmbeddedPayload(vmengineBytes, &baseSize, &oldPayloadSize)) {
-        LOGE("failed to parse existing embedded payload in vmengine so: %s", vmengineSo.c_str());
+    base::embedded::EmbeddedPayloadTailInfo tailInfo;
+    std::string tailError;
+    if (!base::embedded::parseEmbeddedPayloadTail(vmengineBytes, &tailInfo, &tailError)) {
+        LOGE("failed to parse existing embedded payload in vmengine so: %s error=%s",
+             vmengineSo.c_str(),
+             tailError.empty() ? "(unknown)" : tailError.c_str());
         return false;
     }
+    const size_t baseSize = tailInfo.baseSize;
+    const size_t oldPayloadSize = tailInfo.hasTail ? tailInfo.payloadBytes.size() : 0U;
 
     // 组装输出字节：基础体 + 新 payload + 新 footer。
     std::vector<uint8_t> out;
-    out.reserve(baseSize + payloadBytes.size() + sizeof(EmbeddedPayloadFooter));
+    out.reserve(baseSize + payloadBytes.size() + base::embedded::getEmbeddedPayloadFooterSize());
     out.insert(out.end(),
                vmengineBytes.begin(),
                vmengineBytes.begin() + static_cast<std::ptrdiff_t>(baseSize));
-    out.insert(out.end(), payloadBytes.begin(), payloadBytes.end());
-
-    // 填充 footer 字段。
-    EmbeddedPayloadFooter footer{};
-    footer.magic = kEmbeddedPayloadMagic;
-    footer.version = kEmbeddedPayloadVersion;
-    footer.payloadSize = static_cast<uint64_t>(payloadBytes.size());
-    footer.payloadCrc32 = base::checksum::crc32Ieee(payloadBytes);
-    footer.reserved = 0;
-    // 将 footer 作为原始字节追加到输出尾部。
-    const uint8_t* footerBytes = reinterpret_cast<const uint8_t*>(&footer);
-    out.insert(out.end(), footerBytes, footerBytes + sizeof(EmbeddedPayloadFooter));
+    base::embedded::appendEmbeddedPayloadTail(&out, payloadBytes);
 
     // 写出最终 so 文件。
     if (!base::file::writeFileBytes(outputSo, out)) {

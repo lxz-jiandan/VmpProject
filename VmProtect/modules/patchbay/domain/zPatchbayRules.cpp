@@ -33,20 +33,20 @@ static bool isVmNamespaceCxxSymbol(const std::string& name) {
 }
 
 // 判断是否启用 takeover 槽位模式。
-bool isTakeoverSlotModeImpl(const char* implName) {
+bool isTakeoverEntryModeImpl(const char* implName) {
     // 空指针直接判定为非槽位模式。
     if (implName == nullptr) {
         return false;
     }
-    // 以 vm_takeover_slot_ 前缀开头即为槽位模式。
-    return std::strncmp(implName, "vm_takeover_slot_", 17) == 0;
+    // 以 vm_takeover_entry_ 前缀开头即为槽位模式。
+    return std::strncmp(implName, "vm_takeover_entry_", 18) == 0;
 }
 
 // 构建槽位模式下的实现符号名。
-std::string buildTakeoverSlotSymbolName(uint32_t slotId) {
+std::string buildTakeoverEntrySymbolName(uint32_t entryId) {
     // 统一输出四位十进制编号。
     char buffer[64] = {0};
-    std::snprintf(buffer, sizeof(buffer), "vm_takeover_slot_%04u", slotId);
+    std::snprintf(buffer, sizeof(buffer), "vm_takeover_entry_%04u", entryId);
     return std::string(buffer);
 }
 
@@ -77,4 +77,3 @@ bool validateVmengineExportNamingRules(const std::vector<std::string>& inputExpo
     }
     return true;
 }
-

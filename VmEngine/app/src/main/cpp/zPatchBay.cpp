@@ -6,29 +6,12 @@
  * - 输出：可定位的补丁可写区域。
  */
 #include "zPatchBay.h"
-// 由构建阶段生成的“可接管符号槽位”常量。
-#include "generated/zTakeoverSymbols.generated.h"
 
 namespace {
-// 由生成脚本产出的固定符号槽位数；PatchBay 会根据该值生成位图默认值。
-constexpr uint32_t kTakeoverSlotTotal = static_cast<uint32_t>(kTakeoverGeneratedSymbolCount);
-
-// 生成低 count 位为 1 的掩码，用于标记“可用接管槽”。
-constexpr uint64_t bitmaskForCount(uint32_t count) {
-    if (count == 0) {
-        return 0ULL;
-    }
-    if (count >= 64U) {
-        return ~0ULL;
-    }
-    return (1ULL << count) - 1ULL;
-}
-
-constexpr uint64_t kTakeoverSlotBitmapLo = bitmaskForCount(kTakeoverSlotTotal);
-// 超过 64 槽时，高位位图用于表达第 65..128 槽的可用性。
-constexpr uint64_t kTakeoverSlotBitmapHi = (kTakeoverSlotTotal > 64U)
-                                           ? bitmaskForCount(kTakeoverSlotTotal - 64U)
-                                           : 0ULL;
+// 旧版“编译期固定槽位”路线已移除，PatchBay 默认不再声明预置可用槽位。
+constexpr uint32_t kTakeoverEntryTotal = 0U;
+constexpr uint64_t kTakeoverEntryBitmapLo = 0ULL;
+constexpr uint64_t kTakeoverEntryBitmapHi = 0ULL;
 }  // namespace
 
 // 将 patch bay 实例放入独立的 .vmp_patchbay 段中：
@@ -65,10 +48,10 @@ zPatchBayImage vm_patch_bay = {
                 // versymOffset/versymCapacity。
                 kPatchBayVersymOff,
                 kPatchBayVersymCap,
-                // takeoverSlotTotal: 编译期生成槽位总数。
-                kTakeoverSlotTotal,
-                // takeoverSlotUsed: 初始默认全部可用。
-                kTakeoverSlotTotal,
+                // takeoverEntryTotal: 预置槽位已移除，默认 0。
+                kTakeoverEntryTotal,
+                // takeoverEntryUsed: 与 total 保持一致。
+                kTakeoverEntryTotal,
                 0,  // originalDtSymtab
                 0,  // originalDtStrtab
                 0,  // originalDtGnuHash
@@ -79,8 +62,8 @@ zPatchBayImage vm_patch_bay = {
                 0,  // usedGnuHash
                 0,  // usedSysvHash
                 0,  // usedVersym
-                kTakeoverSlotBitmapLo,  // 默认允许全部已生成槽位。
-                kTakeoverSlotBitmapHi,  // 高 64 位掩码（槽位 > 64 时生效）。
+                kTakeoverEntryBitmapLo,  // 预置槽位位图低位（默认 0）。
+                kTakeoverEntryBitmapHi,  // 预置槽位位图高位（默认 0）。
                 0,  // crc32
         },
         // payload 初始清零，等待后处理工具写入。

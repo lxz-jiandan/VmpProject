@@ -46,8 +46,8 @@ struct zPatchBayHeader {
     uint32_t versymOffset;
     // versym 最大可写字节数。
     uint32_t versymCapacity;
-    uint32_t takeoverSlotTotal;  // 汇编桩总槽位数（编译期生成）。
-    uint32_t takeoverSlotUsed;   // 当前补丁实际占用槽位数。
+    uint32_t takeoverEntryTotal;  // 预置槽位总数（当前固定为 0，改由离线重构动态扩展）。
+    uint32_t takeoverEntryUsed;   // 预置槽位已使用数（当前与 total 同步为 0）。
 
     // 记录“原始”动态表地址，用于调试和必要时回退。
     uint64_t originalDtSymtab;
@@ -63,9 +63,9 @@ struct zPatchBayHeader {
     uint32_t usedSysvHash;
     uint32_t usedVersym;
 
-    // 允许槽位位图（支持最多 128 个槽），用于限制可接管符号范围。
-    uint64_t takeoverSlotBitmapLo;
-    uint64_t takeoverSlotBitmapHi;
+    // 预置槽位位图（兼容字段，当前默认全 0）。
+    uint64_t takeoverEntryBitmapLo;
+    uint64_t takeoverEntryBitmapHi;
     uint32_t crc32;  // crc32(header-with-zero-crc + used payload bytes)。
 };
 #pragma pack(pop)

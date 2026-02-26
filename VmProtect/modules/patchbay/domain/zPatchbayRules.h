@@ -20,16 +20,16 @@ bool isFunOrJavaSymbol(const std::string& name);
 // 入参：
 // - implName: 实现符号名。
 // 返回：
-// - true: 以 vm_takeover_slot_ 前缀开头。
+// - true: 以 vm_takeover_entry_ 前缀开头。
 // - false: 非槽位模式符号名。
-bool isTakeoverSlotModeImpl(const char* implName);
+bool isTakeoverEntryModeImpl(const char* implName);
 
 // 按槽位编号生成标准槽位符号名。
 // 入参：
-// - slotId: 槽位索引。
+// - entryId: 槽位索引。
 // 出参：
-// - 返回形如 vm_takeover_slot_0000 的符号名。
-std::string buildTakeoverSlotSymbolName(uint32_t slotId);
+// - 返回形如 vm_takeover_entry_0000 的符号名。
+std::string buildTakeoverEntrySymbolName(uint32_t entryId);
 
 // 校验 vmengine 现有导出是否满足命名规则。
 // 规则：
@@ -45,4 +45,3 @@ bool validateVmengineExportNamingRules(const std::vector<std::string>& inputExpo
                                        std::string* error);
 
 #endif // VMPROTECT_PATCHBAY_RULES_H
-

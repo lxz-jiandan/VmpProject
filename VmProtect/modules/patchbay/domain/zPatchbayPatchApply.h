@@ -3,6 +3,8 @@
 
 // 引入 ELF 只读 facade（包含 patchbay 节快照类型定义）。
 #include "zElfReadFacade.h"
+// 引入 patchbay 领域类型（含 PendingTakeoverSymbolBinding）。
+#include "zPatchbayTypes.h"
 
 // 引入基础整型定义。
 #include <cstdint>
@@ -21,7 +23,9 @@
 // - newVersym: 新 versym 字节。
 // - newGnuHash: 新 gnu hash 字节。
 // - newSysvHash: 新 sysv hash 字节（无 .hash 时可为空）。
-// - slotUsedHint: 预计使用槽位数（用于更新头字段）。
+// - pendingTakeoverBindings: dynsym 中待回填槽位绑定（symbolIndex -> entryId）。
+// - takeoverDispatchAddr: 合成槽位跳板的 dispatch 目标地址。
+// - entryUsedHint: 预计使用槽位数（用于更新头字段）。
 // - allowValidateFail: 是否允许布局校验失败继续输出。
 // - handled: 输出是否已由 patchbay 路径处理完成。
 // - error: 可选错误描述输出。
@@ -36,7 +40,9 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
                                const std::vector<uint8_t>& newVersym,
                                const std::vector<uint8_t>& newGnuHash,
                                const std::vector<uint8_t>& newSysvHash,
-                               uint32_t slotUsedHint,
+                               const std::vector<PendingTakeoverSymbolBinding>& pendingTakeoverBindings,
+                               uint64_t takeoverDispatchAddr,
+                               uint32_t entryUsedHint,
                                bool allowValidateFail,
                                bool* handled,
                                std::string* error);

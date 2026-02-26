@@ -30,6 +30,7 @@ set(VM_PROTECT_BASE_SOURCES
     ${VMP_BASE_SRC_DIR}/zFile.cpp
     ${VMP_BASE_SRC_DIR}/zLog.cpp
     ${VMP_BASE_SRC_DIR}/zChecksum.cpp
+    ${VMP_BASE_SRC_DIR}/zEmbeddedPayloadTail.cpp
     ${VMP_BASE_SRC_DIR}/zCodec.cpp
     ${VMP_BASE_SRC_DIR}/zBitCodec.cpp
     ${VMP_BASE_SRC_DIR}/zBytes.cpp
