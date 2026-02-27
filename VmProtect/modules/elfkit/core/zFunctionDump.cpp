@@ -145,6 +145,8 @@ static const char* getOpcodeName(uint32_t op) {
         case 54: return "OP_SET_RETURN_PC";
         case 55: return "OP_BL";
         case 56: return "OP_ADRP";
+        case 57: return "OP_ATOMIC_LOAD";
+        case 58: return "OP_ATOMIC_STORE";
         default: return "OP_UNKNOWN";
     }
 }

@@ -76,6 +76,30 @@ inline void atomic_fence() {
     __sync_synchronize();
 }
 
+// VM 内存序枚举到编译器原子内存序常量的映射。
+inline int atomic_order_from_vm(uint32_t order) {
+    switch (order) {
+        case VM_MEM_ORDER_RELAXED: return __ATOMIC_RELAXED;
+        case VM_MEM_ORDER_ACQUIRE: return __ATOMIC_ACQUIRE;
+        case VM_MEM_ORDER_RELEASE: return __ATOMIC_RELEASE;
+        case VM_MEM_ORDER_ACQ_REL: return __ATOMIC_ACQ_REL;
+        case VM_MEM_ORDER_SEQ_CST:
+        default: return __ATOMIC_SEQ_CST;
+    }
+}
+
+// 带内存序参数的原子读封装。
+template<typename T>
+inline T atomic_load_ordered(const void* ptr, int order) {
+    return __atomic_load_n(static_cast<const T*>(ptr), order);
+}
+
+// 带内存序参数的原子写封装。
+template<typename T>
+inline void atomic_store_ordered(void* ptr, T value, int order) {
+    __atomic_store_n(static_cast<T*>(ptr), value, order);
+}
+
 
 // ============================================================================
 // 全局 Opcode 跳转表
@@ -150,6 +174,8 @@ void initOpcodeTable() {
     g_opcode_table[OP_WRITE]          = op_write;
     g_opcode_table[OP_LEA]            = op_lea;
     // 原子与屏障。
+    g_opcode_table[OP_ATOMIC_LOAD]    = op_atomic_load;
+    g_opcode_table[OP_ATOMIC_STORE]   = op_atomic_store;
     g_opcode_table[OP_ATOMIC_ADD]     = op_atomic_add;
     g_opcode_table[OP_ATOMIC_SUB]     = op_atomic_sub;
     g_opcode_table[OP_ATOMIC_XCHG]    = op_atomic_xchg;
@@ -291,6 +317,8 @@ const char* getOpcodeName(uint32_t opcode) {
         case OP_READ: return "OP_READ";
         case OP_WRITE: return "OP_WRITE";
         case OP_LEA: return "OP_LEA";
+        case OP_ATOMIC_LOAD: return "OP_ATOMIC_LOAD";
+        case OP_ATOMIC_STORE: return "OP_ATOMIC_STORE";
         case OP_ATOMIC_ADD: return "OP_ATOMIC_ADD";
         case OP_ATOMIC_SUB: return "OP_ATOMIC_SUB";
         case OP_ATOMIC_XCHG: return "OP_ATOMIC_XCHG";
@@ -2097,6 +2125,93 @@ void op_lea(VMContext* ctx) {
     GET_REG(dstReg).value = base + index * scale + offset;
 
     // 指令长度固定 6 words。
+    ctx->pc += 6;
+}
+
+// OP_ATOMIC_LOAD：执行带内存序的原子读取。
+void op_atomic_load(VMContext* ctx) {
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=base_reg, [pc+3]=offset, [pc+4]=mem_order, [pc+5]=dst_reg
+    uint32_t typeIdx = GET_INST(1);
+    uint32_t baseReg = GET_INST(2);
+    int32_t offset = static_cast<int32_t>(GET_INST(3));
+    uint32_t memOrder = GET_INST(4);
+    uint32_t dstReg = GET_INST(5);
+
+    zType* type = GET_TYPE(typeIdx);
+    uint64_t base = GET_REG(baseReg).value;
+    if (base == 0) {
+        // 空基址读取按 0 返回。
+        GET_REG(dstReg).value = 0;
+        GET_REG(dstReg).ownership = 0;
+        ctx->pc += 6;
+        return;
+    }
+
+    void* fieldAddr = reinterpret_cast<void*>(base + static_cast<int64_t>(offset));
+    const int order = atomic_order_from_vm(memOrder);
+    uint64_t value = 0;
+    if (fieldAddr && type) {
+        // 按类型宽度执行原子读取。
+        switch (type->size) {
+            case 1:
+                value = atomic_load_ordered<uint8_t>(fieldAddr, order);
+                break;
+            case 2:
+                value = atomic_load_ordered<uint16_t>(fieldAddr, order);
+                break;
+            case 4:
+                value = atomic_load_ordered<uint32_t>(fieldAddr, order);
+                break;
+            default:
+                value = atomic_load_ordered<uint64_t>(fieldAddr, order);
+                break;
+        }
+    }
+
+    GET_REG(dstReg).value = value;
+    GET_REG(dstReg).ownership = 0;
+    ctx->pc += 6;
+}
+
+// OP_ATOMIC_STORE：执行带内存序的原子写入。
+void op_atomic_store(VMContext* ctx) {
+    // 参数槽位：[pc+1]=type_idx, [pc+2]=base_reg, [pc+3]=offset, [pc+4]=value_reg, [pc+5]=mem_order
+    uint32_t typeIdx = GET_INST(1);
+    uint32_t baseReg = GET_INST(2);
+    int32_t offset = static_cast<int32_t>(GET_INST(3));
+    uint32_t valueReg = GET_INST(4);
+    uint32_t memOrder = GET_INST(5);
+
+    zType* type = GET_TYPE(typeIdx);
+    uint64_t base = GET_REG(baseReg).value;
+    if (base == 0) {
+        // 空基址直接跳过写入。
+        ctx->pc += 6;
+        return;
+    }
+
+    // valueReg 越界视作零寄存器语义。
+    uint64_t value = (valueReg < ctx->register_count) ? GET_REG(valueReg).value : 0;
+    void* fieldAddr = reinterpret_cast<void*>(base + static_cast<int64_t>(offset));
+    const int order = atomic_order_from_vm(memOrder);
+    if (fieldAddr && type) {
+        // 按类型宽度执行原子写入。
+        switch (type->size) {
+            case 1:
+                atomic_store_ordered<uint8_t>(fieldAddr, static_cast<uint8_t>(value), order);
+                break;
+            case 2:
+                atomic_store_ordered<uint16_t>(fieldAddr, static_cast<uint16_t>(value), order);
+                break;
+            case 4:
+                atomic_store_ordered<uint32_t>(fieldAddr, static_cast<uint32_t>(value), order);
+                break;
+            default:
+                atomic_store_ordered<uint64_t>(fieldAddr, value, order);
+                break;
+        }
+    }
+
     ctx->pc += 6;
 }
 

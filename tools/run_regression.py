@@ -9,6 +9,8 @@ import argparse
 import os
 # 文件复制/删除/which 工具探测。
 import shutil
+# 外部命令调用（目录删除回退到 rmdir）。
+import subprocess
 # 二进制结构体解包（ELF 头解析使用）。
 import struct
 # stdout/stderr 输出与退出码控制。
@@ -35,6 +37,16 @@ DEFAULT_FUNCTIONS = [
     "fun_cpp_string_len",
     "fun_cpp_vector_sum",
     "fun_cpp_virtual_mix",
+    "fun_div_mod_chain",
+    "fun_shift_mix",
+    "fun_do_while_path",
+    "fun_nested_continue_break",
+    "fun_indirect_call_mix",
+    "fun_unsigned_compare_fold",
+    "fun_local_array_walk",
+    "fun_switch_fallthrough",
+    "fun_short_circuit_logic",
+    "fun_select_mix",
     "fun_global_data_mix",
     "fun_static_local_table",
     "fun_global_struct_acc",
@@ -44,6 +56,37 @@ DEFAULT_FUNCTIONS = [
     "fun_bitmask_branch",
     "fun_global_table_rw",
     "fun_global_mutable_state",
+    "fun_flag_merge_cbz",
+    "fun_ptr_stride_sum",
+    "fun_fn_table_dispatch",
+    "fun_clamp_window",
+    "fun_ret_i64_mix",
+    "fun_ret_u64_mix",
+    "fun_ret_bool_gate",
+    "fun_ret_i16_pack",
+    "fun_switch_loop_acc",
+    "fun_struct_alias_walk",
+    "fun_unsigned_edge_paths",
+    "fun_reverse_ptr_mix",
+    "fun_guarded_chain_mix",
+    "fun_ret_i64_steps",
+    "fun_ret_u64_acc",
+    "fun_ret_bool_mix2",
+    "fun_ret_u16_blend",
+    "fun_ret_i8_wave",
+    "fun_ext_insn_mix",
+    "fun_bfm_nonwrap",
+    "fun_bfm_wrap",
+    "fun_csinc_path",
+    "fun_madd_msub_div",
+    "fun_orn_bic_extr",
+    "fun_mem_half_signed",
+    "fun_atomic_u8_order",
+    "fun_atomic_u16_order",
+    "fun_atomic_u64_order",
+    "fun_ret_cstr_pick",
+    "fun_ret_std_string_mix",
+    "fun_ret_vector_mix",
 ]
 def locateVmProtectExe(project_root: Path):
     # 候选路径按优先顺序：Windows exe -> 非 exe 可执行名。
@@ -124,6 +167,101 @@ def extractRelevantLogLines(log_text: str):
             lines.append(line)
     # 返回过滤结果用于展示。
     return lines
+
+
+def deleteChildrenRecursive(path: Path):
+    # 深度优先删除子项：先删子内容，再删子目录。
+    for child in list(path.iterdir()):
+        if child.is_dir():
+            deleteChildrenRecursive(child)
+            try:
+                child.rmdir()
+            except OSError:
+                subprocess.run(
+                    ["cmd", "/c", "rmdir", "/s", "/q", str(child)],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+        else:
+            try:
+                child.unlink()
+            except OSError:
+                subprocess.run(
+                    ["cmd", "/c", "del", "/f", "/q", str(child)],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+
+
+def removeDirIfExists(path: Path, timeoutSeconds: float):
+    # 若目录存在则递归删除，直到目录为空后再删目录本身。
+    if not path.exists():
+        return False
+    if not path.is_dir():
+        return False
+    deadline = time.time() + max(timeoutSeconds, 0.0)
+    while True:
+        try:
+            deleteChildrenRecursive(path)
+        except OSError:
+            pass
+        try:
+            path.rmdir()
+        except OSError:
+            # Windows 上目录残留时回退到原生命令，提升清理稳定性。
+            subprocess.run(
+                ["cmd", "/c", "rmdir", "/s", "/q", str(path)],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        if not path.exists():
+            print(f"[INFO] removed stale native cache: {path}")
+            return True
+        if time.time() >= deadline:
+            try:
+                remaining = sum(1 for _ in path.iterdir())
+            except OSError:
+                remaining = -1
+            print(
+                f"[WARN] stale native cache remains after timeout={timeoutSeconds:.1f}s: "
+                f"{path} remaining_entries={remaining}"
+            )
+            return False
+        time.sleep(0.3)
+
+
+def cleanNativeCaches(project_root: Path, timeoutSeconds: float):
+    # 两个 Android 工程的 native 缓存目录集合。
+    cache_dirs = [
+        project_root / "demo" / "app" / ".cxx",
+        project_root / "demo" / "app" / "build" / "intermediates" / "cxx",
+        project_root / "demo" / "app" / "build" / "intermediates" / "cmake",
+        project_root / "VmEngine" / "app" / ".cxx",
+        project_root / "VmEngine" / "app" / "build" / "intermediates" / "cxx",
+        project_root / "VmEngine" / "app" / "build" / "intermediates" / "cmake",
+        project_root / "VmEngine" / "app" / "build" / "intermediates" / "tmp_vmprotect_route",
+    ]
+    removed_count = 0
+    for cache_dir in cache_dirs:
+        if removeDirIfExists(cache_dir, timeoutSeconds=timeoutSeconds):
+            removed_count += 1
+    print(f"[INFO] native cache cleanup finished, removed_dirs={removed_count}")
+
+
+def stopGradleDaemons(project_dirs, env: dict):
+    # 清理前先停掉守护进程，减少 Windows 文件占用导致的删除失败。
+    for project_dir in project_dirs:
+        runCmd(
+            ["cmd", "/c", "gradlew.bat", "--stop"],
+            cwd=str(project_dir),
+            env=env,
+            check=False,
+        )
+    # 给 Windows 文件句柄一点释放时间，降低后续清理失败概率。
+    time.sleep(1.0)
 
 
 def findDemoOriginSoOutputs(demo_dir: Path):
@@ -593,6 +731,19 @@ def main():
         default=DEFAULT_FUNCTIONS,
         help="Functions to export from VmProtect",
     )
+    # 是否跳过 native 缓存清理（默认会清理，保证使用最新 so）。
+    parser.add_argument(
+        "--skip-native-clean",
+        action="store_true",
+        help="Skip auto cleanup of demo/vmengine native caches before build",
+    )
+    # 每个缓存目录最大清理等待时间（秒）。
+    parser.add_argument(
+        "--native-clean-timeout",
+        type=float,
+        default=30.0,
+        help="Max seconds to wait while cleaning one native cache directory",
+    )
     # 解析参数。
     args = parser.parse_args()
 
@@ -614,6 +765,15 @@ def main():
     env = os.environ.copy()
     # 强制使用定位到的 JAVA_HOME。
     env["JAVA_HOME"] = java_home
+
+    # 清理前先停止 Gradle daemon，尽量释放 native 中间目录句柄。
+    stopGradleDaemons([vmengine_dir, demo_dir], env)
+
+    # 默认清理 native 缓存，避免旧 so 被复用导致回归误判。
+    if args.skip_native_clean:
+        print("[INFO] skip native cache cleanup by --skip-native-clean")
+    else:
+        cleanNativeCaches(root, timeoutSeconds=args.native_clean_timeout)
 
     # 1) 先确定本轮 origin so（默认来自 demo 中间产物）。
     demo_origin_so = None

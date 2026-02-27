@@ -48,7 +48,7 @@ def resolveReadelfExe = {
 }
 
 def collectAllDemoFunctionsFromSo = { File soFile ->
-    // 通过 readelf 读取符号表，自动收集 demo 业务函数（fun_*）。
+    // 通过 readelf 读取符号表，自动收集 demo 业务函数（fun_*，排除对照符号 *_ref）。
     def readelfExe = resolveReadelfExe()
     def stdout = new ByteArrayOutputStream()
     def stderr = new ByteArrayOutputStream()
@@ -71,13 +71,14 @@ def collectAllDemoFunctionsFromSo = { File soFile ->
                 def symType = parts[3]
                 def symNdx = parts[6]
                 def symName = parts[7]
-                // 仅纳入已定义的 demo 业务函数：fun_*。
+                // 仅纳入已定义的 demo 业务函数：fun_*，并排除对照函数 fun_*_ref。
                 if (symType == "FUNC"
                         && symNdx != "UND"
                         && symNdx != "ABS"
                         && symName != null
                         && !symName.isEmpty()
-                        && symName.startsWith("fun_")) {
+                        && symName.startsWith("fun_")
+                        && !symName.endsWith("_ref")) {
                     names.add(symName)
                 }
             }
@@ -266,16 +267,34 @@ tasks.register("runVmProtectPipelineDebug") {
         }
         // 函数选择策略：
         // 1) 优先使用 -PvmpFunctions 显式列表；
-        // 2) 未显式指定时，从 input-so 自动提取全部 fun_* 并显式展开为 --function。
-        def selectedFunctions = parseVmpFunctions()
-        if (selectedFunctions.isEmpty()) {
-            selectedFunctions = collectAllDemoFunctionsFromSo(vmpInputSo)
+        // 2) 未显式指定时，从 input-so 自动提取全部 fun_*（排除 fun_*_ref）并展开为 --function。
+        def rawSelectedFunctions = parseVmpFunctions()
+        if (rawSelectedFunctions.isEmpty()) {
+            rawSelectedFunctions = collectAllDemoFunctionsFromSo(vmpInputSo)
         }
+        // 对“显式参数”和“自动扫描”统一做一次收敛，避免 _ref、重复、噪声符号进入加固列表。
+        def droppedNotFun = 0
+        def droppedRef = 0
+        def droppedDuplicate = 0
+        def normalizedSet = new LinkedHashSet<String>()
+        rawSelectedFunctions.each { fn ->
+            if (fn == null || fn.isEmpty() || !fn.startsWith("fun_")) {
+                droppedNotFun += 1
+            } else if (fn.endsWith("_ref")) {
+                droppedRef += 1
+            } else if (!normalizedSet.add(fn)) {
+                droppedDuplicate += 1
+            }
+        }
+        def selectedFunctions = new ArrayList<String>(normalizedSet)
         if (selectedFunctions.isEmpty()) {
             throw new GradleException(
                     "no demo functions found in ${vmpInputSo}. " +
                             "Pass -PvmpFunctions=fun_add,fun_for,... to override")
         }
+        println("[VMP] function filter: input=${rawSelectedFunctions.size()}, " +
+                "droppedNotFun=${droppedNotFun}, droppedRef=${droppedRef}, " +
+                "droppedDuplicate=${droppedDuplicate}, final=${selectedFunctions.size()}")
         println("[VMP] selected functions (${selectedFunctions.size()}): ${selectedFunctions.join(', ')}")
 
         // 清理并重建输出目录，避免遗留旧文件。

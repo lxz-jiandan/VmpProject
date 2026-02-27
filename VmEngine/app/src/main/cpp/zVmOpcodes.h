@@ -71,6 +71,8 @@ enum Opcode : uint32_t {
     OP_SET_RETURN_PC  = 54,     // 运行时写入返回地址寄存器（dstReg = 当前 pc + offset）
     OP_BL             = 55,     // 带链接跳转（branchId -> branches[branchId]）
     OP_ADRP           = 56,     // 基于模块基址 + 页偏移计算地址
+    OP_ATOMIC_LOAD    = 57,     // 原子读取（带内存序）
+    OP_ATOMIC_STORE   = 58,     // 原子写入（带内存序）
 
     OP_MAX            = 64      // 最大 opcode 数量
 };
@@ -80,6 +82,15 @@ enum VMConditionCode : uint32_t {
     CC_EQ = 0x0, CC_NE = 0x1, CC_HS = 0x2, CC_LO = 0x3, CC_MI = 0x4, CC_PL = 0x5,
     CC_VS = 0x6, CC_VC = 0x7, CC_HI = 0x8, CC_LS = 0x9, CC_GE = 0xa, CC_LT = 0xb,
     CC_GT = 0xc, CC_LE = 0xd, CC_AL = 0xe, CC_NV = 0xf
+};
+
+// 原子内存序（映射到 __ATOMIC_* 常量，供 OP_ATOMIC_LOAD/STORE 使用）
+enum VMMemoryOrder : uint32_t {
+    VM_MEM_ORDER_RELAXED = 0,   // relaxed
+    VM_MEM_ORDER_ACQUIRE = 1,   // acquire
+    VM_MEM_ORDER_RELEASE = 2,   // release
+    VM_MEM_ORDER_ACQ_REL = 3,   // acq_rel
+    VM_MEM_ORDER_SEQ_CST = 4,   // seq_cst
 };
 
 // ============================================================================
@@ -269,6 +280,10 @@ void op_read(VMContext* ctx);
 void op_write(VMContext* ctx);
 // 地址计算（有效地址 LEA）。
 void op_lea(VMContext* ctx);
+// 原子读取（按 type 宽度 + 内存序）。
+void op_atomic_load(VMContext* ctx);
+// 原子写入（按 type 宽度 + 内存序）。
+void op_atomic_store(VMContext* ctx);
 // 原子加操作。
 void op_atomic_add(VMContext* ctx);
 // 原子减操作。

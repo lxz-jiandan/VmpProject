@@ -38,6 +38,10 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
     // 先用初始化列表填充大部分稳定支持的指令 ID。
     std::unordered_set<unsigned int> ids = {
         ARM64_INS_ADD,
+        ARM64_INS_ADDS,
+#ifdef ARM64_INS_ASR
+        ARM64_INS_ASR,
+#endif
         ARM64_INS_ADRP,
         ARM64_INS_ALIAS_LSL,
         ARM64_INS_AND,
@@ -46,30 +50,132 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
         ARM64_INS_BL,
         ARM64_INS_BLR,
         ARM64_INS_BR,
+        ARM64_INS_CBNZ,
+        ARM64_INS_CBZ,
         ARM64_INS_CSEL,
+        ARM64_INS_CSINC,
+        ARM64_INS_EOR,
         ARM64_INS_LDP,
         ARM64_INS_LDR,
         ARM64_INS_LDRB,
+#ifdef ARM64_INS_LDRH
+        ARM64_INS_LDRH,
+#endif
         ARM64_INS_LDUR,
         ARM64_INS_LDURB,
         ARM64_INS_LSL,
         ARM64_INS_LSLR,
+#ifdef ARM64_INS_LSR
+        ARM64_INS_LSR,
+#endif
         ARM64_INS_MOV,
+#ifdef ARM64_INS_MOVI
+        ARM64_INS_MOVI,
+#endif
         ARM64_INS_MOVK,
         ARM64_INS_MOVN,
         ARM64_INS_MOVZ,
         ARM64_INS_MRS,
         ARM64_INS_MUL,
+#ifdef ARM64_INS_MADD
+        ARM64_INS_MADD,
+#endif
+#ifdef ARM64_INS_MSUB
+        ARM64_INS_MSUB,
+#endif
+#ifdef ARM64_INS_UDIV
+        ARM64_INS_UDIV,
+#endif
+#ifdef ARM64_INS_SDIV
+        ARM64_INS_SDIV,
+#endif
         ARM64_INS_ORR,
+#ifdef ARM64_INS_ADR
+        ARM64_INS_ADR,
+#endif
+#ifdef ARM64_INS_ORN
+        ARM64_INS_ORN,
+#endif
+#ifdef ARM64_INS_BIC
+        ARM64_INS_BIC,
+#endif
+#ifdef ARM64_INS_BFM
+        ARM64_INS_BFM,
+#endif
+#ifdef ARM64_INS_CCMP
+        ARM64_INS_CCMP,
+#endif
+#ifdef ARM64_INS_CNEG
+        ARM64_INS_CNEG,
+#endif
+#ifdef ARM64_INS_CINC
+        ARM64_INS_CINC,
+#endif
+#ifdef ARM64_INS_CSETM
+        ARM64_INS_CSETM,
+#endif
+#ifdef ARM64_INS_CMN
+        ARM64_INS_CMN,
+#endif
+#ifdef ARM64_INS_TST
+        ARM64_INS_TST,
+#endif
+#ifdef ARM64_INS_NEG
+        ARM64_INS_NEG,
+#endif
+#ifdef ARM64_INS_MVN
+        ARM64_INS_MVN,
+#endif
+#ifdef ARM64_INS_REV
+        ARM64_INS_REV,
+#endif
+#ifdef ARM64_INS_REV16
+        ARM64_INS_REV16,
+#endif
+#ifdef ARM64_INS_ROR
+        ARM64_INS_ROR,
+#endif
         ARM64_INS_RET,
         ARM64_INS_STP,
         ARM64_INS_STR,
         ARM64_INS_STRB,
+#ifdef ARM64_INS_STRH
+        ARM64_INS_STRH,
+#endif
         ARM64_INS_STUR,
         ARM64_INS_SUB,
         ARM64_INS_SUBS,
+        ARM64_INS_SBFM,
         ARM64_INS_TBNZ,
         ARM64_INS_TBZ,
+        ARM64_INS_UBFM,
+#ifdef ARM64_INS_LDAXR
+        ARM64_INS_LDAXR,
+#endif
+#ifdef ARM64_INS_LDXR
+        ARM64_INS_LDXR,
+#endif
+#ifdef ARM64_INS_STLXR
+        ARM64_INS_STLXR,
+#endif
+#ifdef ARM64_INS_STXR
+        ARM64_INS_STXR,
+#endif
+#ifdef ARM64_INS_NOP
+        ARM64_INS_NOP,
+#endif
+#ifdef ARM64_INS_HINT
+        ARM64_INS_HINT,
+#endif
+#ifdef ARM64_INS_CLREX
+        ARM64_INS_CLREX,
+#endif
+#ifdef ARM64_INS_SVC
+        ARM64_INS_SVC,
+#endif
+#ifdef ARM64_INS_BRK
+        ARM64_INS_BRK,
+#endif
     };
 // 针对不同 capstone 版本，条件插入可选指令 ID。
 #ifdef ARM64_INS_LDRSW
@@ -78,6 +184,45 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
 // 针对不同 capstone 版本，条件插入可选指令 ID。
 #ifdef ARM64_INS_LDURSW
     ids.insert(ARM64_INS_LDURSW);
+#endif
+#ifdef ARM64_INS_EXTR
+    ids.insert(ARM64_INS_EXTR);
+#endif
+#ifdef ARM64_INS_STURB
+    ids.insert(ARM64_INS_STURB);
+#endif
+#ifdef ARM64_INS_STURH
+    ids.insert(ARM64_INS_STURH);
+#endif
+#ifdef ARM64_INS_LDURH
+    ids.insert(ARM64_INS_LDURH);
+#endif
+#ifdef ARM64_INS_LDRSB
+    ids.insert(ARM64_INS_LDRSB);
+#endif
+#ifdef ARM64_INS_LDRSH
+    ids.insert(ARM64_INS_LDRSH);
+#endif
+#ifdef ARM64_INS_LDARB
+    ids.insert(ARM64_INS_LDARB);
+#endif
+#ifdef ARM64_INS_STLRB
+    ids.insert(ARM64_INS_STLRB);
+#endif
+#ifdef ARM64_INS_STLRH
+    ids.insert(ARM64_INS_STLRH);
+#endif
+#ifdef ARM64_INS_STLR
+    ids.insert(ARM64_INS_STLR);
+#endif
+#ifdef ARM64_INS_LDARH
+    ids.insert(ARM64_INS_LDARH);
+#endif
+#ifdef ARM64_INS_LDAR
+    ids.insert(ARM64_INS_LDAR);
+#endif
+#ifdef ARM64_INS_CMP
+    ids.insert(ARM64_INS_CMP);
 #endif
     // 返回完整支持集合。
     return ids;
@@ -93,10 +238,74 @@ bool isSupportedByFallbackMnemonic(const char* mnemonic) {
     return std::strcmp(mnemonic, "mov") == 0 ||
            std::strcmp(mnemonic, "mul") == 0 ||
            std::strcmp(mnemonic, "and") == 0 ||
+           std::strcmp(mnemonic, "eor") == 0 ||
+           std::strcmp(mnemonic, "adds") == 0 ||
+           std::strcmp(mnemonic, "cbz") == 0 ||
+           std::strcmp(mnemonic, "cbnz") == 0 ||
+           std::strcmp(mnemonic, "cmp") == 0 ||
            std::strcmp(mnemonic, "ldrsw") == 0 ||
-           std::strcmp(mnemonic, "ldursw") == 0 ||
-           std::strcmp(mnemonic, "csel") == 0 ||
-           std::strcmp(mnemonic, "lsl") == 0;
+            std::strcmp(mnemonic, "ldrh") == 0 ||
+            std::strcmp(mnemonic, "ldursw") == 0 ||
+            std::strcmp(mnemonic, "sturb") == 0 ||
+            std::strcmp(mnemonic, "strh") == 0 ||
+            std::strcmp(mnemonic, "sturh") == 0 ||
+            std::strcmp(mnemonic, "ldurh") == 0 ||
+            std::strcmp(mnemonic, "ldrsb") == 0 ||
+            std::strcmp(mnemonic, "ldrsh") == 0 ||
+            std::strcmp(mnemonic, "ldarb") == 0 ||
+            std::strcmp(mnemonic, "stlrb") == 0 ||
+            std::strcmp(mnemonic, "stlrh") == 0 ||
+            std::strcmp(mnemonic, "stlr") == 0 ||
+            std::strcmp(mnemonic, "ldarh") == 0 ||
+            std::strcmp(mnemonic, "ldar") == 0 ||
+            std::strcmp(mnemonic, "madd") == 0 ||
+            std::strcmp(mnemonic, "msub") == 0 ||
+            std::strcmp(mnemonic, "udiv") == 0 ||
+            std::strcmp(mnemonic, "sdiv") == 0 ||
+            std::strcmp(mnemonic, "extr") == 0 ||
+            std::strcmp(mnemonic, "orn") == 0 ||
+            std::strcmp(mnemonic, "bic") == 0 ||
+            std::strcmp(mnemonic, "csel") == 0 ||
+            std::strcmp(mnemonic, "csinc") == 0 ||
+           std::strcmp(mnemonic, "sxtb") == 0 ||
+           std::strcmp(mnemonic, "sxth") == 0 ||
+           std::strcmp(mnemonic, "sxtw") == 0 ||
+           std::strcmp(mnemonic, "uxtb") == 0 ||
+           std::strcmp(mnemonic, "uxth") == 0 ||
+           std::strcmp(mnemonic, "uxtw") == 0 ||
+           std::strcmp(mnemonic, "ubfx") == 0 ||
+           std::strcmp(mnemonic, "sbfx") == 0 ||
+           std::strcmp(mnemonic, "ubfm") == 0 ||
+           std::strcmp(mnemonic, "sbfm") == 0 ||
+           std::strcmp(mnemonic, "lsl") == 0 ||
+           std::strcmp(mnemonic, "lsr") == 0 ||
+           std::strcmp(mnemonic, "asr") == 0 ||
+           std::strcmp(mnemonic, "ror") == 0 ||
+           std::strcmp(mnemonic, "movi") == 0 ||
+           std::strcmp(mnemonic, "mov") == 0 ||
+           std::strcmp(mnemonic, "adr") == 0 ||
+           std::strcmp(mnemonic, "rev") == 0 ||
+           std::strcmp(mnemonic, "rev16") == 0 ||
+           std::strcmp(mnemonic, "cmn") == 0 ||
+           std::strcmp(mnemonic, "tst") == 0 ||
+           std::strcmp(mnemonic, "neg") == 0 ||
+           std::strcmp(mnemonic, "mvn") == 0 ||
+           std::strcmp(mnemonic, "not") == 0 ||
+           std::strcmp(mnemonic, "ccmp") == 0 ||
+           std::strcmp(mnemonic, "cneg") == 0 ||
+           std::strcmp(mnemonic, "cinc") == 0 ||
+           std::strcmp(mnemonic, "csetm") == 0 ||
+           std::strcmp(mnemonic, "bfi") == 0 ||
+           std::strcmp(mnemonic, "bfxil") == 0 ||
+           std::strcmp(mnemonic, "ldaxr") == 0 ||
+           std::strcmp(mnemonic, "ldxr") == 0 ||
+           std::strcmp(mnemonic, "stlxr") == 0 ||
+           std::strcmp(mnemonic, "stxr") == 0 ||
+           std::strcmp(mnemonic, "nop") == 0 ||
+           std::strcmp(mnemonic, "hint") == 0 ||
+           std::strcmp(mnemonic, "clrex") == 0 ||
+           std::strcmp(mnemonic, "svc") == 0 ||
+           std::strcmp(mnemonic, "brk") == 0;
 }
 
 // 统一判断一条指令是否可被当前翻译链路支持。

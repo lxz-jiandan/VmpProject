@@ -9,9 +9,10 @@ project("demo")
 
 # demo 业务库：导出 fun_* 供加固与 bridge 调用。
 add_library(demo SHARED
-        native-lib.cpp)
+        native-lib.cpp
+        native-lib-ref.cpp)
 target_link_libraries(demo
-        and
+        android
         log)
 
 # 桥接库：JNI 入口库，链接期直接依赖 demo。
@@ -24,4 +25,5 @@ target_include_directories(bridge PRIVATE
 target_link_libraries(bridge
         demo
         android
+        dl
         log)
