@@ -187,6 +187,7 @@ void initOpcodeTable() {
     g_opcode_table[OP_SET_RETURN_PC]  = op_set_return_pc;
     g_opcode_table[OP_BL]             = op_bl;
     g_opcode_table[OP_ADRP]           = op_adrp;
+    g_opcode_table[OP_BRANCH_REG]     = op_branch_reg;
 }
 
 // subOp 高位标记：0x40 表示本条运算需要更新 VM 标志寄存器（对应 ARM64 SUBS/ADDS）。
@@ -332,6 +333,7 @@ const char* getOpcodeName(uint32_t opcode) {
         case OP_SET_RETURN_PC: return "OP_SET_RETURN_PC";
         case OP_BL: return "OP_BL";
         case OP_ADRP: return "OP_ADRP";
+        case OP_BRANCH_REG: return "OP_BRANCH_REG";
         // 未收录 opcode 返回占位符。
         default: return "OP_???";  // 未识别 opcode。
     }
@@ -424,6 +426,36 @@ uint64_t execBinaryOp(uint32_t op, uint64_t lhs, uint64_t rhs, zType* type) {
     }
 }
 
+// 统计 32 位整数前导零个数（value=0 时返回 32）。
+static uint32_t countLeadingZeros32(uint32_t value) {
+    if (value == 0u) {
+        return 32u;
+    }
+    uint32_t count = 0u;
+    for (int bit = 31; bit >= 0; --bit) {
+        if (((value >> static_cast<uint32_t>(bit)) & 1u) != 0u) {
+            break;
+        }
+        ++count;
+    }
+    return count;
+}
+
+// 统计 64 位整数前导零个数（value=0 时返回 64）。
+static uint32_t countLeadingZeros64(uint64_t value) {
+    if (value == 0ull) {
+        return 64u;
+    }
+    uint32_t count = 0u;
+    for (int bit = 63; bit >= 0; --bit) {
+        if (((value >> static_cast<uint32_t>(bit)) & 1ull) != 0ull) {
+            break;
+        }
+        ++count;
+    }
+    return count;
+}
+
 // 执行一元运算：支持整数位运算与浮点数学运算。
 uint64_t execUnaryOp(uint32_t op, uint64_t src, zType* type) {
     // 浮点一元操作。
@@ -467,6 +499,11 @@ uint64_t execUnaryOp(uint32_t op, uint64_t src, zType* type) {
         case UNARY_NOT:  return ~src;
         case UNARY_LNOT: return src ? 0 : 1;
         case UNARY_ABS:  return static_cast<uint64_t>(s < 0 ? -s : s);
+        case UNARY_CLZ:
+            if (type && type->size == 4) {
+                return static_cast<uint64_t>(countLeadingZeros32(static_cast<uint32_t>(src & 0xFFFFFFFFu)));
+            }
+            return static_cast<uint64_t>(countLeadingZeros64(src));
         default: return src;
     }
 }
@@ -1419,6 +1456,57 @@ void op_branch_if(VMContext* ctx) {
         LOGE("op_branch_if target out of range: target=%u inst_count=%u", target, ctx->inst_count);
         ctx->running = false;
     }
+}
+
+// OP_BRANCH_REG：按寄存器中的目标地址做函数内间接跳转。
+void op_branch_reg(VMContext* ctx) {
+    // [0]=opcode, [1]=targetReg；在 branch_lookup_addrs 中查目标地址并跳到对应 branch_lookup_words。
+    uint32_t targetReg = GET_INST(1);
+    if (!ctx->running) {
+        return;
+    }
+
+    const uint64_t targetAddr = GET_REG(targetReg).value;
+    if (ctx->branch_lookup_words == nullptr ||
+        ctx->branch_lookup_addrs == nullptr ||
+        ctx->branch_lookup_count == 0) {
+        LOGE("op_branch_reg missing lookup table: target=0x%llx pc=%u",
+             static_cast<unsigned long long>(targetAddr),
+             ctx->pc);
+        ctx->running = false;
+        return;
+    }
+
+    const bool hasModuleBase = (g_vm_module_base != 0 && targetAddr >= g_vm_module_base);
+    const uint64_t targetOffset = hasModuleBase ? (targetAddr - g_vm_module_base) : targetAddr;
+    for (uint32_t lookupIndex = 0; lookupIndex < ctx->branch_lookup_count; ++lookupIndex) {
+        const uint64_t lookupAddr = ctx->branch_lookup_addrs[lookupIndex];
+        if (lookupAddr != targetAddr && lookupAddr != targetOffset) {
+            continue;
+        }
+        const uint32_t targetPc = ctx->branch_lookup_words[lookupIndex];
+        if (targetPc >= ctx->inst_count) {
+            LOGE("op_branch_reg target pc out of range: target_pc=%u inst_count=%u",
+                 targetPc,
+                 ctx->inst_count);
+            ctx->running = false;
+            return;
+        }
+
+        VM_TRACE_LOGD("[OP_BRANCH_REG] targetReg=%u targetAddr=0x%llx targetOffset=0x%llx targetPc=%u",
+                      targetReg,
+                      static_cast<unsigned long long>(targetAddr),
+                      static_cast<unsigned long long>(targetOffset),
+                      targetPc);
+        ctx->pc = targetPc;
+        return;
+    }
+
+    LOGE("op_branch_reg unresolved target: target=0x%llx offset=0x%llx lookup_count=%u",
+         static_cast<unsigned long long>(targetAddr),
+         static_cast<unsigned long long>(targetOffset),
+         ctx->branch_lookup_count);
+    ctx->running = false;
 }
 
 // OP_BRANCH_IF_CC：按 NZCV+条件码判定是否跳转。

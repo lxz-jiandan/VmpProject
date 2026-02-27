@@ -73,6 +73,9 @@ struct VMContext {
     uint32_t*    branch_id_list;   // 分支表：branch_id -> 目标 pc
     uint32_t     branch_addr_count;// 外部调用地址表项数（供 OP_BL 使用）
     uint64_t*    branch_addr_list; // 分支表：branch_id -> 目标原生地址（可选）
+    uint32_t     branch_lookup_count; // 间接跳转查找表项数（供 OP_BRANCH_REG 使用）
+    uint32_t*    branch_lookup_words; // 查找表：lookup_id -> 目标 pc
+    uint64_t*    branch_lookup_addrs; // 查找表：lookup_id -> 目标 ARM 地址
 
     uint32_t     pc;               // 程序计数器
     uint32_t     branch_id;        // 当前分支 ID
@@ -111,7 +114,10 @@ public:
         uint32_t branchCount,
         uint32_t* branches,
         uint32_t branchAddrCount,
-        uint64_t* ext_list
+        uint64_t* ext_list,
+        uint32_t branchLookupCount,
+        uint32_t* branchLookupWords,
+        uint64_t* branchLookupAddrs
     );
 
     // 通过 soName + fun_addr 执行缓存中的函数，参数由 zParams 写入寄存器。

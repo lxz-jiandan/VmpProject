@@ -227,6 +227,14 @@ uint64_t zVmEngine::executeState(
         return 0;
     }
 
+    // 先解析模块基址（供 OP_ADRP 和分支地址归一化使用）。
+    soinfo* soInfo = GetSoinfo(soName);
+    if (soInfo == nullptr) {
+        LOGE("executeState failed: soinfo not found for %s", soName);
+        return 0;
+    }
+    vm::setVmModuleBase(soInfo->base);
+
     // 默认使用函数自带 ext_list（branch_addr_list）。
     uint64_t* branchAddrPtr = function->ext_list;
     // 临时可写分支地址列表（用于叠加 base）。
@@ -245,14 +253,6 @@ uint64_t zVmEngine::executeState(
     }
     // 若存在分支地址列表，需要把相对地址加上模块基址。
     if (!branchAddrsList.empty()) {
-        // 查询目标 so 的 soinfo。
-        soinfo* soInfo = GetSoinfo(soName);
-        if (soInfo == nullptr) {
-            LOGE("executeState failed: soinfo not found for %s", soName);
-            return 0;
-        }
-        // 同步设置 VM 全局模块基址（供某些 opcode 使用）。
-        vm::setVmModuleBase(soInfo->base);
         // 把每个相对地址转换为进程内绝对地址。
         for (uint64_t& addr : branchAddrsList) {
             addr += soInfo->base;
@@ -260,6 +260,11 @@ uint64_t zVmEngine::executeState(
         // 指向本地临时数组。
         branchAddrPtr = branchAddrsList.data();
     }
+
+    // 间接跳转查找表（地址 -> pc）：从函数编码数据直接取视图。
+    uint32_t branchLookupCount = static_cast<uint32_t>(function->branch_lookup_words.size());
+    uint32_t* branchLookupWords = branchLookupCount > 0 ? function->branch_lookup_words.data() : nullptr;
+    uint64_t* branchLookupAddrs = branchLookupCount > 0 ? function->branch_lookup_addrs.data() : nullptr;
 
     // 进入核心执行入口（低层上下文版本）。
     return execute(
@@ -274,7 +279,10 @@ uint64_t zVmEngine::executeState(
         function->branch_words_ptr,
         // 使用共享列表时按其长度传入；否则沿用函数 branch_count。
         branchAddrsList.empty() ? function->branch_count : static_cast<uint32_t>(branchAddrsList.size()),
-        branchAddrPtr
+        branchAddrPtr,
+        branchLookupCount,
+        branchLookupWords,
+        branchLookupAddrs
     );
 }
 
@@ -359,7 +367,10 @@ uint64_t zVmEngine::execute(
     uint32_t branchCount,
     uint32_t* branch_id_list,
     uint32_t branchAddrCount,
-    uint64_t* branch_addr_list
+    uint64_t* branch_addr_list,
+    uint32_t branchLookupCount,
+    uint32_t* branchLookupWords,
+    uint64_t* branchLookupAddrs
 ) {
     // 无指令流直接返回 0。
     if (instCount == 0 || instructions == nullptr) return 0;
@@ -382,6 +393,9 @@ uint64_t zVmEngine::execute(
     ctx.branch_id_list = branch_id_list;
     ctx.branch_addr_count = branchAddrCount;
     ctx.branch_addr_list = branch_addr_list;
+    ctx.branch_lookup_count = branchLookupCount;
+    ctx.branch_lookup_words = branchLookupWords;
+    ctx.branch_lookup_addrs = branchLookupAddrs;
     // 初始 pc=0。
     ctx.pc = 0;
     // 分支状态初始值。

@@ -73,6 +73,7 @@ enum Opcode : uint32_t {
     OP_ADRP           = 56,     // 基于模块基址 + 页偏移计算地址
     OP_ATOMIC_LOAD    = 57,     // 原子读取（带内存序）
     OP_ATOMIC_STORE   = 58,     // 原子写入（带内存序）
+    OP_BRANCH_REG     = 59,     // 间接跳转（目标地址由寄存器给出）
 
     OP_MAX            = 64      // 最大 opcode 数量
 };
@@ -124,6 +125,7 @@ enum UnaryOp : uint32_t {
     UNARY_CEIL = 5,   // 向上取整
     UNARY_FLOOR= 6,   // 向下取整
     UNARY_ROUND= 7,   // 四舍五入
+    UNARY_CLZ  = 8,   // 统计前导零（count leading zeros）
 };
 
 // ============================================================================
@@ -228,6 +230,8 @@ void op_set_return_pc(VMContext* ctx);
 void op_bl(VMContext* ctx);
 // ADRP：基于模块基址 + offset 计算地址。
 void op_adrp(VMContext* ctx);
+// 间接跳转：按目标地址查表跳转到函数内 PC。
+void op_branch_reg(VMContext* ctx);
 // 为单对象分配堆内存。
 void op_alloc_memory(VMContext* ctx);
 // 寄存器到寄存器移动。

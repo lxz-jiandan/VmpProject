@@ -50,6 +50,10 @@ public:
     uint32_t branch_count = 0;
     // 分支 ID -> PC 映射表（VM 内部使用）。
     std::vector<uint32_t> branch_words;
+    // 间接跳转查找表：索引 -> 目标 VM PC。
+    std::vector<uint32_t> branch_lookup_words;
+    // 间接跳转查找表：索引 -> 目标 ARM 地址（函数内）。
+    std::vector<uint64_t> branch_lookup_addrs;
     // 分支 ID -> 原生地址映射表（BL/外部跳转使用）。
     std::vector<uint64_t> branch_addrs;
 

@@ -52,6 +52,10 @@ struct zUnencodedBytecode {
     uint32_t branchCount = 0;
     // 本地分支表（branch_id -> pc）。
     std::vector<uint32_t> branchWords;
+    // 间接跳转查找表（索引 -> 本地 pc）。
+    std::vector<uint32_t> branchLookupWords;
+    // 间接跳转查找表（索引 -> ARM 地址）。
+    std::vector<uint64_t> branchLookupAddrs;
     // 外部调用地址表（branch_addr_list）。
     std::vector<uint64_t> branchAddrWords;
 };
@@ -147,6 +151,7 @@ static const char* getOpcodeName(uint32_t op) {
         case 56: return "OP_ADRP";
         case 57: return "OP_ATOMIC_LOAD";
         case 58: return "OP_ATOMIC_STORE";
+        case 59: return "OP_BRANCH_REG";
         default: return "OP_UNKNOWN";
     }
 }
@@ -293,6 +298,9 @@ static bool buildEncodedDataFromUnencoded(const zUnencodedBytecode& unencoded, z
     out.branch_count = unencoded.branchCount;
     // 写 branch_words。
     out.branch_words = unencoded.branchWords;
+    // 写 branch_lookup_words / branch_lookup_addrs。
+    out.branch_lookup_words = unencoded.branchLookupWords;
+    out.branch_lookup_addrs = unencoded.branchLookupAddrs;
     // 写 branch_addrs。
     out.branch_addrs = unencoded.branchAddrWords;
     // 写 function_offset。
@@ -487,6 +495,8 @@ bool zFunction::dump(const char* filePath, DumpMode mode) const {
         unencoded.instCount = inst_count_cache_;
         unencoded.branchCount = branch_count_cache_;
         unencoded.branchWords = branch_words_cache_;
+        unencoded.branchLookupWords = branch_lookup_words_cache_;
+        unencoded.branchLookupAddrs = branch_lookup_addrs_cache_;
         unencoded.branchAddrWords = branch_addrs_cache_;
         return unencoded;
     };

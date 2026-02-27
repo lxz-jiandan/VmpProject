@@ -307,6 +307,8 @@ bool zFunction::parseFromStream(std::istream& in) {
     inst_words = inst_words_;
     branch_count = static_cast<uint32_t>(branch_words_.size());
     branch_words = branch_words_;
+    branch_lookup_words.clear();
+    branch_lookup_addrs.clear();
     zFunctionData::branch_addrs = branch_addrs_;
     function_offset = fun_addr_;
 

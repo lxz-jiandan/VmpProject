@@ -71,6 +71,10 @@ bool zFunctionData::validate(std::string* error) const {
     if (branch_count != static_cast<uint32_t>(branch_words.size())) {
         return failWith(error, "branch_count does not match branch_words.size()");
     }
+    // 间接跳转查找表需要地址/pc 一一对应。
+    if (branch_lookup_words.size() != branch_lookup_addrs.size()) {
+        return failWith(error, "branch_lookup_words.size() does not match branch_lookup_addrs.size()");
+    }
     // 初始化条目数不能超过 first_inst_count。
     if (init_value_count > first_inst_count) {
         return failWith(error, "init_value_count cannot exceed first_inst_count");
@@ -140,6 +144,18 @@ bool zFunctionData::serializeEncoded(std::vector<uint8_t>& out, std::string* err
     // 写 branch_words。
     for (uint32_t value : branch_words) {
         writer.writeExtU32(value);
+    }
+    // 写 branch_lookup_words 数量。
+    writer.writeExtU32(static_cast<uint32_t>(branch_lookup_words.size()));
+    // 写 branch_lookup_words 内容。
+    for (uint32_t value : branch_lookup_words) {
+        writer.writeExtU32(value);
+    }
+    // 写 branch_lookup_addrs 数量（与 branch_lookup_words 数量保持一致）。
+    writer.writeExtU32(static_cast<uint32_t>(branch_lookup_addrs.size()));
+    // 写 branch_lookup_addrs 内容。
+    for (uint64_t value : branch_lookup_addrs) {
+        vmp::base::bitcodec::writeU64AsU32Pair(&writer, value);
     }
     // 写 branch_addrs 数量。
     writer.writeExtU32(static_cast<uint32_t>(branch_addrs.size()));
@@ -269,6 +285,34 @@ bool zFunctionData::deserializeEncoded(const uint8_t* data, size_t len, zFunctio
         }
     }
 
+    // 读取 branch_lookup_words 数量。
+    uint32_t branchLookupCount = 0;
+    if (!reader.readExtU32(&branchLookupCount)) {
+        return failWith(error, "failed to read branch_lookup_count");
+    }
+    // 读取 branch_lookup_words 列表。
+    out.branch_lookup_words.resize(branchLookupCount);
+    for (uint32_t branchLookupIndex = 0; branchLookupIndex < branchLookupCount; branchLookupIndex++) {
+        if (!reader.readExtU32(&out.branch_lookup_words[branchLookupIndex])) {
+            return failWith(error, "failed to read branch_lookup_words");
+        }
+    }
+    // 读取 branch_lookup_addrs 数量。
+    uint32_t branchLookupAddrCount = 0;
+    if (!reader.readExtU32(&branchLookupAddrCount)) {
+        return failWith(error, "failed to read branch_lookup_addr_count");
+    }
+    if (branchLookupAddrCount != branchLookupCount) {
+        return failWith(error, "branch_lookup_addr_count does not match branch_lookup_count");
+    }
+    // 读取 branch_lookup_addrs 列表。
+    out.branch_lookup_addrs.resize(branchLookupAddrCount);
+    for (uint32_t branchLookupAddrIndex = 0; branchLookupAddrIndex < branchLookupAddrCount; branchLookupAddrIndex++) {
+        if (!vmp::base::bitcodec::readU64FromU32Pair(&reader, &out.branch_lookup_addrs[branchLookupAddrIndex])) {
+            return failWith(error, "failed to read branch_lookup_addrs");
+        }
+    }
+
     // 读取 branch_addrs 数量。
     uint32_t branchAddrCount = 0;
     if (!reader.readExtU32(&branchAddrCount)) {
@@ -338,6 +382,14 @@ bool zFunctionData::encodedEquals(const zFunctionData& other, std::string* error
     if (branch_words != other.branch_words) {
         // 本地分支目标不同，直接失败。
         return failWith(error, "encodedEquals mismatch: branch_words");
+    }
+    if (branch_lookup_words != other.branch_lookup_words) {
+        // 间接跳转本地目标 pc 表不同，直接失败。
+        return failWith(error, "encodedEquals mismatch: branch_lookup_words");
+    }
+    if (branch_lookup_addrs != other.branch_lookup_addrs) {
+        // 间接跳转本地目标地址表不同，直接失败。
+        return failWith(error, "encodedEquals mismatch: branch_lookup_addrs");
     }
     if (branch_addrs != other.branch_addrs) {
         // 全局调用地址表不同，直接失败。

@@ -91,6 +91,8 @@ private:
         uint32_t instCount,
         uint32_t branchCount,
         std::vector<uint32_t> branchWords,
+        std::vector<uint32_t> branchLookupWords,
+        std::vector<uint64_t> branchLookupAddrs,
         std::vector<uint64_t> branchAddrWords
     ) const;
 
@@ -129,6 +131,10 @@ private:
     mutable uint32_t branch_count_cache_ = 0;
     // 缓存的本地分支表（branch_id_list）。
     mutable std::vector<uint32_t> branch_words_cache_;
+    // 缓存的间接跳转目标 pc 表。
+    mutable std::vector<uint32_t> branch_lookup_words_cache_;
+    // 缓存的间接跳转目标地址表。
+    mutable std::vector<uint64_t> branch_lookup_addrs_cache_;
     // 缓存的全局调用目标地址表（branch_addr_list）。
     mutable std::vector<uint64_t> branch_addrs_cache_;
 };

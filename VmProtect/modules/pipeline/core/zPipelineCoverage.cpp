@@ -83,6 +83,27 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
 #ifdef ARM64_INS_MSUB
         ARM64_INS_MSUB,
 #endif
+#ifdef ARM64_INS_MNEG
+        ARM64_INS_MNEG,
+#endif
+#ifdef ARM64_INS_UMULL
+        ARM64_INS_UMULL,
+#endif
+#ifdef ARM64_INS_SMULL
+        ARM64_INS_SMULL,
+#endif
+#ifdef ARM64_INS_UMADDL
+        ARM64_INS_UMADDL,
+#endif
+#ifdef ARM64_INS_SMADDL
+        ARM64_INS_SMADDL,
+#endif
+#ifdef ARM64_INS_UMULH
+        ARM64_INS_UMULH,
+#endif
+#ifdef ARM64_INS_SMULH
+        ARM64_INS_SMULH,
+#endif
 #ifdef ARM64_INS_UDIV
         ARM64_INS_UDIV,
 #endif
@@ -113,6 +134,9 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
 #endif
 #ifdef ARM64_INS_CSETM
         ARM64_INS_CSETM,
+#endif
+#ifdef ARM64_INS_CSINV
+        ARM64_INS_CSINV,
 #endif
 #ifdef ARM64_INS_CMN
         ARM64_INS_CMN,
@@ -178,6 +202,31 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
 #endif
     };
 // 针对不同 capstone 版本，条件插入可选指令 ID。
+#ifdef ARM64_INS_CLZ
+    ids.insert(ARM64_INS_CLZ);
+#endif
+#ifdef ARM64_INS_FCVTAS
+    ids.insert(ARM64_INS_FCVTAS);
+#endif
+#ifdef ARM64_INS_FCVTZS
+    ids.insert(ARM64_INS_FCVTZS);
+#endif
+#ifdef ARM64_INS_FDIV
+    ids.insert(ARM64_INS_FDIV);
+#endif
+#ifdef ARM64_INS_FMUL
+    ids.insert(ARM64_INS_FMUL);
+#endif
+#ifdef ARM64_INS_SCVTF
+    ids.insert(ARM64_INS_SCVTF);
+#endif
+#ifdef ARM64_INS_SHRN
+    ids.insert(ARM64_INS_SHRN);
+#endif
+#ifdef ARM64_INS_YIELD
+    ids.insert(ARM64_INS_YIELD);
+#endif
+// 针对不同 capstone 版本，条件插入可选指令 ID。
 #ifdef ARM64_INS_LDRSW
     ids.insert(ARM64_INS_LDRSW);
 #endif
@@ -223,6 +272,12 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
 #endif
 #ifdef ARM64_INS_CMP
     ids.insert(ARM64_INS_CMP);
+#endif
+#ifdef ARM64_INS_BICS
+    ids.insert(ARM64_INS_BICS);
+#endif
+#ifdef ARM64_INS_EON
+    ids.insert(ARM64_INS_EON);
 #endif
     // 返回完整支持集合。
     return ids;
@@ -281,6 +336,7 @@ bool isSupportedByFallbackMnemonic(const char* mnemonic) {
            std::strcmp(mnemonic, "lsr") == 0 ||
            std::strcmp(mnemonic, "asr") == 0 ||
            std::strcmp(mnemonic, "ror") == 0 ||
+           std::strcmp(mnemonic, "clz") == 0 ||
            std::strcmp(mnemonic, "movi") == 0 ||
            std::strcmp(mnemonic, "mov") == 0 ||
            std::strcmp(mnemonic, "adr") == 0 ||
@@ -295,17 +351,57 @@ bool isSupportedByFallbackMnemonic(const char* mnemonic) {
            std::strcmp(mnemonic, "cneg") == 0 ||
            std::strcmp(mnemonic, "cinc") == 0 ||
            std::strcmp(mnemonic, "csetm") == 0 ||
+           std::strcmp(mnemonic, "csinv") == 0 ||
            std::strcmp(mnemonic, "bfi") == 0 ||
            std::strcmp(mnemonic, "bfxil") == 0 ||
+           std::strcmp(mnemonic, "bics") == 0 ||
+           std::strcmp(mnemonic, "eon") == 0 ||
+           std::strcmp(mnemonic, "mneg") == 0 ||
+           std::strcmp(mnemonic, "umull") == 0 ||
+           std::strcmp(mnemonic, "smull") == 0 ||
+           std::strcmp(mnemonic, "umaddl") == 0 ||
+           std::strcmp(mnemonic, "smaddl") == 0 ||
+           std::strcmp(mnemonic, "umulh") == 0 ||
+           std::strcmp(mnemonic, "smulh") == 0 ||
+            std::strcmp(mnemonic, "fmov") == 0 ||
+            std::strcmp(mnemonic, "fcvt") == 0 ||
+            std::strcmp(mnemonic, "fcvtas") == 0 ||
+            std::strcmp(mnemonic, "fcvtzs") == 0 ||
+            std::strcmp(mnemonic, "scvtf") == 0 ||
+            std::strcmp(mnemonic, "fcmp") == 0 ||
+            std::strcmp(mnemonic, "fadd") == 0 ||
+            std::strcmp(mnemonic, "fdiv") == 0 ||
+            std::strcmp(mnemonic, "fmul") == 0 ||
+            std::strcmp(mnemonic, "fneg") == 0 ||
+            std::strcmp(mnemonic, "ucvtf") == 0 ||
+            std::strcmp(mnemonic, "dup") == 0 ||
+           std::strcmp(mnemonic, "ld4") == 0 ||
+           std::strcmp(mnemonic, "ushll") == 0 ||
+           std::strcmp(mnemonic, "ushll2") == 0 ||
+           std::strcmp(mnemonic, "shll") == 0 ||
+            std::strcmp(mnemonic, "shll2") == 0 ||
+            std::strcmp(mnemonic, "ushr") == 0 ||
+            std::strcmp(mnemonic, "shl") == 0 ||
+            std::strcmp(mnemonic, "shrn") == 0 ||
+            std::strcmp(mnemonic, "xtn") == 0 ||
+            std::strcmp(mnemonic, "bit") == 0 ||
+            std::strcmp(mnemonic, "bsl") == 0 ||
+           std::strcmp(mnemonic, "umov") == 0 ||
+           std::strcmp(mnemonic, "cmeq") == 0 ||
+           std::strcmp(mnemonic, "cmhi") == 0 ||
+           std::strcmp(mnemonic, "cmlt") == 0 ||
+           std::strcmp(mnemonic, "cmgt") == 0 ||
+           std::strcmp(mnemonic, "cmhs") == 0 ||
            std::strcmp(mnemonic, "ldaxr") == 0 ||
            std::strcmp(mnemonic, "ldxr") == 0 ||
            std::strcmp(mnemonic, "stlxr") == 0 ||
            std::strcmp(mnemonic, "stxr") == 0 ||
-           std::strcmp(mnemonic, "nop") == 0 ||
-           std::strcmp(mnemonic, "hint") == 0 ||
-           std::strcmp(mnemonic, "clrex") == 0 ||
-           std::strcmp(mnemonic, "svc") == 0 ||
-           std::strcmp(mnemonic, "brk") == 0;
+            std::strcmp(mnemonic, "nop") == 0 ||
+            std::strcmp(mnemonic, "hint") == 0 ||
+            std::strcmp(mnemonic, "yield") == 0 ||
+            std::strcmp(mnemonic, "clrex") == 0 ||
+            std::strcmp(mnemonic, "svc") == 0 ||
+            std::strcmp(mnemonic, "brk") == 0;
 }
 
 // 统一判断一条指令是否可被当前翻译链路支持。
