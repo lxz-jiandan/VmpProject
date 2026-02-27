@@ -107,6 +107,7 @@ def toCmakePath(value: str):
 def extractRelevantLogLines(log_text: str):
     # 仅保留回归判定相关关键词，降低日志噪声。
     keys = (
+        "VMP_DEMO",
         "route_",
         "vm_init",
         "Fatal signal",
@@ -125,7 +126,59 @@ def extractRelevantLogLines(log_text: str):
     return lines
 
 
-def runVmProtectExport(project_root: Path, env: dict, functions):
+def findDemoOriginSoOutputs(demo_dir: Path):
+    # Demo CXX 产物根目录（按 ABI 输出在子目录）。
+    pattern = demo_dir / "app" / "build" / "intermediates" / "cxx" / "Debug"
+    # 搜索所有 arm64-v8a 的 libdemo.so 路径。
+    outputs = list(pattern.glob("*/obj/arm64-v8a/libdemo.so"))
+    # 返回排序后的稳定列表，保证处理顺序一致。
+    return sorted(outputs)
+
+
+def findDemoOriginCmakeSoOutput(demo_dir: Path):
+    # CMake 另一条中间产物路径（兼容历史目录结构）。
+    return (
+        demo_dir
+        / "app"
+        / "build"
+        / "intermediates"
+        / "cmake"
+        / "debug"
+        / "obj"
+        / "arm64-v8a"
+        / "libdemo.so"
+    )
+
+
+def buildDemoOriginSo(demo_dir: Path, env: dict):
+    # 构建 demo native，产出 origin so 中间文件（libdemo.so）。
+    runCmd(
+        ["cmd", "/c", "gradlew.bat", "externalNativeBuildDebug", "--rerun-tasks"],
+        cwd=str(demo_dir),
+        env=env,
+    )
+
+    # 汇总候选输出路径并取最新文件。
+    candidates = [*findDemoOriginSoOutputs(demo_dir)]
+    cmake_fallback = findDemoOriginCmakeSoOutput(demo_dir)
+    if cmake_fallback.exists():
+        candidates.append(cmake_fallback)
+
+    if not candidates:
+        raise RuntimeError(
+            "demo origin so not found under demo/app/build/intermediates "
+            "(expected libdemo.so)"
+        )
+    candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    origin_so = candidates[0]
+
+    # 对产物做 ELF 结构校验，提前发现损坏文件。
+    validateAndroidElfLayout(origin_so)
+    print(f"[INFO] demo origin so: {origin_so}")
+    return origin_so
+
+
+def runVmProtectExport(project_root: Path, env: dict, functions, input_so: Path):
     # 离线导出阶段：
     # - 编译 VmProtect；
     # - 运行 VmProtect 生成 txt/bin/expand so；
@@ -226,13 +279,16 @@ def runVmProtectExport(project_root: Path, env: dict, functions):
     # 不存在则立即失败，避免后续调用空路径。
     if not target_exe.exists():
         raise RuntimeError(f"missing executable: {target_exe}")
+    # 输入 so 必须存在。
+    if not input_so.exists():
+        raise RuntimeError(f"VmProtect input so not found: {input_so}")
     # 组装 VmProtect 导出命令（基础参数）。
     export_cmd = [
         str(target_exe),
         "--mode",
         "export",
         "--input-so",
-        str(vmprotect_dir / "libdemo.so"),
+        str(input_so),
     ]
     # 追加函数白名单参数：--function <name>。
     for function_name in functions:
@@ -392,8 +448,6 @@ def patchVmEngineSymbolsWithVmProtectRoute(
     vmengine_dir: Path,
     env: dict,
     origin_so: Path,
-    impl_symbol: str,
-    only_fun_java: bool,
     functions,
 ):
     # route4 L2 接管前置（走 VmProtect 主流程）：
@@ -447,7 +501,7 @@ def patchVmEngineSymbolsWithVmProtectRoute(
         if backup_so.exists():
             backup_so.unlink()
         # 组装 VmProtect 主流程命令：
-        # input=origin_so, vmengine=target_so, output=patched_so, impl=impl_symbol。
+        # input=origin_so, vmengine=target_so, output=patched_so。
         cmd = [
             patch_tool,
             "--mode",
@@ -462,12 +516,7 @@ def patchVmEngineSymbolsWithVmProtectRoute(
             str(patched_so),
             "--patch-origin-so",
             str(origin_so),
-            "--patch-impl-symbol",
-            impl_symbol,
         ]
-        # 是否 patch origin 的全部导出：仅在开启时追加开关。
-        if not only_fun_java:
-            cmd.append("--patch-all-exports")
         # 加固路线必须显式传入函数集合。
         for function_name in functions:
             cmd.extend(["--function", function_name])
@@ -503,10 +552,10 @@ def main():
     # 脚本主流程：
     # A. VmProtect 导出；
     # B. (可选) patch vmengine 导出；
-    # C. 安装 VmEngine；
+    # C. 安装 demo；
     # D. startActivity + logcat 判定。
     # 创建命令行参数解析器。
-    parser = argparse.ArgumentParser(description="Run VmProtect + VmEngine startup regression.")
+    parser = argparse.ArgumentParser(description="Run VmProtect + demo startup regression.")
     # 项目根目录参数，默认取脚本上一级目录。
     parser.add_argument(
         "--project-root",
@@ -514,7 +563,7 @@ def main():
         help="Path to VmpProject root",
     )
     # App 包名。
-    parser.add_argument("--package", default="com.example.vmengine")
+    parser.add_argument("--package", default="com.example.demo")
     # 启动 Activity。
     parser.add_argument("--activity", default=".MainActivity")
     # 启动后等待秒数（等待 vm_init/route 日志稳定输出）。
@@ -528,20 +577,14 @@ def main():
     # origin so 路径参数。
     parser.add_argument(
         "--patch-origin-so",
-        default="VmProtect/libdemo.so",
-        help="Origin .so path (relative to project root or absolute)",
+        default="",
+        help="Origin .so path for patch stage; default uses demo libdemo.so",
     )
-    # patch 实现符号名参数。
+    # demo origin so（VmProtect input-so）路径参数。
     parser.add_argument(
-        "--patch-impl-symbol",
-        default="vm_takeover_entry_0000",
-        help="Implementation symbol/prefix used by VmProtect patch stage",
-    )
-    # 是否 patch origin 的全部导出。
-    parser.add_argument(
-        "--patch-all-exports",
-        action="store_true",
-        help="Patch all origin exports (default only patches fun_* and Java_*)",
+        "--demo-origin-so",
+        default="",
+        help="Demo origin .so path for VmProtect input; default auto-build and detect libdemo.so",
     )
     # 函数导出清单参数。
     parser.add_argument(
@@ -558,12 +601,13 @@ def main():
     # 关键子目录路径。
     vmprotect_dir = root / "VmProtect"
     vmengine_dir = root / "VmEngine"
+    demo_dir = root / "demo"
     # 根目录有效性校验。
-    if not vmprotect_dir.exists() or not vmengine_dir.exists():
+    if not vmprotect_dir.exists() or not vmengine_dir.exists() or not demo_dir.exists():
         raise RuntimeError(f"invalid project root: {root}")
 
     # 定位 adb。
-    adb = locateAdb(root, [Path("VmEngine/local.properties")])
+    adb = locateAdb(root, [Path("demo/local.properties"), Path("VmEngine/local.properties")])
     # 定位 Java 运行时。
     java_home = locateJavaHome()
     # 复制环境变量用于子进程。
@@ -571,41 +615,53 @@ def main():
     # 强制使用定位到的 JAVA_HOME。
     env["JAVA_HOME"] = java_home
 
-    # 1) Build/export from VmProtect.
-    runVmProtectExport(root, env, args.functions)
+    # 1) 先确定本轮 origin so（默认来自 demo 中间产物）。
+    demo_origin_so = None
+    if args.demo_origin_so.strip():
+        demo_origin_so = Path(args.demo_origin_so)
+        if not demo_origin_so.is_absolute():
+            demo_origin_so = root / demo_origin_so
+        if not demo_origin_so.exists():
+            raise RuntimeError(f"demo origin so not found: {demo_origin_so}")
+        validateAndroidElfLayout(demo_origin_so)
+    else:
+        demo_origin_so = buildDemoOriginSo(demo_dir=demo_dir, env=env)
 
-    # 2) Optionally patch vmengine symbol exports before install.
+    # 2) Build/export from VmProtect（input-so 使用 demo origin so）。
+    runVmProtectExport(root, env, args.functions, demo_origin_so)
+
+    # 3) Optionally patch vmengine symbol exports before install.
     if args.patch_vmengine_symbols:
-        # origin 路径对象化。
-        origin = Path(args.patch_origin_so)
-        # 相对路径时按 project_root 解析。
-        if not origin.is_absolute():
-            origin = root / origin
+        # patch origin 路径对象化：未指定则默认沿用 demo origin so。
+        if args.patch_origin_so.strip():
+            origin = Path(args.patch_origin_so)
+            if not origin.is_absolute():
+                origin = root / origin
+        else:
+            origin = demo_origin_so
         # 执行 patch 流程。
         staged_for_install = patchVmEngineSymbolsWithVmProtectRoute(
             project_root=root,
             vmengine_dir=vmengine_dir,
             env=env,
             origin_so=origin,
-            impl_symbol=args.patch_impl_symbol,
-            only_fun_java=not args.patch_all_exports,
             functions=args.functions,
         )
         try:
             # Skip native rebuild so patched output is not overwritten.
-            # 关键点：跳过 externalNativeBuildDebug，防止 Gradle 重新编译覆盖临时部署结果。
+            # 关键点：安装 demo 时保持 vmengine patch 输出不被覆盖。
             runCmd(
-                ["cmd", "/c", "gradlew.bat", "installDebug", "-x", "externalNativeBuildDebug"],
-                cwd=str(vmengine_dir),
+                ["cmd", "/c", "gradlew.bat", "installDebug"],
+                cwd=str(demo_dir),
                 env=env,
             )
         finally:
             # 无论 install 成功/失败，都恢复原始 libvmengine.so。
             restoreVmEngineOutputs(staged_for_install)
     else:
-        # 2) Install VmEngine debug apk.
+        # 2) Install demo debug apk.
         # 不做 patch 时按默认安装流程（包含必要 native task 依赖）。
-        runCmd(["cmd", "/c", "gradlew.bat", "installDebug"], cwd=str(vmengine_dir), env=env)
+        runCmd(["cmd", "/c", "gradlew.bat", "installDebug"], cwd=str(demo_dir), env=env)
 
     # 3) Start activity and collect logs.
     # 组装启动组件名：<package>/<activity>。
@@ -628,27 +684,17 @@ def main():
     for line in extractRelevantLogLines(log_text):
         print(line)
 
-    # route4-only 启动健康判定：两条成功 marker 缺一不可。
-    # 当前版本已移除 reference 解析依赖，不再要求 reference marker。
+    # demo UI 启动健康判定：需要看到 bridge 输出的 fun_* 调用结果。
     expected_markers = [
-        # route4 L1 必须真正执行（state=0），不能是 skip。
-        "route_embedded_expand_so result=1 state=0",
-        # route4 L2 takeover 校验通过。
-        "route_symbol_takeover result=1",
-    ]
-    # route4 L1 的失败表现：当前只保留“显式失败”一种形态。
-    # 说明：kSkipNoPayload 等兼容状态已移除，故不再检查 state=1/state=2。
-    embedded_fail_markers = [
-        # L1 直接失败。
-        "route_embedded_expand_so result=0",
+        "VMP_DEMO: fun_add(",
+        "VMP_DEMO: fun_global_mutable_state(",
+        "VMP_DEMO: demo protect results",
     ]
     # 通用崩溃/链接失败 marker。
     fail_markers = [
         # vm_init 路径错误文案。
         "vm_init route4 init failed",
         "vm_init failed",
-        # route4 L2 takeover 显式失败文案。
-        "route_symbol_takeover result=0",
         "JNI_ERR",
         "Fatal signal",
         "FATAL EXCEPTION",
@@ -659,8 +705,6 @@ def main():
     missing = [marker for marker in expected_markers if marker not in log_text]
     # 收集通用失败 marker。
     found_fail = [marker for marker in fail_markers if marker in log_text]
-    # 追加 route4 L1 专属失败 marker。
-    found_fail.extend([marker for marker in embedded_fail_markers if marker in log_text])
 
     print("\n=== Regression Result ===")
     # 输出缺失项，帮助快速定位“没跑到”还是“跑了但失败”。
@@ -673,10 +717,6 @@ def main():
         print("Detected failure markers:")
         for marker in found_fail:
             print(f"  - {marker}")
-
-    # 仅在确认 state=0 时输出 active 提示。
-    if "route_embedded_expand_so result=1 state=0" in log_text:
-        print("route_embedded_expand_so: active (state=0).")
 
     # 只要有缺失或失败 marker，就返回非 0 让 CI/调用方感知失败。
     if missing or found_fail:

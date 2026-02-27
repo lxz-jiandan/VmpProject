@@ -1,25 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Demo 示例页面：用于触发 JNI 与保护函数自检。 -->
-<!-- 根容器使用 ConstraintLayout，便于最小示例布局维护。 -->
-<!-- 根容器宽高均铺满父布局，设计器上下文指向 MainActivity。 -->
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<!-- Demo 展示页：显示 bridge 返回的多行函数执行结果。 -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
     tools:context=".MainActivity">
 
-    <!-- 中央文本显示区域。 -->
-    <!-- sample_text 用于展示 JNI 返回值与自检状态；宽高自适应；四向约束到父容器中心。 -->
-    <!-- 默认文案为占位文本，运行时可被 JNI 与自检状态覆盖。 -->
     <TextView
         android:id="@+id/sample_text"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:fontFamily="monospace"
+        android:padding="16dp"
+        android:text="loading..."
+        android:textSize="14sp" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

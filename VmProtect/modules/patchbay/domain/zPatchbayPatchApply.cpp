@@ -531,6 +531,12 @@ bool appendTablesWithRebuild(std::vector<uint8_t>* fileBytes,
     return true;
 }
 
+// 以小端追加 u16。
+void appendU16Le(std::vector<uint8_t>* out, uint16_t value) {
+    out->push_back(static_cast<uint8_t>(value & 0xffU));
+    out->push_back(static_cast<uint8_t>((value >> 8) & 0xffU));
+}
+
 // 以小端追加 u32。
 void appendU32Le(std::vector<uint8_t>* out, uint32_t value) {
     out->push_back(static_cast<uint8_t>(value & 0xffU));
@@ -546,45 +552,47 @@ void appendU64Le(std::vector<uint8_t>* out, uint64_t value) {
     }
 }
 
-// 生成 ARM64 槽位跳板（24 bytes）：
-// movz w2, #lo16
-// movk w2, #hi16, lsl #16
-// ldr  x16, #8
+// 生成 ARM64 合成跳板（40 bytes）：
+// ldr  x2, #16          ; symbolKey
+// ldr  x3, #20          ; soId
+// ldr  x16, #24         ; dispatch
 // br   x16
+// .quad symbolKey
+// .quad soId
 // .quad dispatch_addr
-void appendTakeoverTrampolineArm64(uint32_t entryId,
+void appendTakeoverTrampolineArm64(uint64_t symbolKey,
+                                   uint32_t soId,
                                    uint64_t dispatchAddr,
                                    std::vector<uint8_t>* out) {
-    const uint32_t lo16 = entryId & 0xffffU;
-    const uint32_t hi16 = (entryId >> 16) & 0xffffU;
-
-    const uint32_t movzW2 = 0x52800000U | (lo16 << 5) | 2U;
-    const uint32_t movkW2 = 0x72A00000U | (hi16 << 5) | 2U;
-    const uint32_t ldrX16LiteralPlus8 = 0x58000000U | (2U << 5) | 16U;
+    const uint32_t ldrX2LiteralPlus16 = 0x58000000U | (4U << 5) | 2U;
+    const uint32_t ldrX3LiteralPlus20 = 0x58000000U | (5U << 5) | 3U;
+    const uint32_t ldrX16LiteralPlus24 = 0x58000000U | (6U << 5) | 16U;
     const uint32_t brX16 = 0xD61F0000U | (16U << 5);
 
-    appendU32Le(out, movzW2);
-    appendU32Le(out, movkW2);
-    appendU32Le(out, ldrX16LiteralPlus8);
+    appendU32Le(out, ldrX2LiteralPlus16);
+    appendU32Le(out, ldrX3LiteralPlus20);
+    appendU32Le(out, ldrX16LiteralPlus24);
     appendU32Le(out, brX16);
+    appendU64Le(out, symbolKey);
+    appendU64Le(out, static_cast<uint64_t>(soId));
     appendU64Le(out, dispatchAddr);
 }
 
-// 根据 pending 绑定构建“entryId -> stub 相对偏移”与 stub blob。
+// 根据 pending 绑定构建“bindingIndex -> stub 相对偏移”与 stub blob。
 bool buildSyntheticTakeoverStubBlob(
         const std::vector<PendingTakeoverSymbolBinding>& pendingBindings,
         uint64_t dispatchAddr,
         std::vector<uint8_t>* outStubBytes,
-        std::unordered_map<uint32_t, uint64_t>* outStubOffBySlot,
+        std::vector<uint64_t>* outStubOffByBindingIndex,
         std::string* error) {
-    if (outStubBytes == nullptr || outStubOffBySlot == nullptr) {
+    if (outStubBytes == nullptr || outStubOffByBindingIndex == nullptr) {
         if (error != nullptr) {
             *error = "invalid synthetic stub output";
         }
         return false;
     }
     outStubBytes->clear();
-    outStubOffBySlot->clear();
+    outStubOffByBindingIndex->clear();
 
     if (pendingBindings.empty()) {
         return true;
@@ -596,18 +604,17 @@ bool buildSyntheticTakeoverStubBlob(
         return false;
     }
 
-    std::unordered_set<uint32_t> seenSlotIds;
-    seenSlotIds.reserve(pendingBindings.size());
-    outStubOffBySlot->reserve(pendingBindings.size());
-
+    outStubOffByBindingIndex->reserve(pendingBindings.size());
     for (const PendingTakeoverSymbolBinding& binding : pendingBindings) {
-        if (seenSlotIds.find(binding.entryId) != seenSlotIds.end()) {
-            continue;
+        if (binding.symbolKey == 0 || binding.soId == 0) {
+            if (error != nullptr) {
+                *error = "invalid takeover binding route key";
+            }
+            return false;
         }
-        seenSlotIds.insert(binding.entryId);
         const uint64_t relOff = outStubBytes->size();
-        appendTakeoverTrampolineArm64(binding.entryId, dispatchAddr, outStubBytes);
-        (*outStubOffBySlot)[binding.entryId] = relOff;
+        appendTakeoverTrampolineArm64(binding.symbolKey, binding.soId, dispatchAddr, outStubBytes);
+        outStubOffByBindingIndex->push_back(relOff);
     }
     return true;
 }
@@ -616,7 +623,7 @@ bool buildSyntheticTakeoverStubBlob(
 bool patchDynsymTakeoverValuesInFile(std::vector<uint8_t>* fileBytes,
                                      const RebuildLayout& layout,
                                      const std::vector<PendingTakeoverSymbolBinding>& pendingBindings,
-                                     const std::unordered_map<uint32_t, uint64_t>& stubOffBySlot,
+                                     const std::vector<uint64_t>& stubOffByBindingIndex,
                                      std::string* error) {
     if (pendingBindings.empty()) {
         return true;
@@ -624,6 +631,12 @@ bool patchDynsymTakeoverValuesInFile(std::vector<uint8_t>* fileBytes,
     if (fileBytes == nullptr) {
         if (error != nullptr) {
             *error = "null output file buffer when patch dynsym takeover values";
+        }
+        return false;
+    }
+    if (stubOffByBindingIndex.size() != pendingBindings.size()) {
+        if (error != nullptr) {
+            *error = "synthetic stub offset count mismatch";
         }
         return false;
     }
@@ -660,15 +673,9 @@ bool patchDynsymTakeoverValuesInFile(std::vector<uint8_t>* fileBytes,
     }
 
     auto* syms = reinterpret_cast<Elf64_Sym*>(fileBytes->data() + layout.dynsymFileOffset);
-    for (const PendingTakeoverSymbolBinding& binding : pendingBindings) {
-        const auto slotIt = stubOffBySlot.find(binding.entryId);
-        if (slotIt == stubOffBySlot.end()) {
-            if (error != nullptr) {
-                *error = "missing synthetic stub for entry id " + std::to_string(binding.entryId);
-            }
-            return false;
-        }
-        const uint64_t symAddr = layout.stubVaddr + slotIt->second;
+    for (size_t bindingIndex = 0; bindingIndex < pendingBindings.size(); ++bindingIndex) {
+        const PendingTakeoverSymbolBinding& binding = pendingBindings[bindingIndex];
+        const uint64_t symAddr = layout.stubVaddr + stubOffByBindingIndex[bindingIndex];
         Elf64_Sym& sym = syms[binding.symbolIndex];
         sym.st_value = static_cast<Elf64_Addr>(symAddr);
         // 占位条目统一改为 ABS，避免未定义节索引导致运行时过滤。
@@ -690,7 +697,6 @@ bool applyRebuildAliasPayload(const vmp::elfkit::PatchRequiredSections& required
                               const std::vector<uint8_t>& newSysvHash,
                               const std::vector<PendingTakeoverSymbolBinding>& pendingTakeoverBindings,
                               uint64_t takeoverDispatchAddr,
-                              bool allowValidateFail,
                               std::string* error) {
     if (inputPath == nullptr || outputPath == nullptr || required.dynamic.index < 0) {
         if (error != nullptr) {
@@ -728,11 +734,11 @@ bool applyRebuildAliasPayload(const vmp::elfkit::PatchRequiredSections& required
 
     // [阶段 2] 根据 pending 槽位绑定生成合成跳板（可选）。
     std::vector<uint8_t> syntheticStubBytes;
-    std::unordered_map<uint32_t, uint64_t> stubOffBySlot;
+    std::vector<uint64_t> stubOffByBindingIndex;
     if (!buildSyntheticTakeoverStubBlob(pendingTakeoverBindings,
                                         takeoverDispatchAddr,
                                         &syntheticStubBytes,
-                                        &stubOffBySlot,
+                                        &stubOffByBindingIndex,
                                         error)) {
         return false;
     }
@@ -747,7 +753,7 @@ bool applyRebuildAliasPayload(const vmp::elfkit::PatchRequiredSections& required
                                  newGnuHash,
                                  newVersym,
                                  newSysvHash,
-                                  error)) {
+                                 error)) {
         return false;
     }
 
@@ -755,7 +761,7 @@ bool applyRebuildAliasPayload(const vmp::elfkit::PatchRequiredSections& required
     if (!patchDynsymTakeoverValuesInFile(&newFile,
                                          layout,
                                          pendingTakeoverBindings,
-                                         stubOffBySlot,
+                                         stubOffByBindingIndex,
                                          error)) {
         return false;
     }
@@ -899,9 +905,8 @@ bool applyRebuildAliasPayload(const vmp::elfkit::PatchRequiredSections& required
     }
     std::string validateError;
     if (!patched.validate(&validateError)) {
-        const bool ignoredKnownRelroIssue = !allowValidateFail &&
-                                            isKnownRelroCoverageValidateError(validateError);
-        if (!allowValidateFail && !ignoredKnownRelroIssue) {
+        const bool ignoredKnownRelroIssue = isKnownRelroCoverageValidateError(validateError);
+        if (!ignoredKnownRelroIssue) {
             if (error != nullptr) {
                 *error = "validate failed: " + validateError;
             }
@@ -937,7 +942,6 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
                                const std::vector<uint8_t>& newSysvHash,
                                const std::vector<PendingTakeoverSymbolBinding>& pendingTakeoverBindings,
                                uint64_t takeoverDispatchAddr,
-                               bool allowValidateFail,
                                std::string* error) {
     // input/output/dynamic 必须有效。
     if (inputPath == nullptr || outputPath == nullptr || required.dynamic.index < 0) {
@@ -959,7 +963,6 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
                                   newSysvHash,
                                   pendingTakeoverBindings,
                                   takeoverDispatchAddr,
-                                  allowValidateFail,
                                   &rebuildError)) {
         if (error != nullptr) {
             *error = rebuildError.empty()

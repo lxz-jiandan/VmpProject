@@ -50,12 +50,6 @@ struct VmProtectConfig {
     std::string outputSo;
     // patch origin so 路径。
     std::string patchOriginSo;
-    // patch 使用的实现符号名。
-    std::string patchImplSymbol = "vm_takeover_entry_0000";
-    // 是否 patch origin 全部导出。
-    bool patchAllExports = false;
-    // patch 后验证失败时是否允许放行（默认严格，不放行）。
-    bool patchAllowValidateFail = false;
 };
 
 // CLI 覆盖项集合。
@@ -93,16 +87,6 @@ struct CliOverrides {
     std::string outputSo;
     // 覆盖 patchOriginSo。
     std::string patchOriginSo;
-    // 覆盖 patchImplSymbol。
-    std::string patchImplSymbol;
-    // patchAllExports 是否被显式设置。
-    bool patchAllExportsSet = false;
-    // patchAllExports 目标值。
-    bool patchAllExports = false;
-    // patchAllowValidateFail 是否被显式设置。
-    bool patchAllowValidateFailSet = false;
-    // patchAllowValidateFail 目标值。
-    bool patchAllowValidateFail = false;
 };
 
 // 单个函数覆盖率行。

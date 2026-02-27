@@ -1,8 +1,8 @@
 // [VMP_FLOW_NOTE] 文件级流程注释
-// - Demo 应用入口，触发受保护 so 的 JNI 冒烟验证。
-// - 加固链路位置：端到端验证 UI 层。
-// - 输入：native 返回的 PASS/FAIL 文本。
-// - 输出：界面展示 + logcat 关键字。
+// - Demo 应用入口，触发 bridge JNI 并展示 fun_* 的调用结果。
+// - 加固链路位置：设备端 UI 展示层。
+// - 输入：bridge 返回的多行函数执行结果。
+// - 输出：界面展示 + logcat 结果。
 package com.example.demo;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,11 +16,10 @@ import com.example.demo.databinding.ActivityMainBinding;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "VMP_DEMO";
 
-    // 这里只加载桥接库 demo_jni。
-    // 被保护的 libdemo.so 在 native 桥接层通过 dlopen 主动加载，
-    // 避免 demo app 依赖 vmengine 的 JNI_OnLoad 时序。
+    // 只加载桥接库 bridge。
+    // bridge 通过链接期依赖自动拉起 libdemo.so，不再使用运行时 dlsym。
     static {
-        System.loadLibrary("demo_jni");
+        System.loadLibrary("bridge");
     }
 
     private ActivityMainBinding binding;
@@ -33,11 +32,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         TextView tv = binding.sampleText;
-        // onCreate 即触发一次完整的 native 对照测试，结果直接落到 UI 文本。
-        String checkResult = runVmpSmokeCheck();
-        Log.i(TAG, "onCreate smoke check: " + checkResult);
-        tv.setText(checkResult);
+        String resultText = getProtectResults();
+        Log.i(TAG, "onCreate protect results:\n" + resultText);
+        tv.setText(resultText);
     }
 
-    public native String runVmpSmokeCheck();
+    public native String getProtectResults();
 }

@@ -1,24 +1,5 @@
 #include "zPatchbayRules.h"
 
-// 引入 snprintf。
-#include <cstdio>
-// 引入 C 字符串比较。
-#include <cstring>
-
-// 判断符号是否属于 only_fun_java 过滤范围。
-bool isFunOrJavaSymbol(const std::string& name) {
-    // fun_* 属于 demo 普通函数导出。
-    if (name.rfind("fun_", 0) == 0) {
-        return true;
-    }
-    // Java_* 属于 JNI 导出符号。
-    if (name.rfind("Java_", 0) == 0) {
-        return true;
-    }
-    // 其它导出默认不纳入 only_fun_java 模式。
-    return false;
-}
-
 // 判断是否为 C++ mangled 名（Itanium ABI）。
 static bool isCxxMangledSymbol(const std::string& name) {
     // Itanium C++ ABI 下，C++ 符号通常以 "_Z" 开头。
@@ -30,24 +11,6 @@ static bool isVmNamespaceCxxSymbol(const std::string& name) {
     // 根命名空间 vm 在 mangled 名里编码为 "N2vm"。
     // 示例：_ZN2vm3Foo3barEv / _ZNK2vm3Foo3barEv / _ZTIN2vm3FooE
     return name.find("N2vm") != std::string::npos;
-}
-
-// 判断是否启用 takeover 槽位模式。
-bool isTakeoverEntryModeImpl(const char* implName) {
-    // 空指针直接判定为非槽位模式。
-    if (implName == nullptr) {
-        return false;
-    }
-    // 以 vm_takeover_entry_ 前缀开头即为槽位模式。
-    return std::strncmp(implName, "vm_takeover_entry_", 18) == 0;
-}
-
-// 构建槽位模式下的实现符号名。
-std::string buildTakeoverEntrySymbolName(uint32_t entryId) {
-    // 统一输出四位十进制编号。
-    char buffer[64] = {0};
-    std::snprintf(buffer, sizeof(buffer), "vm_takeover_entry_%04u", entryId);
-    return std::string(buffer);
 }
 
 // 校验 vmengine 输入导出是否满足命名规则。

@@ -23,9 +23,8 @@
 // - newVersym: 新 versym 字节。
 // - newGnuHash: 新 gnu hash 字节。
 // - newSysvHash: 新 sysv hash 字节（无 .hash 时可为空）。
-// - pendingTakeoverBindings: dynsym 中待回填槽位绑定（symbolIndex -> entryId）。
-// - takeoverDispatchAddr: 合成槽位跳板的 dispatch 目标地址。
-// - allowValidateFail: 是否允许布局校验失败继续输出。
+// - pendingTakeoverBindings: dynsym 中待回填槽位绑定（symbolIndex -> symbolKey/soId）。
+// - takeoverDispatchAddr: 合成跳板的 dispatch 目标地址。
 // - error: 可选错误描述输出。
 // 返回：
 // - true: 处理成功。
@@ -40,7 +39,6 @@ bool applyPatchbayAliasPayload(const vmp::elfkit::PatchRequiredSections& require
                                const std::vector<uint8_t>& newSysvHash,
                                const std::vector<PendingTakeoverSymbolBinding>& pendingTakeoverBindings,
                                uint64_t takeoverDispatchAddr,
-                               bool allowValidateFail,
                                std::string* error);
 
 #endif // VMPROTECT_PATCHBAY_PATCH_APPLY_H

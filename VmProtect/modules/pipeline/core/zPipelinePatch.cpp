@@ -105,11 +105,8 @@ bool embedExpandedSoIntoVmengine(const std::string& vmengineSo,
 
 // 调用 patchbay：从 origin 导出 alias 并注入目标 so。
 bool runPatchbayExportFromOrigin(const std::string& inputSo,
-                                const std::string& outputSo,
-                                const std::string& originSo,
-                                const std::string& implSymbol,
-                                bool patchAllExports,
-                                bool allowValidateFail) {
+                                 const std::string& outputSo,
+                                 const std::string& originSo) {
     // 校验输入 so 存在。
     if (!base::file::fileExists(inputSo)) {
         LOGE("patch input so not found: %s", inputSo.c_str());
@@ -125,20 +122,11 @@ bool runPatchbayExportFromOrigin(const std::string& inputSo,
         LOGE("patch origin so not found: %s", originSo.c_str());
         return false;
     }
-    // 校验实现符号名非空。
-    if (implSymbol.empty()) {
-        LOGE("patch impl symbol is empty");
-        return false;
-    }
-
-    // 组装 origin API 请求对象。
+    // 组装 origin API 请求对象（统一走 key 路由模式）。
     zPatchbayOriginRequest request;
     request.inputSoPath = inputSo;
     request.originSoPath = originSo;
     request.outputSoPath = outputSo;
-    request.implSymbol = implSymbol;
-    request.onlyFunJava = !patchAllExports;
-    request.allowValidateFail = allowValidateFail;
 
     // 执行 origin API。
     zPatchbayOriginResult runResult;
@@ -156,12 +144,10 @@ bool runPatchbayExportFromOrigin(const std::string& inputSo,
     }
 
     // 输出完成摘要，便于问题排查。
-    LOGI("patchbay export completed: tool=domain_api input=%s output=%s origin=%s impl=%s patchAllExports=%d",
+    LOGI("patchbay export completed: tool=domain_api input=%s output=%s origin=%s mode=key",
          inputSo.c_str(),
          outputSo.c_str(),
-         originSo.c_str(),
-         implSymbol.c_str(),
-         patchAllExports ? 1 : 0);
+         originSo.c_str());
     return true;
 }
 
@@ -190,11 +176,8 @@ bool runVmengineProtectFlow(const VmProtectConfig& config) {
     }
     // 再执行 patchbay origin 导出流程。
     if (!runPatchbayExportFromOrigin(embedTmpSoPath,
-                                    outputSoPath,
-                                    config.patchOriginSo,
-                                    config.patchImplSymbol,
-                                    config.patchAllExports,
-                                    config.patchAllowValidateFail)) {
+                                     outputSoPath,
+                                     config.patchOriginSo)) {
         return false;
     }
 

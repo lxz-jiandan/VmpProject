@@ -47,7 +47,7 @@ void fillPatchbayOriginResult(zPatchbayOriginResult* outResult,
                              size_t originExportCount,
                              size_t inputExportCount,
                              size_t appendCount,
-                             bool entryMode) {
+                             bool keyMode) {
     // 调用方不关心结果时可传空指针。
     if (outResult == nullptr) {
         return;
@@ -60,7 +60,7 @@ void fillPatchbayOriginResult(zPatchbayOriginResult* outResult,
     outResult->originExportCount = originExportCount;
     outResult->inputExportCount = inputExportCount;
     outResult->appendCount = appendCount;
-    outResult->entryMode = entryMode;
+    outResult->keyMode = keyMode;
 }
 
 // 构建冲突摘要文本（限制输出条数，避免日志过长）。
@@ -82,8 +82,8 @@ std::string buildConflictSummary(const std::vector<std::string>& duplicateExport
     return summary;
 }
 
-// 对 origin 导出做稳定排序，避免 entryId 受 dynsym 原始顺序波动影响。
-void sortOriginExportsForStableEntryIds(std::vector<vmp::elfkit::PatchDynamicExportInfo>* originExports) {
+// 对 origin 导出做稳定排序，避免 key 路由受 dynsym 原始顺序波动影响。
+void sortOriginExportsForStableKeys(std::vector<vmp::elfkit::PatchDynamicExportInfo>* originExports) {
     if (originExports == nullptr || originExports->empty()) {
         return;
     }
@@ -144,17 +144,6 @@ bool runPatchbayExportAliasFromOrigin(const zPatchbayOriginRequest& request,
                                 false);
         return false;
     }
-    if (request.implSymbol.empty()) {
-        fillPatchbayOriginResult(outResult,
-                                zPatchbayOriginStatus::invalidInput,
-                                "impl symbol is empty",
-                                0,
-                                0,
-                                0,
-                                false);
-        return false;
-    }
-
     // 输入文件不存在时直接失败。
     if (!vmp::base::file::fileExists(request.inputSoPath)) {
         fillPatchbayOriginResult(outResult,
@@ -206,20 +195,8 @@ bool runPatchbayExportAliasFromOrigin(const zPatchbayOriginRequest& request,
         return false;
     }
 
-    // only_fun_java 模式下过滤 origin 导出集合。
-    if (request.onlyFunJava) {
-        std::vector<vmp::elfkit::PatchDynamicExportInfo> filteredExports;
-        filteredExports.reserve(originExports.size());
-        for (const vmp::elfkit::PatchDynamicExportInfo& exportInfo : originExports) {
-            if (isFunOrJavaSymbol(exportInfo.name)) {
-                filteredExports.push_back(exportInfo);
-            }
-        }
-        originExports.swap(filteredExports);
-    }
-
-    // 统一排序后再分配 entryId，确保不同构建机/链接顺序下结果稳定。
-    sortOriginExportsForStableEntryIds(&originExports);
+    // 统一排序后再写入 alias，确保不同构建机/链接顺序下结果稳定。
+    sortOriginExportsForStableKeys(&originExports);
 
     // origin 导出为空时直接失败。
     if (originExports.empty()) {
@@ -310,40 +287,38 @@ bool runPatchbayExportAliasFromOrigin(const zPatchbayOriginRequest& request,
     // 构建 alias 对列表。
     std::vector<AliasPair> aliasPairs;
     aliasPairs.reserve(originExports.size());
-    const bool entryMode = isTakeoverEntryModeImpl(request.implSymbol.c_str());
+    const bool keyMode = true;
+    constexpr uint32_t kDefaultTakeoverSoId = 1U;
     for (size_t exportIndex = 0; exportIndex < originExports.size(); ++exportIndex) {
         AliasPair pair;
         pair.exportName = originExports[exportIndex].name;
-        pair.implName = entryMode
-                            ? buildTakeoverEntrySymbolName(static_cast<uint32_t>(exportIndex))
-                            : request.implSymbol;
-        // route4 约定：用 st_size 承载 origin st_value 作为 export key。
+        // route4 约定：使用 origin st_value 作为导出 key。
         pair.exportKey = originExports[exportIndex].value;
+        // 当前单模块默认 soId=1，后续多模块可在 pipeline 中分配独立 soId。
+        pair.soId = kDefaultTakeoverSoId;
         aliasPairs.push_back(std::move(pair));
     }
 
     // 输出启动摘要日志。
-    LOGI("patchbay origin start: originExports=%zu inputExports=%zu toAppend=%zu impl=%s onlyFunJava=%d",
+    LOGI("patchbay origin start: originExports=%zu inputExports=%zu toAppend=%zu mode=%s",
          originExports.size(),
          inputExports.size(),
          aliasPairs.size(),
-         request.implSymbol.c_str(),
-         request.onlyFunJava ? 1 : 0);
+         keyMode ? "key" : "unknown");
 
     // 执行 patchbay 导出 patch。
     std::string patchError;
     if (!exportAliasSymbolsPatchbay(request.inputSoPath.c_str(),
                                     request.outputSoPath.c_str(),
                                     aliasPairs,
-                                    request.allowValidateFail,
                                     &patchError)) {
         fillPatchbayOriginResult(outResult,
                                 zPatchbayOriginStatus::patchApplyFailed,
                                 patchError.empty() ? std::string("(unknown)") : patchError,
-                                originExports.size(),
-                                inputExports.size(),
-                                aliasPairs.size(),
-                                entryMode);
+                                 originExports.size(),
+                                 inputExports.size(),
+                                 aliasPairs.size(),
+                                 keyMode);
         return false;
     }
 
@@ -355,16 +330,16 @@ bool runPatchbayExportAliasFromOrigin(const zPatchbayOriginRequest& request,
                                 originExports.size(),
                                 inputExports.size(),
                                 aliasPairs.size(),
-                                entryMode);
+                                keyMode);
         return false;
     }
 
     // 输出成功日志。
-    LOGI("patchbay origin success: input=%s origin=%s output=%s impl=%s append=%zu",
+    LOGI("patchbay origin success: input=%s origin=%s output=%s mode=%s append=%zu",
          request.inputSoPath.c_str(),
          request.originSoPath.c_str(),
          request.outputSoPath.c_str(),
-         request.implSymbol.c_str(),
+         keyMode ? "key" : "unknown",
          aliasPairs.size());
 
     // 成功回填结果。
@@ -374,7 +349,7 @@ bool runPatchbayExportAliasFromOrigin(const zPatchbayOriginRequest& request,
                             originExports.size(),
                             inputExports.size(),
                             aliasPairs.size(),
-                            entryMode);
+                            keyMode);
     return true;
 }
 

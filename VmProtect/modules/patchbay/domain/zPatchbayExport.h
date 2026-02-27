@@ -14,7 +14,6 @@
 // - inputPath: 输入 ELF 路径。
 // - outputPath: 输出 ELF 路径。
 // - aliasPairs: 需要追加的 alias 对列表。
-// - allowValidateFail: 是否允许布局校验失败继续输出。
 // - error: 可选错误描述输出。
 // 返回：
 // - true: patch 成功。
@@ -22,8 +21,6 @@
 bool exportAliasSymbolsPatchbay(const char* inputPath,
                                 const char* outputPath,
                                 const std::vector<AliasPair>& aliasPairs,
-                                bool allowValidateFail,
                                 std::string* error);
 
 #endif // VMPROTECT_PATCHBAY_EXPORT_H
-

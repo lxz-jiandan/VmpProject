@@ -14,8 +14,6 @@
 
 // 引入 printf。
 #include <cstdio>
-// 引入 strcmp。
-#include <cstring>
 // 引入字符串类型。
 #include <string>
 
@@ -25,7 +23,7 @@ static void printUsage(const char* exeName) {
     const char* name = exeName ? exeName : "VmProtect.exe";
     std::printf("Usage:\n");
     std::printf(
-        "  %s export_alias_from_patchbay <inputElf> <originElf> <outputElf> <implSymbol> [--allow-validate-fail] [--only-fun-java]\n",
+        "  %s export_alias_from_patchbay <inputElf> <originElf> <outputElf>\n",
         name);
 }
 
@@ -56,29 +54,10 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
     // 处理 export_alias_from_patchbay。
     if (cmd == "export_alias_from_patchbay") {
         // 语法：
-        // export_alias_from_patchbay <input> <origin> <output> <impl> [opts]
-        if (argc < 6) {
+        // export_alias_from_patchbay <input> <origin> <output>
+        if (argc != 5) {
             printUsage(argv[0]);
             return 1;
-        }
-
-        // 是否允许 validate 失败继续。
-        bool allowValidateFail = false;
-        // 是否只处理 fun_* 和 Java_*。
-        bool onlyFunJava = false;
-
-        // 解析可选参数。
-        for (int argIndex = 6; argIndex < argc; ++argIndex) {
-            if (std::strcmp(argv[argIndex], "--allow-validate-fail") == 0) {
-                allowValidateFail = true;
-                continue;
-            }
-            if (std::strcmp(argv[argIndex], "--only-fun-java") == 0) {
-                onlyFunJava = true;
-                continue;
-            }
-            LOGE("invalid option: %s", argv[argIndex]);
-            return 2;
         }
 
         // 组装 origin API 请求对象。
@@ -86,9 +65,6 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
         request.inputSoPath = argv[2];
         request.originSoPath = argv[3];
         request.outputSoPath = argv[4];
-        request.implSymbol = argv[5];
-        request.onlyFunJava = onlyFunJava;
-        request.allowValidateFail = allowValidateFail;
 
         // 执行 origin 领域流程。
         zPatchbayOriginResult runResult;
@@ -100,19 +76,18 @@ int vmprotectPatchbayEntry(int argc, char* argv[]) {
             return runResult.exitCode;
         }
 
-        // entry 模式输出额外摘要日志。
-        if (runResult.entryMode) {
-            LOGI("export_alias_from_patchbay entry mode enabled: entry_prefix=%s entry_needed=%zu",
-                 argv[5],
+        // key 模式输出额外摘要日志。
+        if (runResult.keyMode) {
+            LOGI("export_alias_from_patchbay key mode enabled: key_binding_count=%zu",
                  runResult.appendCount);
         }
 
         // 输出成功日志。
-        LOGI("export_alias_from_patchbay success: %s + %s -> %s (impl=%s)",
+        LOGI("export_alias_from_patchbay success: %s + %s -> %s (mode=%s)",
              argv[2],
              argv[3],
              argv[4],
-             argv[5]);
+             runResult.keyMode ? "key" : "unknown");
         return 0;
     }
 

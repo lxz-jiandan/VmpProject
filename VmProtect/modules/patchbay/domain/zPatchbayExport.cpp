@@ -20,7 +20,6 @@
 bool exportAliasSymbolsPatchbay(const char* inputPath,
                                 const char* outputPath,
                                 const std::vector<AliasPair>& aliasPairs,
-                                bool allowValidateFail,
                                 std::string* error) {
     // 入参校验：输入路径、输出路径、alias 列表都必须有效。
     if (inputPath == nullptr || outputPath == nullptr || aliasPairs.empty()) {
@@ -84,7 +83,6 @@ bool exportAliasSymbolsPatchbay(const char* inputPath,
                                    newSysvHash,
                                    buildResult.pendingTakeoverBindings,
                                    buildResult.takeoverDispatchAddr,
-                                   allowValidateFail,
                                    error)) {
         return false;
     }

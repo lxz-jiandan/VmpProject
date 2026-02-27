@@ -22,7 +22,6 @@ set(VM_L1_FORMAT_SOURCES
         zFunctionData.cpp
         zSoBinBundle.cpp
         zEmbeddedPayload.cpp
-        zElfTakeoverDynsym.cpp
         zPatchBay.cpp)
 
 # L2 领域能力层：VM 执行、指令集、类型系统、导出接管。

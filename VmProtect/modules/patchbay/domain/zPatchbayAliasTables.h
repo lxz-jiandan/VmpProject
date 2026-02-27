@@ -25,9 +25,9 @@ struct AliasTableBuildResult {
     std::vector<uint8_t> dynsymRawBytes;
     // 本次实际追加条目数。
     uint32_t appendedCount = 0;
-    // dynsym 中需要在重构阶段回填 st_value 的条目绑定（symbolIndex -> entryId）。
+    // dynsym 中需要在重构阶段回填 st_value 的条目绑定（symbolIndex -> symbolKey/soId）。
     std::vector<PendingTakeoverSymbolBinding> pendingTakeoverBindings;
-    // 供合成槽位跳板使用的 dispatch 目标地址（vm_takeover_dispatch_by_id）。
+    // 供合成跳板使用的 dispatch 目标地址（vm_takeover_dispatch_by_key）。
     uint64_t takeoverDispatchAddr = 0;
 };
 

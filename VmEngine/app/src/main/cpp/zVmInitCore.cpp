@@ -9,8 +9,6 @@
 // std::vector。
 #include <vector>
 
-// 从 so 中提取 takeover 元数据。
-#include "zElfTakeoverDynsym.h"
 // 读取嵌入 payload 的工具。
 #include "zEmbeddedPayload.h"
 // zFunction 编码载体。
@@ -170,14 +168,11 @@ EmbeddedExpandRouteStatus test_loadEmbeddedExpandedSo(JNIEnv* env, zVmEngine& en
 }
 
 // 初始化符号 takeover 表。
-bool initSymbolTakeover(const std::string& vmengine_path) {
-    // 从已补丁 vmengine so 里恢复 takeover 条目。
-    std::vector<zTakeoverSymbolEntry> entries;
-    if (!zElfRecoverTakeoverEntriesFromPatchedSo(vmengine_path, entries)) {
-        return false;
-    }
-    // 初始化运行时 takeover 映射。
-    return zSymbolTakeoverInit(kEmbeddedExpandSoName, entries.data(), entries.size());
+bool initSymbolTakeover() {
+    // route4 默认模块 soId（后续多模块可改为 manifest 驱动注册）。
+    constexpr uint32_t kDefaultTakeoverSoId = 1U;
+    // 初始化运行时 takeover 模块映射。
+    return zSymbolTakeoverRegisterModule(kDefaultTakeoverSoId, kEmbeddedExpandSoName);
 }
 
 } // namespace
@@ -209,17 +204,8 @@ bool runVmInitCore(JNIEnv* env) {
          ok_embedded_expand ? 1 : 0,
          static_cast<int>(embedded_status));
 
-    // 再解析 vmengine 自身路径，用于 takeover 初始化。
-    std::string vmengine_path_for_takeover;
-    const bool ok_vmengine_path = resolveCurrentLibraryPath(reinterpret_cast<void*>(&runVmInitCore),
-                                                            vmengine_path_for_takeover);
-    if (!ok_vmengine_path) {
-        LOGE("vm_init route4 init failed: resolve vmengine path for takeover");
-    }
-    // takeover 成功依赖于前置路由和路径解析都成功。
-    const bool ok_takeover_init = ok_embedded_expand &&
-                                  ok_vmengine_path &&
-                                  initSymbolTakeover(vmengine_path_for_takeover);
+    // takeover 成功依赖于前置路由成功和模块注册成功。
+    const bool ok_takeover_init = ok_embedded_expand && initSymbolTakeover();
     LOGI("route_symbol_takeover result=%d", ok_takeover_init ? 1 : 0);
 
     // 任一关键路由失败都返回 false。

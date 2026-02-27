@@ -62,18 +62,6 @@ void applyCliOverrides(const CliOverrides& cli, VmProtectConfig& config) {
     if (!cli.patchOriginSo.empty()) {
         config.patchOriginSo = cli.patchOriginSo;
     }
-    // impl symbol 覆盖。
-    if (!cli.patchImplSymbol.empty()) {
-        config.patchImplSymbol = cli.patchImplSymbol;
-    }
-    // patchAllExports 显式覆盖。
-    if (cli.patchAllExportsSet) {
-        config.patchAllExports = cli.patchAllExports;
-    }
-    // patchAllowValidateFail 显式覆盖。
-    if (cli.patchAllowValidateFailSet) {
-        config.patchAllowValidateFail = cli.patchAllowValidateFail;
-    }
     // coverage 报告文件名覆盖。
     if (!cli.coverageReport.empty()) {
         config.coverageReport = cli.coverageReport;

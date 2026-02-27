@@ -12,12 +12,6 @@ struct zPatchbayOriginRequest {
     std::string originSoPath;
     // 输出 so（应用 alias patch 后的最终产物）。
     std::string outputSoPath;
-    // 实现符号（常见为 vm_takeover_entry_0000）。
-    std::string implSymbol;
-    // 是否只处理 fun_* 与 Java_* 导出。
-    bool onlyFunJava = false;
-    // 是否允许 validate 失败继续输出。
-    bool allowValidateFail = false;
 };
 
 // origin 流程状态码（用于结构化错误定位）。
@@ -54,8 +48,8 @@ struct zPatchbayOriginResult {
     size_t inputExportCount = 0;
     // 实际追加 alias 数量。
     size_t appendCount = 0;
-    // 是否启用槽位模式。
-    bool entryMode = false;
+    // 是否启用 key 路由模式。
+    bool keyMode = false;
 };
 
 // 运行 origin 导出 patch 流程（领域 API）。

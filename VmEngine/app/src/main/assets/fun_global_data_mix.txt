@@ -5,36 +5,36 @@ static const uint32_t type_id_list[] = { 14, 4 };
 static const uint32_t branch_id_count = 0;
 uint32_t branch_id_list[1] = {};
 static const uint64_t branch_addr_count = 27;
-uint64_t branch_addr_list[] = { 0x481e0, 0x48200, 0x481f0, 0x48210, 0x48220, 0x48230, 0x48250, 0x48260, 0x21230, 0x48270, 0x48280, 0x44550, 0x48290, 0x48240, 0x212d8, 0x21448, 0x2146c, 0x214d4, 0x215ec, 0x2161c, 0x2154c, 0x2164c, 0x48320, 0x48330, 0x48340, 0x48350, 0x21a30 };
+uint64_t branch_addr_list[] = { 0x47dd0, 0x47dc0, 0x47df0, 0x21820, 0x47e00, 0x47e10, 0x21238, 0x2125c, 0x212c4, 0x213dc, 0x2140c, 0x2133c, 0x2143c, 0x44130, 0x47e70, 0x47e30, 0x47e40, 0x21020, 0x47e50, 0x47e60, 0x47f00, 0x47f10, 0x47f20, 0x47f30, 0x47e20, 0x210c8, 0x47de0 };
 static const uint32_t inst_id_count = 145;
-static const uint64_t fun_addr = 0x2182c;
+static const uint64_t fun_addr = 0x2161c;
 uint32_t inst_id_list[] = {
         6, 0, 0, 0, 0,                                // OP_ALLOC_RETURN
         51, 0, 0, 0, 29, 31,                          // OP_ALLOC_VSP
-        52, 1, 0, 31, 16, 31,                         // OP_BINARY_IMM       0x2182c: sub sp, sp, #0x10
-        56, 8, 319488, 0,                             // OP_ADRP             0x21830: adrp x8, 0x4e000
-        56, 9, 319488, 0,                             // OP_ADRP             0x21834: adrp x9, 0x4e000
-        52, 4, 0, 9, 1672, 9,                         // OP_BINARY_IMM       0x21838: add x9, x9, #0x688
-        13, 1, 31, 12, 0,                             // OP_SET_FIELD        0x2183c: str w0, [sp, #0xc]
-        13, 1, 31, 8, 1,                              // OP_SET_FIELD        0x21840: str w1, [sp, #8]
-        11, 1, 8, 1672, 8,                            // OP_GET_FIELD        0x21844: ldr w8, [x8, #0x688]
-        11, 1, 31, 12, 10,                            // OP_GET_FIELD        0x21848: ldr w10, [sp, #0xc]
-        1, 4, 1, 8, 10, 8,                            // OP_BINARY           0x2184c: add w8, w8, w10
-        11, 1, 31, 12, 10,                            // OP_GET_FIELD        0x21850: ldr w10, [sp, #0xc]
-        1, 4, 1, 8, 10, 8,                            // OP_BINARY           0x21854: add w8, w8, w10
-        13, 1, 31, 4, 8,                              // OP_SET_FIELD        0x21858: str w8, [sp, #4]
-        11, 1, 9, 8, 8,                               // OP_GET_FIELD        0x2185c: ldr w8, [x9, #8]
-        11, 1, 9, 4, 9,                               // OP_GET_FIELD        0x21860: ldr w9, [x9, #4]
-        1, 4, 1, 8, 9, 8,                             // OP_BINARY           0x21864: add w8, w8, w9
-        13, 1, 31, 0, 8,                              // OP_SET_FIELD        0x21868: str w8, [sp]
-        11, 1, 31, 4, 8,                              // OP_GET_FIELD        0x2186c: ldr w8, [sp, #4]
-        11, 1, 31, 0, 9,                              // OP_GET_FIELD        0x21870: ldr w9, [sp]
-        1, 4, 1, 8, 9, 8,                             // OP_BINARY           0x21874: add w8, w8, w9
-        11, 1, 31, 8, 9,                              // OP_GET_FIELD        0x21878: ldr w9, [sp, #8]
-        1, 4, 1, 8, 9, 8,                             // OP_BINARY           0x2187c: add w8, w8, w9
-        56, 9, 319488, 0,                             // OP_ADRP             0x21880: adrp x9, 0x4e000
-        11, 1, 9, 1692, 9,                            // OP_GET_FIELD        0x21884: ldr w9, [x9, #0x69c]
-        1, 4, 1, 8, 9, 0,                             // OP_BINARY           0x21888: add w0, w8, w9
-        52, 4, 0, 31, 16, 31,                         // OP_BINARY_IMM       0x2188c: add sp, sp, #0x10
-        16, 1, 0,                                     // OP_RETURN           0x21890: ret
+        52, 1, 0, 31, 16, 31,                         // OP_BINARY_IMM       0x2161c: sub sp, sp, #0x10
+        56, 8, 319488, 0,                             // OP_ADRP             0x21620: adrp x8, 0x4e000
+        56, 9, 319488, 0,                             // OP_ADRP             0x21624: adrp x9, 0x4e000
+        52, 4, 0, 9, 376, 9,                          // OP_BINARY_IMM       0x21628: add x9, x9, #0x178
+        13, 1, 31, 12, 0,                             // OP_SET_FIELD        0x2162c: str w0, [sp, #0xc]
+        13, 1, 31, 8, 1,                              // OP_SET_FIELD        0x21630: str w1, [sp, #8]
+        11, 1, 8, 376, 8,                             // OP_GET_FIELD        0x21634: ldr w8, [x8, #0x178]
+        11, 1, 31, 12, 10,                            // OP_GET_FIELD        0x21638: ldr w10, [sp, #0xc]
+        1, 4, 1, 8, 10, 8,                            // OP_BINARY           0x2163c: add w8, w8, w10
+        11, 1, 31, 12, 10,                            // OP_GET_FIELD        0x21640: ldr w10, [sp, #0xc]
+        1, 4, 1, 8, 10, 8,                            // OP_BINARY           0x21644: add w8, w8, w10
+        13, 1, 31, 4, 8,                              // OP_SET_FIELD        0x21648: str w8, [sp, #4]
+        11, 1, 9, 8, 8,                               // OP_GET_FIELD        0x2164c: ldr w8, [x9, #8]
+        11, 1, 9, 4, 9,                               // OP_GET_FIELD        0x21650: ldr w9, [x9, #4]
+        1, 4, 1, 8, 9, 8,                             // OP_BINARY           0x21654: add w8, w8, w9
+        13, 1, 31, 0, 8,                              // OP_SET_FIELD        0x21658: str w8, [sp]
+        11, 1, 31, 4, 8,                              // OP_GET_FIELD        0x2165c: ldr w8, [sp, #4]
+        11, 1, 31, 0, 9,                              // OP_GET_FIELD        0x21660: ldr w9, [sp]
+        1, 4, 1, 8, 9, 8,                             // OP_BINARY           0x21664: add w8, w8, w9
+        11, 1, 31, 8, 9,                              // OP_GET_FIELD        0x21668: ldr w9, [sp, #8]
+        1, 4, 1, 8, 9, 8,                             // OP_BINARY           0x2166c: add w8, w8, w9
+        56, 9, 319488, 0,                             // OP_ADRP             0x21670: adrp x9, 0x4e000
+        11, 1, 9, 396, 9,                             // OP_GET_FIELD        0x21674: ldr w9, [x9, #0x18c]
+        1, 4, 1, 8, 9, 0,                             // OP_BINARY           0x21678: add w0, w8, w9
+        52, 4, 0, 31, 16, 31,                         // OP_BINARY_IMM       0x2167c: add sp, sp, #0x10
+        16, 1, 0,                                     // OP_RETURN           0x21680: ret
 };

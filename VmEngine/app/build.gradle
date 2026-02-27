@@ -12,22 +12,15 @@ def vmpAutoBuildTool = ((project.findProperty("vmpAutoBuildTool") ?: "false").to
 // VmProtect 工具路径，可被 -PvmpToolExe 覆盖。
 def vmpToolExe = file((project.findProperty("vmpToolExe")
         ?: "${vmpProjectRoot}/VmProtect/cmake-build-debug/VmProtect.exe").toString())
-// 输入 so（通常是 demo origin so）。
-def vmpInputSo = file((project.findProperty("vmpInputSo")
-        ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
+// 输入 so 覆盖路径（默认自动解析 demo 中间产物）。
+def vmpInputSoOverride = (project.findProperty("vmpInputSo") ?: "").toString().trim()
 // VmProtect CMake 项目目录。
 def vmProtectProjectDir = file("${vmpProjectRoot}/VmProtect")
 // VmProtect 默认构建目录。
 def vmProtectBuildDir = file("${vmProtectProjectDir}/cmake-build-debug")
-// patch origin so：为 patchbay 提供实现符号来源。
-def vmpPatchOriginSo = file((project.findProperty("vmpPatchOriginSo")
-        ?: "${vmpProjectRoot}/VmProtect/libdemo.so").toString())
-// patch 注入实现函数名。
-def vmpPatchImplSymbol = (project.findProperty("vmpPatchImplSymbol")
-        ?: "vm_takeover_entry_0000").toString()
-// 是否对所有导出符号做 patch（默认 false）。
-def vmpPatchAllExports = ((project.findProperty("vmpPatchAllExports") ?: "false").toString().toBoolean())
-// 用户通过 -PvmpFunctions 传入逗号分隔函数列表。
+// patch origin so 覆盖路径（默认沿用 vmpInputSo）。
+def vmpPatchOriginSoOverride = (project.findProperty("vmpPatchOriginSo") ?: "").toString().trim()
+// 用户通过 -PvmpFunctions 传入逗号分隔函数列表（可选覆盖）。
 def vmpFunctionsRaw = (project.findProperty("vmpFunctions") ?: "").toString().trim()
 // VmProtect 输出目录（中间产物）。
 def vmpOutputDir = file("$buildDir/generated/vmprotectOut")
@@ -35,7 +28,7 @@ def vmpOutputDir = file("$buildDir/generated/vmprotectOut")
 def vmpAssetsDir = file("src/main/assets")
 
 def parseVmpFunctions = {
-    // 未指定函数时返回空列表（由调用方决定是否允许为空）。
+    // 未指定函数时返回空列表（由调用方决定回退策略）。
     if (vmpFunctionsRaw.isEmpty()) {
         return []
     }
@@ -43,6 +36,54 @@ def parseVmpFunctions = {
     return vmpFunctionsRaw.split(",")
             .collect { it.trim() }
             .findAll { !it.isEmpty() }
+}
+
+def resolveReadelfExe = {
+    // 优先使用工程根目录下固定 readelf.exe，未命中再回退 PATH。
+    def candidates = [
+            file("${vmpProjectRoot}/readelf.exe"),
+    ]
+    def hit = candidates.find { it.exists() }
+    return hit != null ? hit.absolutePath : "readelf"
+}
+
+def collectAllDemoFunctionsFromSo = { File soFile ->
+    // 通过 readelf 读取符号表，自动收集 demo 业务函数（fun_*）。
+    def readelfExe = resolveReadelfExe()
+    def stdout = new ByteArrayOutputStream()
+    def stderr = new ByteArrayOutputStream()
+    exec {
+        commandLine readelfExe, "-Ws", soFile.absolutePath
+        standardOutput = stdout
+        errorOutput = stderr
+        ignoreExitValue = false
+    }
+
+    // 用 LinkedHashSet 保证去重且保序。
+    def names = new LinkedHashSet<String>()
+    stdout.toString("UTF-8").eachLine { line ->
+        def trimmed = line.trim()
+        // 仅处理符号行（格式类似："123: ... FUNC ... name"）。
+        if (trimmed ==~ /^\d+:.*/) {
+            // 最多切 8 段，最后一段保留完整符号名。
+            def parts = trimmed.split(/\s+/, 8)
+            if (parts.length >= 8) {
+                def symType = parts[3]
+                def symNdx = parts[6]
+                def symName = parts[7]
+                // 仅纳入已定义的 demo 业务函数：fun_*。
+                if (symType == "FUNC"
+                        && symNdx != "UND"
+                        && symNdx != "ABS"
+                        && symName != null
+                        && !symName.isEmpty()
+                        && symName.startsWith("fun_")) {
+                    names.add(symName)
+                }
+            }
+        }
+    }
+    return new ArrayList<String>(names)
 }
 
 def resolveCmakeExe = {
@@ -88,6 +129,62 @@ def resolveVmengineSoForDebug = {
     // 取最后修改时间最新的一个，规避多变体并存时选错。
     candidates.sort { a, b -> Long.compare(b.lastModified(), a.lastModified()) }
     return candidates[0]
+}
+
+def resolveDemoOriginSoForVmp = {
+    // 默认从 demo 工程中间产物查找 libdemo.so。
+    def candidates = []
+    def cxxDebugRoot = file("${vmpProjectRoot}/demo/app/build/intermediates/cxx/Debug")
+    if (cxxDebugRoot.exists()) {
+        cxxDebugRoot.eachDir { dir ->
+            def so = new File(dir, "obj/arm64-v8a/libdemo.so")
+            if (so.exists()) {
+                candidates.add(so)
+            }
+        }
+    }
+    def cmakeFallback = file("${vmpProjectRoot}/demo/app/build/intermediates/cmake/debug/obj/arm64-v8a/libdemo.so")
+    if (cmakeFallback.exists()) {
+        candidates.add(cmakeFallback)
+    }
+
+    // 未找到返回 null，由调用方报错。
+    if (candidates.isEmpty()) {
+        return null
+    }
+    // 先按时间排序，优先评估最新产物。
+    candidates.sort { a, b -> Long.compare(b.lastModified(), a.lastModified()) }
+    // 选择“确实包含 fun_* 导出”的输入 so，避免误选到已被覆盖的受保护库。
+    for (candidate in candidates) {
+        try {
+            def functions = collectAllDemoFunctionsFromSo(candidate)
+            if (functions != null && !functions.isEmpty()) {
+                return candidate
+            }
+        } catch (Exception ignored) {
+            // 读符号失败时继续尝试下一个候选。
+        }
+    }
+    // 兜底返回最新文件，由后续逻辑给出更明确错误。
+    return candidates[0]
+}
+
+def resolveVmpInputSo = {
+    // 显式覆盖优先。
+    if (vmpInputSoOverride != null && !vmpInputSoOverride.isEmpty()) {
+        return file(vmpInputSoOverride)
+    }
+    // 默认使用 demo 中间产物。
+    return resolveDemoOriginSoForVmp()
+}
+
+def resolveVmpPatchOriginSo = {
+    // 显式覆盖优先。
+    if (vmpPatchOriginSoOverride != null && !vmpPatchOriginSoOverride.isEmpty()) {
+        return file(vmpPatchOriginSoOverride)
+    }
+    // 默认与 input-so 保持一致。
+    return resolveVmpInputSo()
 }
 
 tasks.register("buildVmProtectTool") {
@@ -147,6 +244,9 @@ tasks.register("runVmProtectPipelineDebug") {
         if (hostSo == null || !hostSo.exists()) {
             throw new GradleException("debug libvmengine.so not found under app/build/intermediates")
         }
+        // 解析 vmp 输入与 patch origin so。
+        def vmpInputSo = resolveVmpInputSo()
+        def vmpPatchOriginSo = resolveVmpPatchOriginSo()
         // 约定 patch 产物固定输出为 libvmengine_patch.so，避免覆盖原始 libvmengine.so。
         def protectedHostSo = new File(hostSo.parentFile, "libvmengine_patch.so")
         if (!vmpToolExe.exists()) {
@@ -154,19 +254,29 @@ tasks.register("runVmProtectPipelineDebug") {
                     "VmProtect.exe not found: ${vmpToolExe}. " +
                             "Build it first, or run with -PvmpAutoBuildTool=true")
         }
-        if (!vmpInputSo.exists()) {
-            throw new GradleException("vmp input so not found: ${vmpInputSo}")
+        if (vmpInputSo == null || !vmpInputSo.exists()) {
+            throw new GradleException(
+                    "vmp input so not found. Build demo first to produce libdemo.so, " +
+                            "or pass -PvmpInputSo=<path>")
         }
-        if (!vmpPatchOriginSo.exists()) {
-            throw new GradleException("vmp origin so not found: ${vmpPatchOriginSo}")
+        if (vmpPatchOriginSo == null || !vmpPatchOriginSo.exists()) {
+            throw new GradleException(
+                    "vmp patch origin so not found. Build demo first, " +
+                            "or pass -PvmpPatchOriginSo=<path>")
         }
-        // 加固路线核心参数要求：函数符号必须显式传入，禁止落回 VmProtect 内部默认函数集。
+        // 函数选择策略：
+        // 1) 优先使用 -PvmpFunctions 显式列表；
+        // 2) 未显式指定时，从 input-so 自动提取全部 fun_* 并显式展开为 --function。
         def selectedFunctions = parseVmpFunctions()
         if (selectedFunctions.isEmpty()) {
-            throw new GradleException(
-                    "vmpFunctions is required in protect route. " +
-                            "Pass -PvmpFunctions=fun_add,fun_for,...")
+            selectedFunctions = collectAllDemoFunctionsFromSo(vmpInputSo)
         }
+        if (selectedFunctions.isEmpty()) {
+            throw new GradleException(
+                    "no demo functions found in ${vmpInputSo}. " +
+                            "Pass -PvmpFunctions=fun_add,fun_for,... to override")
+        }
+        println("[VMP] selected functions (${selectedFunctions.size()}): ${selectedFunctions.join(', ')}")
 
         // 清理并重建输出目录，避免遗留旧文件。
         if (vmpOutputDir.exists()) {
@@ -191,14 +301,9 @@ tasks.register("runVmProtectPipelineDebug") {
                 // vmengine so 与最终输出 so。
                 "--vmengine-so", hostSo.absolutePath,
                 "--output-so", protectedHostSo.absolutePath,
-                // patch origin 及实现符号。
+                // patch origin（entry-dispatch 模式由 VmProtect 内部固定）。
                 "--patch-origin-so", vmpPatchOriginSo.absolutePath,
-                "--patch-impl-symbol", vmpPatchImplSymbol,
         ]
-        if (vmpPatchAllExports) {
-            // 可选：启用全导出 patch 策略。
-            cmd.add("--patch-all-exports")
-        }
         selectedFunctions.each { fn ->
             // 加固函数列表：由 -PvmpFunctions 显式给出。
             cmd.addAll(["--function", fn])
@@ -210,6 +315,16 @@ tasks.register("runVmProtectPipelineDebug") {
         exec {
             commandLine cmd
             workingDir vmpProjectRoot
+        }
+
+        // 用加固产物覆盖 host so，确保 App 运行时加载的是“已加固版本”。
+        if (!protectedHostSo.exists()) {
+            throw new GradleException("protected host so not found: ${protectedHostSo}")
+        }
+        copy {
+            from(protectedHostSo)
+            into(hostSo.parentFile)
+            rename { "libvmengine.so" }
         }
 
         // 删除旧 assets 中对应文件，确保拷贝结果是“本轮唯一版本”。
@@ -231,7 +346,7 @@ tasks.register("runVmProtectPipelineDebug") {
             into(vmpAssetsDir)
         }
         println("[VMP] protected host so generated: ${protectedHostSo}")
-        println("[VMP] original host so kept clean: ${hostSo}")
+        println("[VMP] protected so installed as runtime host: ${hostSo}")
         println("[VMP] updated assets dir: ${vmpAssetsDir}")
     }
 }

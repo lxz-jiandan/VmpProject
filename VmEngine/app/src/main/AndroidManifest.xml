@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- VmEngine Demo 壳应用清单：仅包含一个启动 Activity。 -->
+<!-- VmEngine native 容器模块：不提供 Java UI 入口，仅承载加固构建与运行时库。 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- 应用级配置：图标、备份策略、主题等。 -->
+    <!-- 应用级基础配置。 -->
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -13,17 +13,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.VmEngine"
-        tools:targetApi="31">
-        <!-- 主界面入口。 -->
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
-            <!-- 标准 Launcher 启动意图。 -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
+        tools:targetApi="31" />
 
 </manifest>
