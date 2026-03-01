@@ -4,6 +4,8 @@
 #include "zEmbeddedPayloadTail.h"
 // 引入基础文件读写工具。
 #include "zFile.h"
+// 引入 uint64 安全算术与对齐工具。
+#include "zU64Math.h"
 // 引入 ELF 布局校验工具。
 #include "zPatchbayLayout.h"
 // 引入日志接口。
@@ -37,6 +39,11 @@ bool parseElfHeaderAndPhdr(std::vector<uint8_t>* fileBytes,
                            Elf64_Phdr** outPhdrs,
                            std::string* error);
 
+// 复用 base 层统一实现，避免 patchbay 内部重复维护同名算术工具。
+using vmp::base::u64math::alignUpU64;
+using vmp::base::u64math::isPowerOfTwoU64;
+using vmp::base::u64math::addU64Checked;
+
 // 设置某个 DT_* 指针值。
 bool setDynPtr(std::vector<Elf64_Dyn>* dynEntries, Elf64_Sxword tag, Elf64_Xword value) {
     // 输入数组不能为空。
@@ -51,31 +58,6 @@ bool setDynPtr(std::vector<Elf64_Dyn>* dynEntries, Elf64_Sxword tag, Elf64_Xword
         }
     }
     return false;
-}
-
-// 向上对齐（align=0 时返回原值）。
-uint64_t alignUpU64(uint64_t value, uint64_t align) {
-    if (align == 0) {
-        return value;
-    }
-    return ((value + align - 1) / align) * align;
-}
-
-// 2 的幂判断。
-bool isPowerOfTwoU64(uint64_t value) {
-    return value != 0 && (value & (value - 1)) == 0;
-}
-
-// 安全加法：检测 uint64 溢出。
-bool addU64Checked(uint64_t a, uint64_t b, uint64_t* out) {
-    if (out == nullptr) {
-        return false;
-    }
-    if (std::numeric_limits<uint64_t>::max() - a < b) {
-        return false;
-    }
-    *out = a + b;
-    return true;
 }
 
 // 半开区间重叠判断：[aBegin, aEnd) 与 [bBegin, bEnd)。

@@ -22,6 +22,7 @@
 
 #include "zPatchElfTypes.h"
 #include "zCodec.h"
+#include "zU64Math.h"
 
 #include <cstdint>
 #include <limits>
@@ -55,32 +56,19 @@ constexpr Elf64_Sxword DT_ANDROID_RELASZ_TAG  = 0x60000012; // Android packed RE
 
 // 通用向上对齐工具。
 inline uint64_t alignUpU64(uint64_t value, uint64_t align) {
-    if (align == 0) {
-        // align=0 视作“不对齐”，直接返回原值。
-        return value;
-    }
-    // 整数上取整到 align 的倍数。
-    return ((value + align - 1) / align) * align;
+    // 统一复用 base 层实现，避免 patchbayModel 维护重复逻辑。
+    return vmp::base::u64math::alignUpU64(value, align);
 }
 
 // 通用向上对齐工具（Elf64_Off 版本）。
 inline Elf64_Off alignUpOff(Elf64_Off value, Elf64_Off align) {
-    if (align == 0) {
-        return value;
-    }
-    return ((value + align - 1) / align) * align;
+    return static_cast<Elf64_Off>(
+        vmp::base::u64math::alignUpU64(static_cast<uint64_t>(value), static_cast<uint64_t>(align)));
 }
 
 // 安全加法：检测 uint64 溢出。
 inline bool addU64Checked(uint64_t a, uint64_t b, uint64_t* out) {
-    if (!out) {
-        return false;
-    }
-    if (std::numeric_limits<uint64_t>::max() - a < b) {
-        return false;
-    }
-    *out = a + b;
-    return true;
+    return vmp::base::u64math::addU64Checked(a, b, out);
 }
 
 // 判断两个区间是否重叠。
@@ -127,7 +115,7 @@ inline bool containsAddrRangeU64(uint64_t base, uint64_t size,
 
 // 判断是否为 2 的幂。
 inline bool isPowerOfTwoU64(uint64_t value) {
-    return value != 0 && (value & (value - 1)) == 0;
+    return vmp::base::u64math::isPowerOfTwoU64(value);
 }
 
 // 判断是否为保留/特殊节索引。
@@ -167,6 +155,9 @@ bool loadSegmentMatchesSectionFlags(
 
 // 判断动态标签是否表示"地址指针字段"。
 bool isDynamicPointerTag(Elf64_Sxword tag);
+
+// 判断某个虚拟地址区间是否被任一 PT_LOAD 映射。
+bool isLoadMapped(const PatchElf& elf, uint64_t vaddr, uint64_t size);
 
 // 收集动态标签到 map（优先 SHT_DYNAMIC，必要时回退 PT_DYNAMIC）。
 bool collectDynamicTags(

@@ -17,9 +17,9 @@
 #include "zPatchElf.h"
 // 区间/标签工具函数。
 #include "zPatchElfUtils.h"
+// 通用十六进制格式化工具。
+#include "zFormat.h"
 
-// snprintf。
-#include <cstdio>
 // 错误信息拼接。
 #include <string>
 // 动态标签临时索引表。
@@ -113,32 +113,6 @@ std::string dynamicTagLabel(Elf64_Sxword tag) {
     return std::string(dynamicTagName(tag)) + "(" + std::to_string((long long)tag) + ")";
 }
 
-// 以十六进制格式化 64 位值。
-std::string hexU64Label(uint64_t value) {
-    // 固定缓冲 + snprintf，避免 iostream 开销。
-    char buffer[32] = {0};
-    std::snprintf(buffer, sizeof(buffer), "0x%llx", (unsigned long long)value);
-    return std::string(buffer);
-}
-
-// 判断某个虚拟地址区间是否被任一 PT_LOAD 映射。
-bool isLoadMapped(const PatchElf& elf, uint64_t vaddr, uint64_t size) {
-    // 遍历全部 Program Header。
-    for (const auto& ph : elf.getProgramHeaderModel().elements) {
-        // 仅关注 LOAD 段。
-        if (ph.type != PT_LOAD) {
-            // 非 LOAD 段不参与运行时地址可达性判断。
-            continue;
-        }
-        // 只要有一个 LOAD 覆盖该区间即返回 true。
-        if (containsAddrRangeU64(ph.vaddr, ph.memsz, vaddr, size)) {
-            return true;
-        }
-    }
-    // 没有任何 LOAD 覆盖。
-    return false;
-}
-
 } // namespace
 
 // PLT/GOT/重定位校验：动态标签配套关系与数据结构合法性。
@@ -167,7 +141,7 @@ bool zElfValidator::validatePltGotRelocations(const PatchElf& elf, std::string* 
                 if (error) {
                     *error = "Dynamic pointer tag is not mapped by PT_LOAD: " +
                              dynamicTagLabel(tag) +
-                             ", value=" + hexU64Label((uint64_t)value);
+                             ", value=" + vmp::base::format::hexU64(static_cast<uint64_t>(value));
                 }
                 return false;
             }

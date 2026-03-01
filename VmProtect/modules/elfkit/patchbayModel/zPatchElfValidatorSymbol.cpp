@@ -26,23 +26,6 @@
 
 namespace {
 
-// 判断给定虚拟地址区间是否被任一 PT_LOAD 覆盖。
-bool isLoadMapped(const PatchElf& elf, uint64_t vaddr, uint64_t size) {
-    // 遍历所有 Program Header。
-    for (const auto& ph : elf.getProgramHeaderModel().elements) {
-        // 非 LOAD 段跳过。
-        if (ph.type != PT_LOAD) {
-            continue;
-        }
-        // 命中任一覆盖即成功。
-        if (containsAddrRangeU64(ph.vaddr, ph.memsz, vaddr, size)) {
-            return true;
-        }
-    }
-    // 无覆盖返回 false。
-    return false;
-}
-
 // 检查字符串表从 off 开始是否存在 '\0' 终止符。
 bool hasStringEnd(const std::vector<uint8_t>& strtab, size_t off) {
     // 起始偏移越界时不合法。

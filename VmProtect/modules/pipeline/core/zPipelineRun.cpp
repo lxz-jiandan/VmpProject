@@ -39,6 +39,16 @@ bool isProtectRoute(const VmProtectConfig& config) {
     return config.mode == PipelineMode::kProtect;
 }
 
+// 判断当前配置是否触发“仅 embed 路线”。
+bool isEmbedRoute(const VmProtectConfig& config) {
+    return config.mode == PipelineMode::kEmbed;
+}
+
+// 判断当前配置是否需要 vmengine 阶段。
+bool isVmengineRoute(const VmProtectConfig& config) {
+    return isProtectRoute(config) || isEmbedRoute(config);
+}
+
 // 初始化默认配置。
 void initDefaultConfig(VmProtectConfig& config) {
     // 写入默认函数列表。
@@ -77,10 +87,6 @@ void applyCliOverrides(const CliOverrides& cli, VmProtectConfig& config) {
     if (!cli.outputSo.empty()) {
         config.outputSo = cli.outputSo;
     }
-    // origin so 覆盖。
-    if (!cli.patchOriginSo.empty()) {
-        config.patchOriginSo = cli.patchOriginSo;
-    }
     // coverage 报告文件名覆盖。
     if (!cli.coverageReport.empty()) {
         config.coverageReport = cli.coverageReport;
@@ -111,10 +117,9 @@ void applyCliOverrides(const CliOverrides& cli, VmProtectConfig& config) {
 
 // 校验配置合法性。
 bool validateConfig(const VmProtectConfig& config, const CliOverrides& cli) {
-    // 是否携带了保护参数组（由参数内容判断，不代表实际运行模式）。
-    const bool hasProtectArgs = !config.vmengineSo.empty() ||
-                                !config.outputSo.empty() ||
-                                !config.patchOriginSo.empty();
+    // 是否携带了 vmengine 参数组（由参数内容判断，不代表实际运行模式）。
+    const bool hasVmengineArgs = !config.vmengineSo.empty() ||
+                                !config.outputSo.empty();
     // 输入 so 必填。
     if (config.inputSo.empty()) {
         LOGE("input so is empty (use --input-so)");
@@ -128,46 +133,43 @@ bool validateConfig(const VmProtectConfig& config, const CliOverrides& cli) {
         return false;
     }
 
-    // coverage/export 模式下，不接受加固参数，避免“参数触发路线”的隐式行为。
-    if (config.mode == PipelineMode::kCoverage && hasProtectArgs) {
-        LOGE("mode=coverage does not allow --vmengine-so/--output-so/--patch-origin-so");
+    // coverage/export 模式下，不接受 vmengine 参数，避免“参数触发路线”的隐式行为。
+    if (config.mode == PipelineMode::kCoverage && hasVmengineArgs) {
+        LOGE("mode=coverage does not allow --vmengine-so/--output-so");
         return false;
     }
-    if (config.mode == PipelineMode::kExport && hasProtectArgs) {
-        LOGE("mode=export does not allow protect args; use --mode protect");
-        return false;
-    }
-
-    // protect 模式：关键参数必须显式给出。
-    if (isProtectRoute(config) && config.vmengineSo.empty()) {
-        LOGE("mode=protect requires --vmengine-so");
-        return false;
-    }
-    if (isProtectRoute(config) && config.outputSo.empty()) {
-        LOGE("mode=protect requires --output-so");
-        return false;
-    }
-    if (isProtectRoute(config) && cli.functions.empty() && cli.functionContains.empty()) {
-        LOGE("mode=protect requires explicit selector: --function <symbol> or --function-contains <text>");
+    if (config.mode == PipelineMode::kExport && hasVmengineArgs) {
+        LOGE("mode=export does not allow vmengine args; use --mode embed or --mode protect");
         return false;
     }
 
+    // embed/protect 模式：关键参数必须显式给出。
+    if (isVmengineRoute(config) && config.vmengineSo.empty()) {
+        LOGE("mode=%s requires --vmengine-so",
+             isProtectRoute(config) ? "protect" : "embed");
+        return false;
+    }
+    if (isVmengineRoute(config) && config.outputSo.empty()) {
+        LOGE("mode=%s requires --output-so",
+             isProtectRoute(config) ? "protect" : "embed");
+        return false;
+    }
+    if (isVmengineRoute(config) && cli.functions.empty() && cli.functionContains.empty()) {
+        LOGE("mode=%s requires explicit selector: --function <symbol> or --function-contains <text>",
+             isProtectRoute(config) ? "protect" : "embed");
+        return false;
+    }
     // 输入 so 必须存在。
     if (!base::file::fileExists(config.inputSo)) {
         LOGE("input so not found: %s", config.inputSo.c_str());
         return false;
     }
-    // protect 模式下 vmengine so 必须存在。
-    if (isProtectRoute(config) && !base::file::fileExists(config.vmengineSo)) {
+    // vmengine 路线下 vmengine so 必须存在。
+    if (isVmengineRoute(config) && !base::file::fileExists(config.vmengineSo)) {
         LOGE("vmengine so not found: %s", config.vmengineSo.c_str());
         return false;
     }
 
-    // origin so（可选）存在性校验。
-    if (!config.patchOriginSo.empty() && !base::file::fileExists(config.patchOriginSo)) {
-        LOGE("patch origin so not found: %s", config.patchOriginSo.c_str());
-        return false;
-    }
     // 输出目录不存在时尝试创建。
     if (!base::file::ensureDirectory(config.outputDir)) {
         LOGE("failed to create output dir: %s", config.outputDir.c_str());

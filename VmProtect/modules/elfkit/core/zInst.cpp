@@ -6,14 +6,13 @@
  * - 输出：可写入 txt/bin 的标准化表示。
  */
 #include "zInst.h"
+#include "zFormat.h"
 #include "zLog.h"
 #include <sstream>  // std::ostringstream。
 #include <iomanip>  // std::hex/std::setw/std::setfill。
 #include <utility>  // std::move。
-#include <cstdio>
 #include <cinttypes>
 #include <cstring>
-#include <memory>
 #include <algorithm>
 #include <iterator>
 #include <cctype>
@@ -303,40 +302,6 @@ std::string zInstAsm::buildAsmText(const cs_insn& insn) {
     return text;
 }
 
-/*
- * [VMP_FLOW_NOTE] merged from zInstAsmTranslate.cpp
- * - 合并原因：按当前工程调整，将 ARM64->VM 翻译编排实现并入 zInst.cpp。
- */
-template<typename ... Args>
-static std::string strFormat(const std::string& format, Args ... args) {
-    // 两次 snprintf：第一次计算长度，第二次写入内容。
-    int size_buf = std::snprintf(nullptr, 0, format.c_str(), args...) + 1;
-    if (size_buf <= 0) return std::string();
-    std::unique_ptr<char[]> buf(new(std::nothrow) char[size_buf]);
-    if (!buf) return std::string();
-    std::snprintf(buf.get(), static_cast<size_t>(size_buf), format.c_str(), args...);
-    return std::string(buf.get(), buf.get() + size_buf - 1);
-}
-
-static std::string buildCodePreview(const uint8_t* code, size_t size, size_t maxBytes = 24) {
-    if (code == nullptr || size == 0) {
-        return "empty";
-    }
-    const size_t count = std::min(size, maxBytes);
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
-    for (size_t i = 0; i < count; ++i) {
-        if (i != 0) {
-            oss << ' ';
-        }
-        oss << std::setw(2) << static_cast<unsigned>(code[i]);
-    }
-    if (size > count) {
-        oss << " ...";
-    }
-    return oss.str();
-}
-
 static std::string buildOperandDetail(uint8_t op_count, cs_arm64_op* ops) {
     if (ops == nullptr || op_count == 0) {
         return "none";
@@ -366,7 +331,7 @@ static std::string buildOperandDetail(uint8_t op_count, cs_arm64_op* ops) {
 }
 
 static std::string buildInsnBytePreview(const cs_insn& insn) {
-    return buildCodePreview(insn.bytes, static_cast<size_t>(insn.size), 8);
+    return vmp::base::format::hexBytesPreview(insn.bytes, static_cast<size_t>(insn.size), 8);
 }
 
 uint32_t arm64CapstoneToArchIndex(unsigned int reg) {
@@ -2156,13 +2121,13 @@ static zInstAsmUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint
     if (count == 0 || !insn) {
         unencoded.translationOk = false;
         const cs_err err = cs_errno(handle);
-        unencoded.translationError = strFormat(
+        unencoded.translationError = vmp::base::format::format(
             "capstone disasm failed: base=0x%" PRIx64 ", size=%zu, cs_err=%d(%s), code_preview=%s",
             baseAddr,
             size,
             static_cast<int>(err),
             cs_strerror(err),
-            buildCodePreview(code, size).c_str()
+            vmp::base::format::hexBytesPreview(code, size).c_str()
         );
         LOGE("%s", unencoded.translationError.c_str());
         return unencoded;
@@ -2249,7 +2214,7 @@ static zInstAsmUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint
             const std::string operand_detail = buildOperandDetail(op_count, ops);
             const std::string byte_preview = buildInsnBytePreview(insn[j]);
             // 错误文本增加 id/domain/bytes/operands 细节，便于一次定位失败根因。
-            unencoded.translationError = strFormat(
+            unencoded.translationError = vmp::base::format::format(
                 "translate failed at 0x%" PRIx64 ": %s %s (%s, id=%u, domain=%s, op_count=%u, size=%u, bytes=[%s], operands=[%s])",
                 addr,
                 insn[j].mnemonic ? insn[j].mnemonic : "",
@@ -2332,7 +2297,7 @@ static zInstAsmUnencodedBytecode buildUnencodedByCapstone(csh handle, const uint
                 branch_preview_text = "none";
             }
             unencoded.translationOk = false;
-            unencoded.translationError = strFormat(
+            unencoded.translationError = vmp::base::format::format(
                 "translate failed: unresolved local branch target at index=%u addr=0x%" PRIx64
                 " (branch_total=%u, inst_addr_range=[0x%" PRIx64 ",0x%" PRIx64 "], branch_preview=%s)",
                 static_cast<unsigned>(branchIndex),

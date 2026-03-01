@@ -19,8 +19,10 @@ enum class PipelineMode {
     kCoverage = 0,
     // 执行覆盖率与导出（不做 vmengine embed/patch）。
     kExport = 1,
-    // 执行完整保护（覆盖率 + 导出 + vmengine embed/patch）。
-    kProtect = 2,
+    // 执行覆盖率 + 导出 + vmengine embed（不做 patchbay origin）。
+    kEmbed = 2,
+    // 执行完整保护（覆盖率 + 导出 + vmengine embed + patchbay origin）。
+    kProtect = 3,
 };
 
 // VmProtect 主流程配置。
@@ -50,8 +52,6 @@ struct VmProtectConfig {
     std::string vmengineSo;
     // 加固后输出 so 路径。
     std::string outputSo;
-    // patch origin so 路径。
-    std::string patchOriginSo;
 };
 
 // CLI 覆盖项集合。
@@ -89,8 +89,6 @@ struct CliOverrides {
     std::string vmengineSo;
     // 覆盖 outputSo。
     std::string outputSo;
-    // 覆盖 patchOriginSo。
-    std::string patchOriginSo;
 };
 
 // 单个函数覆盖率行。

@@ -104,8 +104,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // protect 模式才执行 vmengine 注入/patch 流程。
-    if (vmp::isProtectRoute(config)) {
+    // embed/protect 模式才执行 vmengine 阶段。
+    if (vmp::isVmengineRoute(config)) {
         if (!vmp::runVmengineProtectFlow(config)) {
             return 1;
         }

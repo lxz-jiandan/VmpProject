@@ -640,6 +640,7 @@ def patchVmEngineSymbolsWithVmProtectRoute(
             backup_so.unlink()
         # 组装 VmProtect 主流程命令：
         # input=origin_so, vmengine=target_so, output=patched_so。
+        # protect 模式下 patch origin 默认等于 input-so，不再需要显式传 --patch-origin-so。
         cmd = [
             patch_tool,
             "--mode",
@@ -652,8 +653,6 @@ def patchVmEngineSymbolsWithVmProtectRoute(
             str(target_so),
             "--output-so",
             str(patched_so),
-            "--patch-origin-so",
-            str(origin_so),
         ]
         # 加固路线必须显式传入函数集合。
         for function_name in functions:
@@ -711,12 +710,6 @@ def main():
         "--patch-vmengine-symbols",
         action="store_true",
         help="Patch libvmengine.so with VmProtect main route before installDebug",
-    )
-    # origin so 路径参数。
-    parser.add_argument(
-        "--patch-origin-so",
-        default="",
-        help="Origin .so path for patch stage; default uses demo libdemo.so",
     )
     # demo origin so（VmProtect input-so）路径参数。
     parser.add_argument(
@@ -792,13 +785,8 @@ def main():
 
     # 3) Optionally patch vmengine symbol exports before install.
     if args.patch_vmengine_symbols:
-        # patch origin 路径对象化：未指定则默认沿用 demo origin so。
-        if args.patch_origin_so.strip():
-            origin = Path(args.patch_origin_so)
-            if not origin.is_absolute():
-                origin = root / origin
-        else:
-            origin = demo_origin_so
+        # protect 路线固定使用 demo_origin_so 作为 input/origin。
+        origin = demo_origin_so
         # 执行 patch 流程。
         staged_for_install = patchVmEngineSymbolsWithVmProtectRoute(
             project_root=root,

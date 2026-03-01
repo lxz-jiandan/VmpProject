@@ -15,17 +15,15 @@
 #include "zInst.h"
 #include "zCodec.h"
 #include "zFile.h"
+#include "zFormat.h"
 #include "zLog.h"
 
 #include <utility>
 #include <algorithm>
 #include <cinttypes>
-#include <cstdio>
 #include <cstring>
 #include <sstream>
-#include <iomanip>
 #include <fstream>
-#include <memory>
 #include <limits>
 #include <unordered_map>
 
@@ -34,25 +32,6 @@ namespace {
 // BL 的 VM 操作码常量。
 // 放在匿名命名空间，避免把内部实现细节暴露到头文件。
 constexpr uint32_t kOpBlOpcode = 55;
-
-static std::string buildBytesPreview(const uint8_t* data, size_t size, size_t maxBytes = 24) {
-    if (data == nullptr || size == 0) {
-        return "empty";
-    }
-    const size_t count = std::min(size, maxBytes);
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
-    for (size_t i = 0; i < count; ++i) {
-        if (i != 0) {
-            oss << ' ';
-        }
-        oss << std::setw(2) << static_cast<unsigned>(data[i]);
-    }
-    if (size > count) {
-        oss << " ...";
-    }
-    return oss.str();
-}
 
 } // namespace
 
@@ -392,7 +371,7 @@ void zFunction::ensureUnencodedReady() const {
         unencoded_translate_error_ = unencoded.translationError.empty()
                                      ? "capstone translation failed"
                                      : unencoded.translationError;
-        const std::string bytes_preview = buildBytesPreview(getData(), getSize());
+        const std::string bytes_preview = vmp::base::format::hexBytesPreview(getData(), getSize());
         LOGE("ensureUnencodedReady failed for %s: %s (offset=0x%" PRIx64 ", size=%zu, bytes=[%s])",
              function_name.c_str(),
              unencoded_translate_error_.c_str(),
@@ -558,27 +537,6 @@ static const char* getOpcodeName(uint32_t op) {
         case 59: return "OP_BRANCH_REG";
         default: return "OP_UNKNOWN";
     }
-}
-
-// 安全字符串格式化工具。
-template<typename ... Args>
-static std::string strFormat(const std::string& format, Args ... args) {
-    // 第一次 snprintf 获取目标长度。
-    int size_buf = std::snprintf(nullptr, 0, format.c_str(), args...) + 1;
-    // 长度异常直接返回空串。
-    if (size_buf <= 0) {
-        return std::string();
-    }
-    // 分配缓冲区。
-    std::unique_ptr<char[]> buf(new(std::nothrow) char[size_buf]);
-    // 分配失败返回空串。
-    if (!buf) {
-        return std::string();
-    }
-    // 第二次 snprintf 写入实际内容。
-    std::snprintf(buf.get(), static_cast<size_t>(size_buf), format.c_str(), args...);
-    // 构造结果字符串（去掉末尾 '\0'）。
-    return std::string(buf.get(), buf.get() + size_buf - 1);
 }
 
 // 把 opcode 数组格式化成单行文本。
@@ -879,7 +837,7 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
             if (branchAddrIndex > 0) {
                 out << ", ";
             }
-            out << strFormat("0x%" PRIx64, unencoded.branchAddrWords[branchAddrIndex]);
+            out << vmp::base::format::format("0x%" PRIx64, unencoded.branchAddrWords[branchAddrIndex]);
         }
         out << " };\n";
     } else {
@@ -889,7 +847,7 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
     // 写 inst_count 与 fun_addr。
     out << "static const uint32_t inst_id_count = " << unencoded.instCount << ";\n";
     out << "static const uint64_t fun_addr = "
-        << strFormat("0x%" PRIx64, inferFunctionAddress(unencoded)) << ";\n";
+        << vmp::base::format::format("0x%" PRIx64, inferFunctionAddress(unencoded)) << ";\n";
     out << "uint32_t inst_id_list[] = {\n";
 
     // 配置注释对齐参数。
@@ -920,7 +878,7 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
                 (asmTextIt != unencoded.asmByAddress.end()) ? asmTextIt->second.c_str() : "";
         // 拼接“地址 + asm”用于注释展示。
         std::string asm_with_addr = (asm_str[0] != '\0')
-            ? strFormat("0x%" PRIx64 ": %s", instEntry.first, asm_str)
+            ? vmp::base::format::format("0x%" PRIx64 ": %s", instEntry.first, asm_str)
             : std::string();
         // 选择最终显示文本。
         const char* asm_display = (asm_str[0] != '\0') ? asm_with_addr.c_str() : asm_str;

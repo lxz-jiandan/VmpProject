@@ -153,20 +153,21 @@ bool runPatchbayExportFromOrigin(const std::string& inputSo,
 
 // 执行 vmengine 保护流程（可选）。
 bool runVmengineProtectFlow(const VmProtectConfig& config) {
-    // 未指定 vmengine 时直接跳过。
-    if (config.vmengineSo.empty()) {
+    // 仅 embed/protect 模式会进入该阶段，其它模式直接跳过。
+    if (config.mode != PipelineMode::kEmbed && config.mode != PipelineMode::kProtect) {
         return true;
     }
 
     // expanded so 的完整路径。
     const std::string expandedSoPath = joinOutputPath(config, config.expandedSo);
-    // 未指定 origin：仅做 embed。
-    if (config.patchOriginSo.empty()) {
-        // outputSo 在加固路线下必须显式传入，直接执行 embed。
+    // embed 模式：只做注入，不做 patchbay。
+    if (config.mode == PipelineMode::kEmbed) {
         return embedExpandedSoIntoVmengine(config.vmengineSo, expandedSoPath, config.outputSo);
     }
 
-    // 指定 origin：走 embed + patchbay 导出流程。
+    // protect 模式：固定走 embed + patchbay 导出。
+    // origin 统一使用 input-so，禁止外部覆盖，保证语义单一。
+    const std::string originSoPath = config.inputSo;
     const std::string outputSoPath = config.outputSo;
     // patch 前临时文件路径。
     const std::string embedTmpSoPath = outputSoPath + ".embed.tmp.so";
@@ -177,7 +178,7 @@ bool runVmengineProtectFlow(const VmProtectConfig& config) {
     // 再执行 patchbay origin 导出流程。
     if (!runPatchbayExportFromOrigin(embedTmpSoPath,
                                      outputSoPath,
-                                     config.patchOriginSo)) {
+                                     originSoPath)) {
         return false;
     }
 

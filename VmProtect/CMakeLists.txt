@@ -35,6 +35,7 @@ set(VM_PROTECT_BASE_SOURCES
     ${VMP_BASE_SRC_DIR}/zBitCodec.cpp
     ${VMP_BASE_SRC_DIR}/zBytes.cpp
     ${VMP_BASE_SRC_DIR}/zHash.cpp
+    ${VMP_BASE_SRC_DIR}/zFormat.cpp
 )
 
 set(VM_PROTECT_FORMAT_SOURCES

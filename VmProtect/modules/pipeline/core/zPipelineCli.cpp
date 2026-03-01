@@ -30,13 +30,17 @@ bool parseModeValue(const std::string& value, PipelineMode* outMode, std::string
         *outMode = PipelineMode::kExport;
         return true;
     }
+    if (value == "embed") {
+        *outMode = PipelineMode::kEmbed;
+        return true;
+    }
     if (value == "protect") {
         *outMode = PipelineMode::kProtect;
         return true;
     }
     if (error != nullptr) {
         *error = "invalid --mode value: " + value +
-                 " (expected: coverage|export|protect)";
+                 " (expected: coverage|export|embed|protect)";
     }
     return false;
 }
@@ -107,7 +111,7 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
         }
         // mode 缺少参数值时给出明确错误。
         if (arg == "--mode") {
-            error = "missing value for --mode (expected: coverage|export|protect)";
+            error = "missing value for --mode (expected: coverage|export|embed|protect)";
             return false;
         }
         // function 缺少参数值时给出明确错误。
@@ -130,10 +134,11 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             cli.outputSo = argv[++argIndex];
             continue;
         }
-        // patch origin so 参数。
-        if (arg == "--patch-origin-so" && argIndex + 1 < argc) {
-            cli.patchOriginSo = argv[++argIndex];
-            continue;
+        // 遗留参数：已废弃并移除（protect 模式默认使用 --input-so 作为 origin）。
+        if (arg == "--patch-origin-so") {
+            error = "option --patch-origin-so is deprecated/removed; "
+                    "protect mode always uses --input-so as origin";
+            return false;
         }
         // 覆盖率报告路径参数。
         if (arg == "--coverage-report" && argIndex + 1 < argc) {
@@ -187,24 +192,22 @@ void printUsage() {
         // 输入 so。
         << "  --input-so <file>            Input arm64 so path (required)\n"
         // 流程模式。
-        << "  --mode <coverage|export|protect>\n"
+        << "  --mode <coverage|export|embed|protect>\n"
         << "                                Route mode (default: export)\n"
         // 输出目录。
         << "  --output-dir <dir>           Output directory for txt/bin/report\n"
         // expand so。
         << "  --expanded-so <file>         Expanded so output file name\n"
         // vmengine so。
-        << "  --vmengine-so <file>         Vmengine so path (required in protect route)\n"
+        << "  --vmengine-so <file>         Vmengine so path (required in embed/protect route)\n"
         // 输出 so。
-        << "  --output-so <file>           Protected output so path (required in protect route)\n"
-        // origin so。
-        << "  --patch-origin-so <file>      Origin so for patchbay export fill\n"
+        << "  --output-so <file>           Protected output so path (required in embed/protect route)\n"
         // branch 地址文件。
         << "  --shared-branch-file <file>  Shared branch list output file name\n"
         // 覆盖率报告。
         << "  --coverage-report <file>     Coverage report output file name\n"
         // 函数参数。
-        << "  --function <name>            Protected function symbol (repeatable, required in protect route)\n"
+        << "  --function <name>            Protected function symbol (repeatable, required in embed/protect route)\n"
         // 函数包含匹配参数。
         << "  --function-contains <text>   Protect symbols whose name contains <text> (repeatable, excludes *_ref)\n"
         // 覆盖率模式。
@@ -216,9 +219,13 @@ void printUsage() {
         << "Mode rules:\n"
         << "  coverage: run coverage report only\n"
         << "  export:   run coverage + export package\n"
-        << "  protect:  run coverage + export + vmengine embed/patch\n"
+        << "  embed:    run coverage + export + vmengine embed only\n"
         << "            required: --input-so --vmengine-so --output-so\n"
         << "                      and selector: --function or --function-contains\n"
+        << "  protect:  run coverage + export + vmengine embed + patchbay origin\n"
+        << "            required: --input-so --vmengine-so --output-so\n"
+        << "                      and selector: --function or --function-contains\n"
+        << "            origin is always --input-so\n"
         << "\n"
         // 帮助参数。
         << "  -h, --help                   Show this help\n";

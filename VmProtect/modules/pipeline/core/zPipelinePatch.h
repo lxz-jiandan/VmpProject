@@ -10,7 +10,9 @@ namespace vmp {
 // 前向声明主流程配置结构。
 struct VmProtectConfig;
 
-// 执行 vmengine 保护流程（embed + 可选 patchbay）。
+// 执行 vmengine 路线流程：
+// - mode=embed: embed；
+// - mode=protect: embed + patchbay origin。
 bool runVmengineProtectFlow(const VmProtectConfig& config);
 
 // 结束命名空间。

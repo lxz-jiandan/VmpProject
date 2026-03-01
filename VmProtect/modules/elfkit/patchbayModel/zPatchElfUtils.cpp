@@ -69,6 +69,22 @@ bool loadSegmentMatchesSectionFlags(
     return true;
 }
 
+// 判断某个虚拟地址区间是否被任一 PT_LOAD 映射。
+bool isLoadMapped(const PatchElf& elf, uint64_t vaddr, uint64_t size) {
+    // 遍历全部 Program Header。
+    for (const auto& ph : elf.getProgramHeaderModel().elements) {
+        // 仅关注 LOAD 段。
+        if (ph.type != PT_LOAD) {
+            continue;
+        }
+        // 命中任一 LOAD 覆盖即认为可映射。
+        if (containsAddrRangeU64(ph.vaddr, ph.memsz, vaddr, size)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // 判断动态标签是否表示“地址指针字段”。
 // 这类标签对应 d_ptr 语义，通常要求可映射到 PT_LOAD。
 bool isDynamicPointerTag(Elf64_Sxword tag) {
