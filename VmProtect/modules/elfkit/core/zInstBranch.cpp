@@ -3,7 +3,7 @@
  * - 该文件仅承载单一域的 ARM64->VM 指令分发实现。
  * - 与 zInst::classifyArm64Domain 分域保持一致。
  */
-#include "zInstDispatch.h"
+#include "zInst.h"
 
 bool dispatchArm64BranchCase(
     unsigned int id,

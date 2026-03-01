@@ -49,9 +49,6 @@ set(VM_PROTECT_FORMAT_SOURCES
     ${VMP_ELFKIT_CORE_DIR}/zSoBinBundle.cpp
     ${VMP_ELFKIT_CORE_DIR}/zFunctionData.cpp
     ${VMP_ELFKIT_CORE_DIR}/zFunction.cpp
-    ${VMP_ELFKIT_CORE_DIR}/zFunctionView.cpp
-    ${VMP_ELFKIT_CORE_DIR}/zFunctionDump.cpp
-    ${VMP_ELFKIT_CORE_DIR}/zFunctionFacade.cpp
 )
 
 set(VM_PROTECT_PIPELINE_SOURCES

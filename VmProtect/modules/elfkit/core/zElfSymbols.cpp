@@ -170,8 +170,10 @@ Elf64_Sym* zElf::getSymbolInfo(const char *symbolName) {
     return nullptr;
 }
 
-// 从符号信息构建一个 zFunction，并加入 function_list_。
-bool zElf::addFunctionFromSymbol(const char* symbolName, Elf64_Xword symbolSize) {
+// 从“已解析偏移 + 符号大小”构建一个 zFunction，并加入 function_list_。
+bool zElf::addFunctionFromResolvedSymbol(const char* symbolName,
+                                         Elf64_Addr symbolOffset,
+                                         Elf64_Xword symbolSize) {
     // 空名称直接过滤，避免污染缓存。
     if (!symbolName || symbolName[0] == '\0') {
         return false;
@@ -182,22 +184,38 @@ bool zElf::addFunctionFromSymbol(const char* symbolName, Elf64_Xword symbolSize)
         return false;
     }
 
-    // 先解析符号偏移。
-    Elf64_Addr symbolOffset = getSymbolOffset(symbolName);
-    // 偏移无效时失败。
-    if (symbolOffset == 0) {
+    // FILE_VIEW 下偏移必须落在文件范围内。
+    if (symbolOffset >= file_size) {
+        LOGW("skip function %s: symbol offset out of range (offset=0x%llx, file_size=%zu)",
+             symbolName,
+             static_cast<unsigned long long>(symbolOffset),
+             file_size);
         return false;
     }
 
-    // 再取到符号在文件中的字节地址。
-    char* symbolFileAddress = getSymbolFileAddress(symbolName);
-    // 地址无效时失败。
-    if (!symbolFileAddress) {
+    // 计算剩余可读取字节，避免 memcpy 越界。
+    const size_t symbolOffsetSizeT = static_cast<size_t>(symbolOffset);
+    const size_t maxReadableSize = file_size - symbolOffsetSizeT;
+    if (maxReadableSize == 0) {
         return false;
     }
 
     // 以符号 size 为准；若 size 为 0，回退固定窗口便于回归诊断。
     size_t symbolBytesSize = symbolSize > 0 ? static_cast<size_t>(symbolSize) : 256;
+    // 目标长度不能超过文件剩余长度，防止读取越界。
+    if (symbolBytesSize > maxReadableSize) {
+        LOGW("clamp function size for %s: requested=%zu max_readable=%zu",
+             symbolName,
+             symbolBytesSize,
+             maxReadableSize);
+        symbolBytesSize = maxReadableSize;
+    }
+    if (symbolBytesSize == 0) {
+        return false;
+    }
+
+    // 定位到函数在文件缓冲中的首地址。
+    char* symbolFileAddress = elf_file_ptr + symbolOffsetSizeT;
     // 分配函数字节缓存。
     std::vector<uint8_t> symbolBytes(symbolBytesSize);
     // 从 ELF 文件缓冲复制函数机器码。
@@ -214,6 +232,50 @@ bool zElf::addFunctionFromSymbol(const char* symbolName, Elf64_Xword symbolSize)
     // 构造并压入 zFunction。
     function_list_.emplace_back(data);
     return true;
+}
+
+// 从动态符号条目构建函数（offset = st_value - load_segment_virtual_offset）。
+bool zElf::addFunctionFromDynamicSymbol(const char* symbolName, const Elf64_Sym* symbol) {
+    if (!symbol || !symbolName || symbolName[0] == '\0') {
+        return false;
+    }
+    // 未定义/绝对/公共符号都不是可执行代码节内的函数入口。
+    if (symbol->st_shndx == SHN_UNDEF || symbol->st_shndx == SHN_ABS || symbol->st_shndx == SHN_COMMON ||
+        symbol->st_value == 0) {
+        return false;
+    }
+    // 防止无符号减法下溢导致巨大 offset。
+    if (symbol->st_value < load_segment_virtual_offset) {
+        LOGW("skip dynamic symbol %s: st_value(0x%llx) < load_vaddr(0x%llx)",
+             symbolName,
+             static_cast<unsigned long long>(symbol->st_value),
+             static_cast<unsigned long long>(load_segment_virtual_offset));
+        return false;
+    }
+    const Elf64_Addr symbolOffset = symbol->st_value - load_segment_virtual_offset;
+    return addFunctionFromResolvedSymbol(symbolName, symbolOffset, symbol->st_size);
+}
+
+// 从节符号条目构建函数（offset = st_value - physical_address）。
+bool zElf::addFunctionFromSectionSymbol(const char* symbolName, const Elf64_Sym* symbol) {
+    if (!symbol || !symbolName || symbolName[0] == '\0') {
+        return false;
+    }
+    // 未定义/绝对/公共符号都不是可执行代码节内的函数入口。
+    if (symbol->st_shndx == SHN_UNDEF || symbol->st_shndx == SHN_ABS || symbol->st_shndx == SHN_COMMON ||
+        symbol->st_value == 0) {
+        return false;
+    }
+    // 防止无符号减法下溢导致巨大 offset。
+    if (symbol->st_value < physical_address) {
+        LOGW("skip section symbol %s: st_value(0x%llx) < physical_base(0x%llx)",
+             symbolName,
+             static_cast<unsigned long long>(symbol->st_value),
+             static_cast<unsigned long long>(physical_address));
+        return false;
+    }
+    const Elf64_Addr symbolOffset = symbol->st_value - physical_address;
+    return addFunctionFromResolvedSymbol(symbolName, symbolOffset, symbol->st_size);
 }
 
 // 在线性缓存中查找函数对象。
@@ -244,14 +306,39 @@ bool zElf::buildFunctionList() {
         return false;
     }
 
-    // 先扫动态符号表（优先导出符号）。
+    // 先扫节符号表（优先准确的本地函数符号）。
+    if (symbol_table && string_table) {
+        // 遍历节符号项。
+        for (uint64_t sectionSymbolIndex = 0; sectionSymbolIndex < section_symbol_num; sectionSymbolIndex++) {
+            // 读取当前节符号。
+            const Elf64_Sym* symbol = &symbol_table[sectionSymbolIndex];
+            // 只保留函数符号。
+            if (ELF64_ST_TYPE(symbol->st_info) != STT_FUNC) {
+                continue;
+            }
+            // 只接受落在真实节内的函数入口，排除 ABS/UNDEF/COMMON 等别名键符号。
+            if (symbol->st_shndx == SHN_UNDEF || symbol->st_shndx == SHN_ABS || symbol->st_shndx == SHN_COMMON) {
+                continue;
+            }
+            // 取节符号名。
+            const char* symbolName = string_table + symbol->st_name;
+            // 尝试加入函数缓存（内部自带去重）。
+            addFunctionFromSectionSymbol(symbolName, symbol);
+        }
+    }
+
+    // 再扫动态符号表（补充仅导出符号场景）。
     if (dynamic_symbol_table && dynamic_string_table) {
         // 遍历动态符号项。
         for (uint64_t symbolIndex = 0; symbolIndex < dynamic_symbol_table_num; symbolIndex++) {
             // 读取当前符号项。
-            Elf64_Sym* symbol = &dynamic_symbol_table[symbolIndex];
+            const Elf64_Sym* symbol = &dynamic_symbol_table[symbolIndex];
             // 只保留函数符号。
             if (ELF64_ST_TYPE(symbol->st_info) != STT_FUNC) {
+                continue;
+            }
+            // 只接受落在真实节内的函数入口，排除 ABS/UNDEF/COMMON 等别名键符号。
+            if (symbol->st_shndx == SHN_UNDEF || symbol->st_shndx == SHN_ABS || symbol->st_shndx == SHN_COMMON) {
                 continue;
             }
             // 过滤非法 st_name 索引。
@@ -261,24 +348,7 @@ bool zElf::buildFunctionList() {
             // 取符号名。
             const char* symbolName = dynamic_string_table + symbol->st_name;
             // 尝试加入函数缓存（内部自带去重）。
-            addFunctionFromSymbol(symbolName, symbol->st_size);
-        }
-    }
-
-    // 再扫节符号表（补充非导出函数）。
-    if (symbol_table && string_table) {
-        // 遍历节符号项。
-        for (uint64_t sectionSymbolIndex = 0; sectionSymbolIndex < section_symbol_num; sectionSymbolIndex++) {
-            // 读取当前节符号。
-            Elf64_Sym* symbol = &symbol_table[sectionSymbolIndex];
-            // 只保留函数符号。
-            if (ELF64_ST_TYPE(symbol->st_info) != STT_FUNC) {
-                continue;
-            }
-            // 取节符号名。
-            const char* symbolName = string_table + symbol->st_name;
-            // 尝试加入函数缓存（内部自带去重）。
-            addFunctionFromSymbol(symbolName, symbol->st_size);
+            addFunctionFromDynamicSymbol(symbolName, symbol);
         }
     }
 
@@ -302,19 +372,68 @@ zFunction* zElf::getFunction(const char* functionName) {
         return function;
     }
 
-    // 缓存未命中时先找符号信息。
-    Elf64_Sym* symbol = getSymbolInfo(functionName);
-    // 符号不存在则失败。
-    if (!symbol) {
-        return nullptr;
+    // 缓存未命中：优先从节符号表补建（更准确）。
+    if (symbol_table && string_table) {
+        for (uint64_t sectionSymbolIndex = 0; sectionSymbolIndex < section_symbol_num; ++sectionSymbolIndex) {
+            const Elf64_Sym* symbol = &symbol_table[sectionSymbolIndex];
+            if (ELF64_ST_TYPE(symbol->st_info) != STT_FUNC) {
+                continue;
+            }
+            const char* symbolName = string_table + symbol->st_name;
+            if (symbol->st_shndx == SHN_UNDEF || symbol->st_shndx == SHN_ABS || symbol->st_shndx == SHN_COMMON) {
+                // 命中同名但不可执行的符号时，打印明确诊断，避免误以为是 Capstone 问题。
+                if (std::strcmp(symbolName, functionName) == 0) {
+                    LOGE("symbol %s is non-code (shndx=0x%x, value=0x%llx, size=%llu), skip",
+                         functionName,
+                         static_cast<unsigned>(symbol->st_shndx),
+                         static_cast<unsigned long long>(symbol->st_value),
+                         static_cast<unsigned long long>(symbol->st_size));
+                }
+                continue;
+            }
+            if (std::strcmp(symbolName, functionName) != 0) {
+                continue;
+            }
+            if (addFunctionFromSectionSymbol(symbolName, symbol)) {
+                return getCachedFunction(functionName);
+            }
+        }
     }
 
-    // 尝试补建函数对象。
-    if (!addFunctionFromSymbol(functionName, symbol->st_size)) {
-        return nullptr;
+    // 节符号未命中时，再尝试动态符号表。
+    if (dynamic_symbol_table && dynamic_string_table) {
+        for (uint64_t symbolIndex = 0; symbolIndex < dynamic_symbol_table_num; ++symbolIndex) {
+            const Elf64_Sym* symbol = &dynamic_symbol_table[symbolIndex];
+            if (ELF64_ST_TYPE(symbol->st_info) != STT_FUNC) {
+                continue;
+            }
+            if (symbol->st_shndx == SHN_UNDEF || symbol->st_shndx == SHN_ABS || symbol->st_shndx == SHN_COMMON) {
+                if (symbol->st_name < dynamic_string_table_size) {
+                    const char* symbolName = dynamic_string_table + symbol->st_name;
+                    if (std::strcmp(symbolName, functionName) == 0) {
+                        LOGE("symbol %s is non-code (shndx=0x%x, value=0x%llx, size=%llu), skip",
+                             functionName,
+                             static_cast<unsigned>(symbol->st_shndx),
+                             static_cast<unsigned long long>(symbol->st_value),
+                             static_cast<unsigned long long>(symbol->st_size));
+                    }
+                }
+                continue;
+            }
+            if (symbol->st_name >= dynamic_string_table_size) {
+                continue;
+            }
+            const char* symbolName = dynamic_string_table + symbol->st_name;
+            if (std::strcmp(symbolName, functionName) != 0) {
+                continue;
+            }
+            if (addFunctionFromDynamicSymbol(symbolName, symbol)) {
+                return getCachedFunction(functionName);
+            }
+        }
     }
-    // 补建后再次按名称返回缓存对象。
-    return getCachedFunction(functionName);
+
+    return nullptr;
 }
 
 // 返回函数列表只读引用。

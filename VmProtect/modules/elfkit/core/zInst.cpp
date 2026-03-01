@@ -6,9 +6,7 @@
  * - 输出：可写入 txt/bin 的标准化表示。
  */
 #include "zInst.h"
-#include "zInstAsm.h"
 #include "zLog.h"
-#include "zInstDispatch.h"
 #include <sstream>  // std::ostringstream。
 #include <iomanip>  // std::hex/std::setw/std::setfill。
 #include <utility>  // std::move。

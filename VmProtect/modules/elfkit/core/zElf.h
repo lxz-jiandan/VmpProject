@@ -138,8 +138,15 @@ public:
     const std::vector<zFunction>& getFunctionList() const;
 
 private:
-    // 按符号名称和大小构建 zFunction，并写入 function_list_。
-    bool addFunctionFromSymbol(const char* symbolName, Elf64_Xword symbolSize);
+    // 按“已解析的文件偏移 + 符号大小”构建 zFunction，并写入 function_list_。
+    // 说明：
+    // 1) 调用方必须保证 symbolOffset 已经是 FILE_VIEW 下可直接切片的偏移。
+    // 2) 本方法不再按 name 回查动态/节符号表，避免来源错配。
+    bool addFunctionFromResolvedSymbol(const char* symbolName, Elf64_Addr symbolOffset, Elf64_Xword symbolSize);
+    // 使用“动态符号条目”构建函数对象（offset 由 dynamic 视图计算）。
+    bool addFunctionFromDynamicSymbol(const char* symbolName, const Elf64_Sym* symbol);
+    // 使用“节符号条目”构建函数对象（offset 由 section 视图计算）。
+    bool addFunctionFromSectionSymbol(const char* symbolName, const Elf64_Sym* symbol);
     // 在 function_list_ 里按名称检索已有函数。
     zFunction* getCachedFunction(const char* functionName);
 
