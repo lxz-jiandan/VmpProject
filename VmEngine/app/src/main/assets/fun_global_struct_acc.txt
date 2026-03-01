@@ -6,11 +6,10 @@ static const uint32_t branch_id_count = 1;
 uint32_t branch_id_list[] = { 126 };
 static const uint64_t branch_addr_count = 38;
 uint64_t branch_addr_list[] = { 0x50ee0, 0x50f00, 0x50ef0, 0x50f10, 0x50f20, 0x50f30, 0x50f50, 0x50f60, 0x243b0, 0x50f70, 0x50f80, 0x4d250, 0x50f90, 0x50f40, 0x24458, 0x245c8, 0x245ec, 0x24654, 0x2476c, 0x2479c, 0x246cc, 0x247cc, 0x51020, 0x51030, 0x51040, 0x51050, 0x24d5c, 0x24db0, 0x25418, 0x51090, 0x27060, 0x510a0, 0x270cc, 0x270f8, 0x51080, 0x272b4, 0x510d0, 0x275a0 };
-static const uint32_t inst_id_count = 196;
+static const uint32_t inst_id_count = 201;
 static const uint64_t fun_addr = 0x2533c;
 uint32_t inst_id_list[] = {
-        6, 0, 0, 0, 0,                                // OP_ALLOC_RETURN
-        51, 0, 0, 0, 29, 31,                          // OP_ALLOC_VSP
+        6, 0, 0, 0, 0, 51, 0, 0, 0, 29, 31,           // OP_ALLOC_RETURN     [prefix] vm init prelude
         52, 1, 0, 31, 32, 31,                         // OP_BINARY_IMM       0x2533c: sub sp, sp, #0x20
         56, 8, 356352, 0,                             // OP_ADRP             0x25340: adrp x8, 0x57000
         56, 9, 356352, 0,                             // OP_ADRP             0x25344: adrp x9, 0x57000
@@ -34,7 +33,7 @@ uint32_t inst_id_list[] = {
         1, 65, 0, 10, 11, 10,                         // OP_BINARY           0x2538c: subs w10, w10, w11
         20, 8, 8, 53, 12, 0, 20, 9, 8,                // OP_MOV              0x25390: csel w8, w8, w9, gt
         13, 1, 31, 16, 8,                             // OP_SET_FIELD        0x25394: str w8, [sp, #0x10]
-        11, 1, 31, 16, 9,                             // OP_GET_FIELD        0x25398: ldrsw x9, [sp, #0x10]
+        11, 1, 31, 16, 9, 34, 1, 0, 9, 9,             // OP_GET_FIELD        0x25398: ldrsw x9, [sp, #0x10]
         56, 8, 356352, 0,                             // OP_ADRP             0x2539c: adrp x8, 0x57000
         52, 4, 0, 8, 1184, 8,                         // OP_BINARY_IMM       0x253a0: add x8, x8, #0x4a0
         11, 1, 8, 0, 8,                               // OP_GET_FIELD        0x253a4: ldr w8, [x8, x9, lsl #2]

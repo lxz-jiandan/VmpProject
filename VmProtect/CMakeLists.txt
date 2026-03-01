@@ -41,11 +41,15 @@ set(VM_PROTECT_FORMAT_SOURCES
     ${VMP_ELFKIT_CORE_DIR}/zElf.cpp
     ${VMP_ELFKIT_CORE_DIR}/zElfLayout.cpp
     ${VMP_ELFKIT_CORE_DIR}/zElfSymbols.cpp
+    ${VMP_ELFKIT_CORE_DIR}/zInstArith.cpp
+    ${VMP_ELFKIT_CORE_DIR}/zInstLogic.cpp
+    ${VMP_ELFKIT_CORE_DIR}/zInstMemory.cpp
+    ${VMP_ELFKIT_CORE_DIR}/zInstBranch.cpp
     ${VMP_ELFKIT_CORE_DIR}/zInst.cpp
     ${VMP_ELFKIT_CORE_DIR}/zSoBinBundle.cpp
     ${VMP_ELFKIT_CORE_DIR}/zFunctionData.cpp
     ${VMP_ELFKIT_CORE_DIR}/zFunction.cpp
-    ${VMP_ELFKIT_CORE_DIR}/zFunctionAsm.cpp
+    ${VMP_ELFKIT_CORE_DIR}/zFunctionView.cpp
     ${VMP_ELFKIT_CORE_DIR}/zFunctionDump.cpp
     ${VMP_ELFKIT_CORE_DIR}/zFunctionFacade.cpp
 )

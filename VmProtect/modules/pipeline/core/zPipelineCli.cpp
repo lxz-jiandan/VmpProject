@@ -110,6 +110,16 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
             error = "missing value for --mode (expected: coverage|export|protect)";
             return false;
         }
+        // function 缺少参数值时给出明确错误。
+        if (arg == "--function" && argIndex + 1 >= argc) {
+            error = "missing value for --function";
+            return false;
+        }
+        // function-contains 缺少参数值时给出明确错误。
+        if (arg == "--function-contains" && argIndex + 1 >= argc) {
+            error = "missing value for --function-contains";
+            return false;
+        }
         // vmengine so 参数。
         if (arg == "--vmengine-so" && argIndex + 1 < argc) {
             cli.vmengineSo = argv[++argIndex];
@@ -133,6 +143,11 @@ bool parseCommandLine(int argc, char* argv[], CliOverrides& cli, std::string& er
         // 受保护函数参数（可重复）。
         if (arg == "--function" && argIndex + 1 < argc) {
             cli.functions.emplace_back(argv[++argIndex]);
+            continue;
+        }
+        // 受保护函数“包含关键字”匹配参数（可重复）。
+        if (arg == "--function-contains" && argIndex + 1 < argc) {
+            cli.functionContains.emplace_back(argv[++argIndex]);
             continue;
         }
         // 仅覆盖率模式。
@@ -190,6 +205,8 @@ void printUsage() {
         << "  --coverage-report <file>     Coverage report output file name\n"
         // 函数参数。
         << "  --function <name>            Protected function symbol (repeatable, required in protect route)\n"
+        // 函数包含匹配参数。
+        << "  --function-contains <text>   Protect symbols whose name contains <text> (repeatable, excludes *_ref)\n"
         // 覆盖率模式。
         << "  --coverage-only              Legacy alias of --mode coverage\n"
         // 全函数分析模式。
@@ -200,7 +217,8 @@ void printUsage() {
         << "  coverage: run coverage report only\n"
         << "  export:   run coverage + export package\n"
         << "  protect:  run coverage + export + vmengine embed/patch\n"
-        << "            required: --input-so --vmengine-so --output-so --function\n"
+        << "            required: --input-so --vmengine-so --output-so\n"
+        << "                      and selector: --function or --function-contains\n"
         << "\n"
         // 帮助参数。
         << "  -h, --help                   Show this help\n";

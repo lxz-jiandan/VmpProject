@@ -24,6 +24,8 @@
 #include <fstream>
 // 引入 unique_ptr。
 #include <memory>
+// 引入 numeric_limits。
+#include <limits>
 // 引入动态数组容器。
 #include <vector>
 
@@ -32,6 +34,10 @@ namespace {
 
 // 未编码中间表示结构。
 struct zUnencodedBytecode {
+    // 前缀指令（不绑定真实 ARM 地址）：
+    // 例如 OP_ALLOC_RETURN / OP_ALLOC_VSP。
+    // 这部分在最终 inst 扁平流中位于最前面。
+    std::vector<uint32_t> preludeWords;
     // 虚拟寄存器数量。
     uint32_t registerCount = 0;
     // 寄存器 ID 列表。
@@ -88,6 +94,10 @@ struct zUnencodedBinHeader {
 static constexpr uint32_t Z_UNENCODED_BIN_MAGIC = 0x4642555A;
 // 未编码 bin 版本号。
 static constexpr uint32_t Z_UNENCODED_BIN_VERSION = 2;
+// 未编码 bin 中用于表示“前缀指令行”的伪地址。
+// 该地址不会出现在真实 ARM 指令地址空间中，仅用于调试导出可视化。
+static constexpr uint64_t Z_UNENCODED_PREFIX_PSEUDO_ADDR =
+    std::numeric_limits<uint64_t>::max();
 
 // opcode 数字到可读名称映射。
 static const char* getOpcodeName(uint32_t op) {
@@ -236,10 +246,21 @@ static std::string formatInstructionLine(
     return line;
 }
 
-// 按地址顺序把 map 中的 opcode 行扁平化。
-static std::vector<uint32_t> flattenInstByAddress(const std::map<uint64_t, std::vector<uint32_t>>& instByAddress) {
+// 把“前缀指令 + 按地址排序的指令行”扁平化成连续 opcode words。
+static std::vector<uint32_t> flattenInstWords(
+    const std::vector<uint32_t>& preludeWords,
+    const std::map<uint64_t, std::vector<uint32_t>>& instByAddress
+) {
     // 扁平结果。
     std::vector<uint32_t> flat;
+    // 预估容量，减少扩容。
+    size_t reserve_size = preludeWords.size();
+    for (const auto& instEntry : instByAddress) {
+        reserve_size += instEntry.second.size();
+    }
+    flat.reserve(reserve_size);
+    // 先写前缀指令。
+    flat.insert(flat.end(), preludeWords.begin(), preludeWords.end());
     // 顺序遍历地址 map。
     for (const auto& instEntry : instByAddress) {
         // 依次追加该地址对应的全部 words。
@@ -291,7 +312,7 @@ static bool buildEncodedDataFromUnencoded(const zUnencodedBytecode& unencoded, z
         return false;
     }
     // 扁平化 inst words。
-    out.inst_words = flattenInstByAddress(unencoded.instByAddress);
+    out.inst_words = flattenInstWords(unencoded.preludeWords, unencoded.instByAddress);
     // 写 inst_count。
     out.inst_count = static_cast<uint32_t>(out.inst_words.size());
     // 写 branch_count。
@@ -327,7 +348,9 @@ static bool serializeUnencodedToBinaryBytes(const zUnencodedBytecode& unencoded,
     header.regCount = static_cast<uint32_t>(unencoded.regList.size());
     header.typeCount = unencoded.typeCount;
     header.initValueCount = unencoded.initValueCount;
-    header.instLineCount = static_cast<uint32_t>(unencoded.instByAddress.size());
+    // 为保持旧格式兼容，前缀指令在未编码 bin 中作为一条“伪地址行”写出。
+    const uint32_t prefix_line_count = unencoded.preludeWords.empty() ? 0u : 1u;
+    header.instLineCount = static_cast<uint32_t>(unencoded.instByAddress.size()) + prefix_line_count;
     header.instCount = unencoded.instCount;
     header.branchCount = unencoded.branchCount;
     header.branchAddrCount = static_cast<uint32_t>(unencoded.branchAddrWords.size());
@@ -339,6 +362,12 @@ static bool serializeUnencodedToBinaryBytes(const zUnencodedBytecode& unencoded,
                           unencoded.branchWords.size() * sizeof(uint32_t) +
                           unencoded.branchAddrWords.size() * sizeof(uint64_t);
     // 把每条 inst 行的地址/长度/内容/asm 文本长度一起计入。
+    if (!unencoded.preludeWords.empty()) {
+        reserve_size += sizeof(uint64_t);
+        reserve_size += sizeof(uint32_t);
+        reserve_size += unencoded.preludeWords.size() * sizeof(uint32_t);
+        reserve_size += sizeof(uint32_t) + std::strlen("[prefix] vm init prelude");
+    }
     for (const auto& instEntry : unencoded.instByAddress) {
         reserve_size += sizeof(uint64_t);
         reserve_size += sizeof(uint32_t);
@@ -369,6 +398,14 @@ static bool serializeUnencodedToBinaryBytes(const zUnencodedBytecode& unencoded,
     vmp::base::codec::appendU32LeArray(out, unencoded.typeTags.data(), unencoded.typeTags.size());
     vmp::base::codec::appendU32LeArray(out, unencoded.branchWords.data(), unencoded.branchWords.size());
     vmp::base::codec::appendU64LeArray(out, unencoded.branchAddrWords.data(), unencoded.branchAddrWords.size());
+
+    // 先写前缀指令行（若存在）。
+    if (!unencoded.preludeWords.empty()) {
+        vmp::base::codec::appendU64Le(out, Z_UNENCODED_PREFIX_PSEUDO_ADDR);
+        vmp::base::codec::appendU32Le(out, static_cast<uint32_t>(unencoded.preludeWords.size()));
+        vmp::base::codec::appendU32LeArray(out, unencoded.preludeWords.data(), unencoded.preludeWords.size());
+        vmp::base::codec::appendStringU32Le(out, "[prefix] vm init prelude");
+    }
 
     // 顺序写每条 inst 行。
     for (const auto& instEntry : unencoded.instByAddress) {
@@ -446,6 +483,18 @@ static bool writeUnencodedToStream(std::ostream& out, const zUnencodedBytecode& 
     // 配置注释对齐参数。
     const size_t comment_column = 54;
     const size_t op_name_width = 20;
+    // 前缀指令先写出，强调它们不绑定真实 ARM 地址。
+    if (!unencoded.preludeWords.empty()) {
+        const char* prelude_op_name = getOpcodeName(unencoded.preludeWords[0]);
+        std::string prelude_line = formatInstructionLine(
+            unencoded.preludeWords,
+            prelude_op_name,
+            "[prefix] vm init prelude",
+            comment_column,
+            op_name_width
+        );
+        out << prelude_line << "\n";
+    }
     // 顺序写每条 inst 行。
     for (const auto& instEntry : unencoded.instByAddress) {
         // 本行 opcode 列表。
@@ -490,8 +539,9 @@ bool zFunction::dump(const char* filePath, DumpMode mode) const {
         unencoded.typeCount = type_count_cache_;
         unencoded.typeTags = type_tags_cache_;
         unencoded.initValueCount = init_value_count_cache_;
+        unencoded.preludeWords = prelude_words_cache_;
         unencoded.instByAddress = inst_words_by_addr_cache_;
-        unencoded.asmByAddress = asm_text_by_addr_cache_;
+        unencoded.asmByAddress = inst_text_by_addr_cache_;
         unencoded.instCount = inst_count_cache_;
         unencoded.branchCount = branch_count_cache_;
         unencoded.branchWords = branch_words_cache_;

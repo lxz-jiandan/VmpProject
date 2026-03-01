@@ -1,3 +1,14 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释。
+ * - 文件：patchbayModel/zPatchElfValidatorDynamic.cpp
+ * - 主要职责：动态段校验：验证 .dynamic/.dynsym/.dynstr 等运行时相关结构一致性。
+ * - 输入：ELF 原始字节、补丁模型状态以及段/节/符号元数据。
+ * - 输出：经过校验的补丁模型或重建后的 ELF 输出数据。
+ * - 关键约束：
+ *   1) 严格保持 ELF 布局与索引一致性，避免地址/偏移漂移。
+ *   2) 失败路径必须可定位（返回值/错误信息/日志三者保持一致）。
+ *   3) 本文件改动优先保证与上游调用契约兼容，不隐式改变既有语义。
+ */
 // 动态表相关校验实现：检查 DT_* 标签配套关系、地址映射以及重解析一致性。
 #include "zPatchElfValidator.h"
 // 对外声明：zElfValidator 接口。

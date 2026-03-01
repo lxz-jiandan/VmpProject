@@ -5,7 +5,9 @@
 #include <vector>
 
 // demo 导出函数声明：供 bridge 在链接期直接依赖调用。
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 int fun_add(int a, int b);
 int fun_for(int a, int b);
@@ -15,7 +17,15 @@ int fun_countdown_muladd(int a, int b);
 int fun_loop_call_mix(int a, int b);
 int fun_call_chain(int a, int b);
 int fun_branch_call(int a, int b);
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
+#endif
+// 保持 C 符号名，便于 VMP 通过明文函数名定位；仅用于 demo 回归链路。
 std::string fun_cpp_make_string(int a, int b);
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 int fun_cpp_string_len(int a, int b);
 int fun_cpp_vector_sum(int a, int b);
 int fun_cpp_virtual_mix(int a, int b);
@@ -67,9 +77,18 @@ int fun_atomic_u8_order(int a, int b);
 int fun_atomic_u16_order(int a, int b);
 int fun_atomic_u64_order(int a, int b);
 const char* fun_ret_cstr_pick(int a, int b);
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
+#endif
 std::string fun_ret_std_string_mix(int a, int b);
 std::vector<int> fun_ret_vector_mix(int a, int b);
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif

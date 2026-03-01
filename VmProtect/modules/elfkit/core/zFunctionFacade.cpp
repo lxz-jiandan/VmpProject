@@ -55,8 +55,8 @@ bool zFunction::isEmpty() const {
 
 // 主动触发一次反汇编缓存构建，便于链式调用。
 zFunction& zFunction::analyzeAssembly() {
-    // 保证 asm_list_ 已准备好。
-    ensureAsmReady();
+    // 保证指令展示缓存已准备好。
+    ensureInstViewReady();
     // 返回自身，支持 `func.analyzeAssembly().getAssemblyInfo()` 风格。
     return *this;
 }
@@ -64,25 +64,25 @@ zFunction& zFunction::analyzeAssembly() {
 // 返回反汇编指令列表（只读）。
 const std::vector<zInst>& zFunction::getAssemblyList() const {
     // 按需懒加载，避免无谓解析。
-    ensureAsmReady();
+    ensureInstViewReady();
     // 返回缓存引用，避免拷贝。
-    return asm_list_;
+    return inst_view_list_;
 }
 
 // 导出整段反汇编文本，供日志或文件输出。
 std::string zFunction::getAssemblyInfo() const {
     // 确保汇编缓存已就绪。
-    ensureAsmReady();
+    ensureInstViewReady();
     // 用 string stream 逐条拼接，控制换行格式。
     std::ostringstream oss;
     // 顺序遍历每条反汇编指令。
-    for (size_t instructionIndex = 0; instructionIndex < asm_list_.size(); ++instructionIndex) {
+    for (size_t instructionIndex = 0; instructionIndex < inst_view_list_.size(); ++instructionIndex) {
         // 从第二行开始补换行，首行不补。
         if (instructionIndex > 0) {
             oss << "\n";
         }
         // 追加当前指令文本。
-        oss << asm_list_[instructionIndex].getInfo();
+        oss << inst_view_list_[instructionIndex].getInfo();
     }
     // 返回拼接结果。
     return oss.str();

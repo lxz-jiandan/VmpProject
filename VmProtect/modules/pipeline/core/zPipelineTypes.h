@@ -38,6 +38,8 @@ struct VmProtectConfig {
     std::string coverageReport = "coverage_report.md";
     // 需要处理的函数列表。
     std::vector<std::string> functions;
+    // 函数名包含匹配关键字（可重复）。
+    std::vector<std::string> functionContains;
     // 是否分析全部函数（忽略函数列表）。
     bool analyzeAllFunctions = false;
     // 是否仅执行覆盖率阶段。
@@ -69,6 +71,8 @@ struct CliOverrides {
     std::string coverageReport;
     // 覆盖函数列表。
     std::vector<std::string> functions;
+    // 覆盖函数名包含匹配关键字。
+    std::vector<std::string> functionContains;
     // coverageOnly 是否被显式设置。
     bool coverageOnlySet = false;
     // coverageOnly 目标值。

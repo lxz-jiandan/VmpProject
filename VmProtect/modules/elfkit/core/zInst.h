@@ -14,6 +14,16 @@
 
 class zInst {
 public:
+    // ARM64 指令在翻译阶段的职责分域。
+    // 作用：让解析层先完成一次“类别分发”，减少后续模块重复判定。
+    enum class zAsmDomain {
+        Unknown = 0,
+        Arith,
+        Logic,
+        Memory,
+        Branch,
+    };
+
     // 空指令对象：
     // 使用类内默认成员初始值，不做额外初始化动作。
     zInst() = default;
@@ -45,6 +55,14 @@ public:
     // 格式在 cpp 中固定为：
     // addr=0x..., len=..., type=..., bytes=..., text=...
     std::string getInfo() const;
+
+    // 根据 ARM64 指令 id 进行一级类别分发。
+    // 说明：
+    // 1) instructionId 通常来自 Capstone `cs_insn::id`；
+    // 2) 返回 Unknown 表示当前 id 未覆盖，翻译层会按严格模式直接失败。
+    static zAsmDomain classifyArm64Domain(unsigned int instructionId);
+    // 把分域枚举转成稳定文本，便于日志排查。
+    static const char* getAsmDomainName(zAsmDomain domain);
 
 private:
     // 指令起始地址。

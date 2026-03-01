@@ -259,6 +259,174 @@ VmProject 是一个面向 Android ARM64 `so` 的离线加固与运行时接管�
 
 ### 3.4 route4 初始化核心
 
+## 四、elfkit 指令解析与翻译（并入主文档）
+
+本节给出 `VmProtect/modules/elfkit` 的核心实现说明，重点是 ARM64 到 VMProtect 指令的解析与翻译逻辑。
+
+### 4.1 模块分层
+
+`elfkit` 分为三层目录：
+
+1. `VmProtect/modules/elfkit/api`：对外门面与稳定接口。
+2. `VmProtect/modules/elfkit/core`：ELF 解析、函数建模、指令翻译、导出编码。
+3. `VmProtect/modules/elfkit/patchbayModel`：Patch ELF 模型、布局重建和一致性校验。
+
+### 4.2 翻译入口调用链
+
+函数级翻译从 `zFunction::ensureUnencodedReady()` 触发，主链路如下：
+
+1. `zInstAsm::buildUnencodedBytecode(code, size, baseAddr)`。
+2. `zInstAsm::openWithDetail()` 打开 Capstone 并启用 `CS_OPT_DETAIL`。
+3. `zInstAsm::disasm()` 产出 `cs_insn` 序列。
+4. `buildUnencodedByCapstone(...)` 逐条指令翻译并组装 `zInstAsmUnencodedBytecode`。
+
+对应关键文件：
+
+1. `VmProtect/modules/elfkit/core/zFunction.cpp`
+2. `VmProtect/modules/elfkit/core/zInstAsm.h`
+3. `VmProtect/modules/elfkit/core/zInstAsmCore.cpp`
+4. `VmProtect/modules/elfkit/core/zInstAsmTranslate.cpp`
+
+### 4.3 指令分派机制
+
+每条 ARM64 指令翻译按“三段式”执行：
+
+1. 域分类：`zInst::classifyArm64Domain()` -> `Arith/Logic/Memory/Branch`。
+2. 域分发：`dispatchArm64*Case(...)` 按 instruction id 做精确翻译。
+3. 严格失败：未命中已支持的 `instruction id + operand 结构` 时立即失败并记录详细错误。
+
+如仍无法建模，部分系统/SIMD/FP 指令按策略降级为 `OP_NOP`，保证流程可继续并可诊断。
+
+### 4.3.1 指令解析架构总览（难点拆解）
+
+`elfkit` 的指令解析不是单点函数，而是一条分层流水线。建议按下面 8 层理解：
+
+1. **输入层（函数边界确定）**
+   - 入口：`zFunction::ensureUnencodedReady()`。
+   - 作用：确认函数机器码区间、基础地址、缓存状态。
+   - 难点：函数边界一旦错误，后续 Capstone 解析与分支表都会整体偏移。
+
+2. **反汇编层（Capstone 抽象）**
+   - 入口：`zInstAsm::openWithDetail()` + `zInstAsm::disasm()`。
+   - 作用：把 bytes 转为 `cs_insn` 序列，拿到 `id/mnemonic/op_str/operands`。
+   - 难点：不同 Capstone 版本对同一指令可能给出不同 id 或 operand 形态。
+
+3. **操作数结构层（detail-only）**
+   - 入口：`cs_detail.aarch64.operands[]`。
+   - 作用：所有寄存器/立即数/内存寻址信息都只从 Capstone detail 结构读取。
+   - 难点：必须覆盖同一指令在不同 alias/宽度/shift 形态下的 operand 组合。
+
+4. **语义分域层（粗粒度分类）**
+   - 入口：`zInst::classifyArm64Domain()`。
+   - 作用：把指令先分到 `Arith/Logic/Memory/Branch` 四大域。
+   - 难点：某些 alias 指令语义跨域，分类与真实翻译路径可能不一致。
+
+5. **域内分发层（精确 case）**
+   - 入口：`dispatchArm64*Case(...)`。
+   - 作用：按 instruction id 做“主路径翻译”，输出 VM opcode words。
+   - 难点：需要覆盖同一语义的多种 operand 组合、shift 变体和寄存器宽度差异。
+
+6. **语义别名归一层（ID 驱动）**
+   - 入口：`dispatchArm64*Case(...)` 内部各 `ARM64_INS_* / ARM64_INS_ALIAS_*` 分支。
+   - 作用：把同义 alias 收敛到统一 VM 指令序列，避免字符串匹配分支。
+   - 难点：别名共享语义但 operand 细节可能不同，需要在同一 case 中收口。
+
+7. **链接装配层（控制流与地址映射）**
+   - 输出结构：`zInstAsmUnencodedBytecode`。
+   - 关键动作：
+     - 生成 `preludeWords`；
+     - 建立 `instByAddress`；
+     - 构建 `addr->pc`、`branchWords`、`branchLookup*`。
+   - 难点：`preludeWords` 与真实 ARM 地址必须解耦，否则 PC/分支映射会错位。
+
+8. **失败策略层（Fail-Fast）**
+   - 规则：出现不可翻译指令或分支目标未解析时立即失败。
+   - 关键字段：`translationOk=false` + `translationError`。
+   - 难点：既要保证严格失败不静默，又要让错误信息足够细以支持快速定位。
+
+### 4.3.2 架构定位图（排障顺序）
+
+建议按以下顺序定位翻译问题：
+
+1. 先看 `translationError` 是否指向“unsupported instruction”还是“unresolved branch target”。
+2. 若是 unsupported：
+   - 检查 `classifyArm64Domain()` 分域是否正确。
+   - 检查对应 `dispatchArm64*Case` 是否覆盖该 operand 形态。
+3. 若是 unresolved branch：
+   - 检查该目标地址是否进入 `instByAddress`。
+   - 检查 `preludeWords` 引入后 `addr->pc` 偏移是否正确。
+4. 若表现为运行结果异常但不报错：
+   - 优先核查 `TYPE_TAG_*` 与 `BIN_*` 的组合是否匹配寄存器宽度和符号位语义。
+
+### 4.4 操作数解析规则（严格模式）
+
+当前解析策略为 **detail-only**，不再依赖 `op_str` 文本兜底。规则如下：
+
+1. 立即数只读取 `ops[i].imm`，不从字符串截取 `#imm`。
+2. 寄存器只读取 `ops[i].reg`，并通过 `arm64CapstoneToArchIndex()` 统一映射。
+3. 分支目标优先读取 `ops[i].imm` 或寄存器操作数；无法确定时直接失败。
+4. 对 `shift/extend/mem.disp` 统一走 `cs_arm64_op` 字段，避免字符串歧义。
+5. 任一关键信息缺失时立即失败，错误消息中带地址、instruction id、operand 摘要。
+
+这套策略保证“能翻译就结构化翻译，不能翻译就明确失败”，避免字符串关键字误判。
+
+### 4.5 VM 指令编码模型
+
+翻译结果是 VM opcode words 序列，而不是“一条 ARM 对应一条 VM 指令”。
+
+1. 主操作码：`OP_*`（如 `OP_BINARY`、`OP_LOAD_IMM`、`OP_BRANCH`）。
+2. 子操作码：`BIN_*`（如 `BIN_ADD`、`BIN_SUB`、`BIN_SHL`）。
+3. 类型标签：`TYPE_TAG_*`（决定宽度与有符号语义）。
+
+核心枚举集中在 `VmProtect/modules/elfkit/core/zInstDispatch.h`。
+
+### 4.6 Prelude 与 PC 映射策略
+
+当前实现将 VM 前缀指令与真实 ARM 地址完全解耦：
+
+1. 前缀写入 `preludeWords`（如 `OP_ALLOC_RETURN` / `OP_ALLOC_VSP`）。
+2. `preludeWords` 不进入 `instByAddress`，避免伪地址污染。
+3. 地址到 PC 的映射从 `preludeWords.size()` 起算。
+4. 导出文本/bin 中保留前缀可视化（bin 以伪地址行表达）。
+
+这避免了旧方案使用 `instByAddress[0/1]` 占位带来的地址冲突问题。
+
+### 4.7 分支目标 Fail-Fast 机制
+
+本地分支在写入 `branchWords` 前执行严格校验：
+
+1. 若目标 ARM 地址找不到映射 PC，立即翻译失败。
+2. 禁止“写 0 继续”的静默退化。
+3. 错误文本携带分支下标与目标地址，便于回归追踪。
+
+### 4.8 关键中间结构
+
+`zInstAsmUnencodedBytecode` 是翻译层与导出层的共享契约，关键字段包括：
+
+1. `preludeWords`
+2. `instByAddress`
+3. `asmByAddress`
+4. `branchWords / branchLookupWords / branchLookupAddrs / branchAddrWords`
+5. `translationOk / translationError`
+
+最终编码由 `zFunctionData` 承载并通过 `validate/serializeEncoded/deserializeEncoded` 保证一致性。
+
+### 4.9 回归建议
+
+涉及 `elfkit/core` 翻译逻辑变更时，至少执行：
+
+```bash
+cmake --build VmProtect/cmake-build-debug --target VmProtect -j 12
+python tools/run_regression.py --project-root . --patch-vmengine-symbols
+python tools/run_install_start_regression.py --project-root . --rerun-tasks
+```
+
+重点关注：
+
+1. `translationError` 日志。
+2. `unresolved local branch target` 是否出现。
+3. 设备侧汇总是否保持 `PASS`。
+
 实现：`VmEngine/app/src/main/cpp/zVmInitCore.cpp`
 
 `runVmInitCore(JNIEnv* env)` 当前顺序：

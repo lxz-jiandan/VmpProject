@@ -14,6 +14,25 @@
 // 进入 pipeline 命名空间。
 namespace vmp {
 
+// 判断函数名是否命中任一“包含关键字”。
+bool matchFunctionContains(const std::string& functionName,
+                           const std::vector<std::string>& containsList) {
+    for (const std::string& token : containsList) {
+        if (token.empty()) {
+            continue;
+        }
+        if (functionName.find(token) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 判断符号名是否为 demo 对照函数（包含 _ref 片段）。
+bool isReferenceFunctionName(const std::string& functionName) {
+    return functionName.find("_ref") != std::string::npos;
+}
+
 // 判断当前配置是否触发“加固路线”。
 // 约定：由显式 mode 控制。
 bool isProtectRoute(const VmProtectConfig& config) {
@@ -70,6 +89,12 @@ void applyCliOverrides(const CliOverrides& cli, VmProtectConfig& config) {
     if (!cli.functions.empty()) {
         config.functions = cli.functions;
     }
+    // 函数包含关键字覆盖。
+    if (!cli.functionContains.empty()) {
+        config.functionContains = cli.functionContains;
+    }
+    // 对包含关键字做去重，保证匹配顺序稳定。
+    deduplicateKeepOrder(config.functionContains);
     // coverageOnly 模式覆盖。
     if (cli.coverageOnlySet) {
         config.coverageOnly = cli.coverageOnly;
@@ -122,8 +147,8 @@ bool validateConfig(const VmProtectConfig& config, const CliOverrides& cli) {
         LOGE("mode=protect requires --output-so");
         return false;
     }
-    if (isProtectRoute(config) && cli.functions.empty()) {
-        LOGE("mode=protect requires explicit --function <symbol> (repeatable)");
+    if (isProtectRoute(config) && cli.functions.empty() && cli.functionContains.empty()) {
+        LOGE("mode=protect requires explicit selector: --function <symbol> or --function-contains <text>");
         return false;
     }
 
@@ -171,6 +196,23 @@ std::vector<std::string> buildFunctionNameList(const VmProtectConfig& config,
     } else {
         // 否则直接使用配置中的函数列表。
         functionNames = config.functions;
+        // functionContains 模式：从 ELF 中筛选“名称包含关键字”的函数。
+        if (!config.functionContains.empty()) {
+            const std::vector<elfkit::FunctionView> functionViews = elf.getFunctions();
+            for (const elfkit::FunctionView& function : functionViews) {
+                const std::string functionName = function.getName();
+                if (functionName.empty()) {
+                    continue;
+                }
+                // contains 选择器默认排除 *_ref 对照函数，避免误加固回归基线符号。
+                if (isReferenceFunctionName(functionName)) {
+                    continue;
+                }
+                if (matchFunctionContains(functionName, config.functionContains)) {
+                    functionNames.push_back(functionName);
+                }
+            }
+        }
     }
     // 去重且保留原顺序。
     deduplicateKeepOrder(functionNames);

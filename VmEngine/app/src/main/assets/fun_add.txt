@@ -9,8 +9,7 @@ uint64_t branch_addr_list[] = { 0x50ee0, 0x50f00, 0x50ef0, 0x50f10, 0x50f20, 0x5
 static const uint32_t inst_id_count = 52;
 static const uint64_t fun_addr = 0x23eb0;
 uint32_t inst_id_list[] = {
-        6, 0, 0, 0, 0,                                // OP_ALLOC_RETURN
-        51, 0, 0, 0, 29, 31,                          // OP_ALLOC_VSP
+        6, 0, 0, 0, 0, 51, 0, 0, 0, 29, 31,           // OP_ALLOC_RETURN     [prefix] vm init prelude
         52, 1, 0, 31, 16, 31,                         // OP_BINARY_IMM       0x23eb0: sub sp, sp, #0x10
         13, 1, 31, 12, 0,                             // OP_SET_FIELD        0x23eb4: str w0, [sp, #0xc]
         13, 1, 31, 8, 1,                              // OP_SET_FIELD        0x23eb8: str w1, [sp, #8]

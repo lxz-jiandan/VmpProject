@@ -1,3 +1,14 @@
+/*
+ * [VMP_FLOW_NOTE] 文件级流程注释。
+ * - 文件：patchbayModel/zPatchElfHeader.h
+ * - 主要职责：ELF Header 处理：负责 ELF 头字段读取、校验与重建策略。
+ * - 输入：ELF 原始字节、补丁模型状态以及段/节/符号元数据。
+ * - 输出：稳定的接口声明、类型约束和调用契约。
+ * - 关键约束：
+ *   1) 严格保持 ELF 布局与索引一致性，避免地址/偏移漂移。
+ *   2) 失败路径必须可定位（返回值/错误信息/日志三者保持一致）。
+ *   3) 本文件改动优先保证与上游调用契约兼容，不隐式改变既有语义。
+ */
 #ifndef VMP_PATCHBAY_ELF_HEADER_H
 #define VMP_PATCHBAY_ELF_HEADER_H
 

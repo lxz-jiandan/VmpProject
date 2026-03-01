@@ -73,8 +73,8 @@ public:
     bool remapBlToSharedBranchAddrs(const std::vector<uint64_t>& sharedBranchAddrs);
 
 private:
-    // 确保反汇编缓存可用（惰性构建）。
-    void ensureAsmReady() const;
+    // 确保指令展示缓存可用（惰性构建）。
+    void ensureInstViewReady() const;
     // 确保未编码缓存可用（惰性构建）。
     void ensureUnencodedReady() const;
 
@@ -86,8 +86,9 @@ private:
         uint32_t typeCount,
         std::vector<uint32_t> typeTags,
         uint32_t initValueCount,
+        std::vector<uint32_t> preludeWords,
         std::map<uint64_t, std::vector<uint32_t>> instByAddress,
-        std::map<uint64_t, std::string> asmByAddress,
+        std::map<uint64_t, std::string> instTextByAddress,
         uint32_t instCount,
         uint32_t branchCount,
         std::vector<uint32_t> branchWords,
@@ -96,14 +97,14 @@ private:
         std::vector<uint64_t> branchAddrWords
     ) const;
 
-    // 用未编码缓存重建 `asm_list_` 展示结果。
+    // 用未编码缓存重建 `inst_view_list_` 展示结果。
     // 该路径主要用于避免重复依赖 Capstone 做反汇编。
-    void rebuildAsmListFromUnencoded() const;
+    void rebuildInstViewFromUnencoded() const;
 
-    // `asm_ready_`：`asm_list_` 是否已构建完成。
-    mutable bool asm_ready_ = false;
-    // 反汇编展示列表（供 UI/日志输出）。
-    mutable std::vector<zInst> asm_list_;
+    // `inst_view_ready_`：`inst_view_list_` 是否已构建完成。
+    mutable bool inst_view_ready_ = false;
+    // 指令展示列表（供 UI/日志输出）。
+    mutable std::vector<zInst> inst_view_list_;
 
     // `unencoded_ready_`：未编码缓存是否可直接复用。
     mutable bool unencoded_ready_ = false;
@@ -121,10 +122,13 @@ private:
     mutable std::vector<uint32_t> type_tags_cache_;
     // 缓存的初始化值条目数。
     mutable uint32_t init_value_count_cache_ = 0;
+    // 缓存的前缀指令（不绑定真实 ARM 地址）。
+    // 该段通常包含 OP_ALLOC_RETURN / OP_ALLOC_VSP，并在最终扁平指令流中排在最前。
+    mutable std::vector<uint32_t> prelude_words_cache_;
     // 缓存的“地址 -> opcode words”映射。
     mutable std::map<uint64_t, std::vector<uint32_t>> inst_words_by_addr_cache_;
-    // 缓存的“地址 -> 汇编文本”映射。
-    mutable std::map<uint64_t, std::string> asm_text_by_addr_cache_;
+    // 缓存的“地址 -> 指令文本”映射。
+    mutable std::map<uint64_t, std::string> inst_text_by_addr_cache_;
     // 缓存的 inst 总 word 数。
     mutable uint32_t inst_count_cache_ = 0;
     // 缓存的本地分支数量。
