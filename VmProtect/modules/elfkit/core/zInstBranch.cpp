@@ -297,6 +297,56 @@ bool dispatchArm64BranchCase(  // 流程注记：该语句参与当前阶段的�
                             break;
                     }
                 } else if (detail &&
+                           op_count >= 2 &&
+                           ops[0].type == AARCH64_OP_REG &&
+                           ops[1].type == AARCH64_OP_REG &&
+                           isArm64GpReg(ops[0].reg) &&
+                           !isArm64ZeroReg(ops[0].reg)) {
+                    // cinc dst, src, cc:
+                    // cond 为真 -> dst=src+1
+                    // cond 为假 -> dst=src
+                    arm64_cc cc = detail->aarch64.cc;
+                    const uint64_t next_addr = addr + (insn[j].size == 0 ? 4 : static_cast<uint64_t>(insn[j].size));
+                    std::vector<uint32_t> csinc_ops;
+                    switch (cc) {
+                        case ARM64_CC_EQ:
+                        case ARM64_CC_NE:
+                        case ARM64_CC_HS:
+                        case ARM64_CC_LO:
+                        case ARM64_CC_MI:
+                        case ARM64_CC_PL:
+                        case ARM64_CC_VS:
+                        case ARM64_CC_VC:
+                        case ARM64_CC_HI:
+                        case ARM64_CC_LS:
+                        case ARM64_CC_GE:
+                        case ARM64_CC_LT:
+                        case ARM64_CC_GT:
+                        case ARM64_CC_LE: {
+                            if (appendAssignRegOrZero(csinc_ops, reg_id_list, ops[0].reg, ops[1].reg) &&
+                                appendAddImmSelf(csinc_ops, reg_id_list, type_id_list, ops[0].reg, 1u)) {
+                                uint32_t branch_id = getOrAddBranch(branch_id_list, next_addr);
+                                csinc_ops.push_back(OP_BRANCH_IF_CC);
+                                csinc_ops.push_back(static_cast<uint32_t>(cc));
+                                csinc_ops.push_back(branch_id);
+                                if (appendAssignRegOrZero(csinc_ops, reg_id_list, ops[0].reg, ops[1].reg)) {
+                                    opcode_list = std::move(csinc_ops);
+                                }
+                            }
+                            break;
+                        }
+                        case ARM64_CC_AL:
+                        case ARM64_CC_INVALID: {
+                            if (appendAssignRegOrZero(csinc_ops, reg_id_list, ops[0].reg, ops[1].reg) &&
+                                appendAddImmSelf(csinc_ops, reg_id_list, type_id_list, ops[0].reg, 1u)) {
+                                opcode_list = std::move(csinc_ops);
+                            }
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+                } else if (detail &&
                            op_count >= 3 &&
                            ops[0].type == AARCH64_OP_REG &&
                            ops[1].type == AARCH64_OP_REG &&
@@ -353,6 +403,52 @@ bool dispatchArm64BranchCase(  // 流程注记：该语句参与当前阶段的�
             // 条件选择并取反：CSINV（cond=true -> t，cond=false -> ~f）。
             case ARM64_INS_CSINV: { // 指令分支：ARM64_INS_CSINV，在此分支内完成等价 VM 语义映射。
                 if (detail &&
+                    op_count == 1 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    isArm64GpReg(ops[0].reg) &&
+                    !isArm64ZeroReg(ops[0].reg)) {
+                    // csetm dst, cc:
+                    // cond 为真 -> dst = -1
+                    // cond 为假 -> dst = 0
+                    arm64_cc cc = detail->aarch64.cc;
+                    const uint64_t next_addr = addr + (insn[j].size == 0 ? 4 : static_cast<uint64_t>(insn[j].size));
+                    uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(ops[0].reg));
+                    const uint64_t all_ones = isArm64WReg(ops[0].reg) ? 0xFFFFFFFFull : 0xFFFFFFFFFFFFFFFFull;
+                    std::vector<uint32_t> csinv_ops;
+                    switch (cc) {
+                        case ARM64_CC_EQ:
+                        case ARM64_CC_NE:
+                        case ARM64_CC_HS:
+                        case ARM64_CC_LO:
+                        case ARM64_CC_MI:
+                        case ARM64_CC_PL:
+                        case ARM64_CC_VS:
+                        case ARM64_CC_VC:
+                        case ARM64_CC_HI:
+                        case ARM64_CC_LS:
+                        case ARM64_CC_GE:
+                        case ARM64_CC_LT:
+                        case ARM64_CC_GT:
+                        case ARM64_CC_LE: {
+                            emitLoadImm(csinv_ops, dst_idx, all_ones);
+                            uint32_t branch_id = getOrAddBranch(branch_id_list, next_addr);
+                            csinv_ops.push_back(OP_BRANCH_IF_CC);
+                            csinv_ops.push_back(static_cast<uint32_t>(cc));
+                            csinv_ops.push_back(branch_id);
+                            csinv_ops.push_back(OP_LOAD_IMM);
+                            csinv_ops.push_back(dst_idx);
+                            csinv_ops.push_back(0u);
+                            opcode_list = std::move(csinv_ops);
+                            break;
+                        }
+                        case ARM64_CC_AL:
+                        case ARM64_CC_INVALID:
+                            emitLoadImm(opcode_list, dst_idx, all_ones);
+                            break;
+                        default:
+                            break;
+                    }
+                } else if (detail &&
                     op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -410,6 +506,80 @@ bool dispatchArm64BranchCase(  // 流程注记：该语句参与当前阶段的�
                 break;
             }
 
+            // 条件选择并取负：CSNEG（cond=true -> t，cond=false -> -f）。
+            case ARM64_INS_CSNEG:
+            case ARM64_INS_ALIAS_CNEG: {
+                if (detail &&
+                    op_count >= 2 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG &&
+                    isArm64GpReg(ops[0].reg) &&
+                    !isArm64ZeroReg(ops[0].reg)) {
+                    arm64_cc cc = detail->aarch64.cc;
+                    const uint64_t next_addr = addr + (insn[j].size == 0 ? 4 : static_cast<uint64_t>(insn[j].size));
+                    std::vector<uint32_t> csneg_ops;
+                    switch (cc) {
+                        case ARM64_CC_EQ:
+                        case ARM64_CC_NE:
+                        case ARM64_CC_HS:
+                        case ARM64_CC_LO:
+                        case ARM64_CC_MI:
+                        case ARM64_CC_PL:
+                        case ARM64_CC_VS:
+                        case ARM64_CC_VC:
+                        case ARM64_CC_HI:
+                        case ARM64_CC_LS:
+                        case ARM64_CC_GE:
+                        case ARM64_CC_LT:
+                        case ARM64_CC_GT:
+                        case ARM64_CC_LE: {
+                            // cneg 别名形态：cneg dst, src, cc
+                            if (op_count == 2) {
+                                if (tryEmitNegLike(csneg_ops, reg_id_list, type_id_list, ops[0].reg, ops[1].reg)) {
+                                    uint32_t branch_id = getOrAddBranch(branch_id_list, next_addr);
+                                    csneg_ops.push_back(OP_BRANCH_IF_CC);
+                                    csneg_ops.push_back(static_cast<uint32_t>(cc));
+                                    csneg_ops.push_back(branch_id);
+                                    if (appendAssignRegOrZero(csneg_ops, reg_id_list, ops[0].reg, ops[1].reg)) {
+                                        opcode_list = std::move(csneg_ops);
+                                    }
+                                }
+                            // csneg 原生形态：csneg dst, true_src, false_src, cc
+                            } else if (op_count >= 3 && ops[2].type == AARCH64_OP_REG) {
+                                if (appendAssignRegOrZero(csneg_ops, reg_id_list, ops[0].reg, ops[1].reg)) {
+                                    uint32_t branch_id = getOrAddBranch(branch_id_list, next_addr);
+                                    csneg_ops.push_back(OP_BRANCH_IF_CC);
+                                    csneg_ops.push_back(static_cast<uint32_t>(cc));
+                                    csneg_ops.push_back(branch_id);
+                                    std::vector<uint32_t> neg_ops;
+                                    if (tryEmitNegLike(neg_ops, reg_id_list, type_id_list, ops[0].reg, ops[2].reg)) {
+                                        csneg_ops.insert(csneg_ops.end(), neg_ops.begin(), neg_ops.end());
+                                        opcode_list = std::move(csneg_ops);
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                        case ARM64_CC_AL:
+                        case ARM64_CC_INVALID: {
+                            if (appendAssignRegOrZero(csneg_ops, reg_id_list, ops[0].reg, ops[1].reg)) {
+                                opcode_list = std::move(csneg_ops);
+                            }
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+                }
+                break;
+            }
+
+            case ARM64_INS_CCMP:
+            case ARM64_INS_CCMN:
+                // 条件比较类当前先保守降级为 NOP，保证离线翻译不中断。
+                opcode_list = { OP_NOP };
+                break;
+
             case ARM64_INS_ALIAS_CSET: { // 指令分支：ARM64_INS_ALIAS_CSET，在此分支内完成等价 VM 语义映射。
                 // CSET：条件成立写 1，否则写 0。
                 // 展开为：dst=1; if(cc) goto next; dst=0;
@@ -456,9 +626,57 @@ bool dispatchArm64BranchCase(  // 流程注记：该语句参与当前阶段的�
                 }
                 break;
             }
+
+            case ARM64_INS_ALIAS_CSETM: { // 指令分支：ARM64_INS_ALIAS_CSETM，在此分支内完成等价 VM 语义映射。
+                // CSETM：条件成立写全 1（-1），否则写 0。
+                if (detail &&
+                    op_count >= 1 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    isArm64GpReg(ops[0].reg) &&
+                    !isArm64ZeroReg(ops[0].reg)) {
+                    arm64_cc cc = detail->aarch64.cc;
+                    const uint64_t next_addr = addr + (insn[j].size == 0 ? 4 : static_cast<uint64_t>(insn[j].size));
+                    const uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(ops[0].reg));
+                    const uint64_t all_ones = isArm64WReg(ops[0].reg) ? 0xFFFFFFFFull : 0xFFFFFFFFFFFFFFFFull;
+                    std::vector<uint32_t> csetm_ops;
+                    switch (cc) {
+                        case ARM64_CC_EQ:
+                        case ARM64_CC_NE:
+                        case ARM64_CC_HS:
+                        case ARM64_CC_LO:
+                        case ARM64_CC_MI:
+                        case ARM64_CC_PL:
+                        case ARM64_CC_VS:
+                        case ARM64_CC_VC:
+                        case ARM64_CC_HI:
+                        case ARM64_CC_LS:
+                        case ARM64_CC_GE:
+                        case ARM64_CC_LT:
+                        case ARM64_CC_GT:
+                        case ARM64_CC_LE: {
+                            emitLoadImm(csetm_ops, dst_idx, all_ones);
+                            uint32_t branch_id = getOrAddBranch(branch_id_list, next_addr);
+                            csetm_ops.push_back(OP_BRANCH_IF_CC);
+                            csetm_ops.push_back(static_cast<uint32_t>(cc));
+                            csetm_ops.push_back(branch_id);
+                            csetm_ops.push_back(OP_LOAD_IMM);
+                            csetm_ops.push_back(dst_idx);
+                            csetm_ops.push_back(0u);
+                            opcode_list = std::move(csetm_ops);
+                            break;
+                        }
+                        case ARM64_CC_AL:
+                        case ARM64_CC_INVALID:
+                            emitLoadImm(opcode_list, dst_idx, all_ones);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                break;
+            }
         default:
             return false;
     }
     return true;
 }
-

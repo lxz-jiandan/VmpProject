@@ -99,6 +99,9 @@ int fun_mem_half_signed(int a, int b);
 int fun_atomic_u8_order(int a, int b);
 int fun_atomic_u16_order(int a, int b);
 int fun_atomic_u64_order(int a, int b);
+int fun_insn_scalar_ctrl(int a, int b);
+int fun_insn_simd_mix(int a, int b);
+int fun_insn_fp_convert(int a, int b);
 
 // 字符串与容器返回场景（供 bridge 做摘要比较）。
 const char* fun_ret_cstr_pick(int a, int b);

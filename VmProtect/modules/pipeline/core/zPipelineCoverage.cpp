@@ -88,6 +88,7 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {  // 处理阶段入
         ARM64_INS_BFM,
         ARM64_INS_CCMP,
         ARM64_INS_CSINV,
+        ARM64_INS_CSNEG,
         ARM64_INS_NEG,
         ARM64_INS_REV,
         ARM64_INS_REV16,
@@ -212,6 +213,7 @@ bool isSupportedByFallbackMnemonic(const char* mnemonic) {
            std::strcmp(mnemonic, "cinc") == 0 ||
            std::strcmp(mnemonic, "csetm") == 0 ||
            std::strcmp(mnemonic, "csinv") == 0 ||
+           std::strcmp(mnemonic, "csneg") == 0 ||
            std::strcmp(mnemonic, "bfi") == 0 ||
            std::strcmp(mnemonic, "bfxil") == 0 ||
            std::strcmp(mnemonic, "bics") == 0 ||
@@ -548,6 +550,5 @@ bool writeCoverageReport(const std::string& reportPath, const CoverageBoard& boa
 
 // 进入 vmp 命名空间，实现覆盖率统计主流程。
 }  // namespace vmp
-
 
 

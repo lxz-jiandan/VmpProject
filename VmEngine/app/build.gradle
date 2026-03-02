@@ -320,8 +320,6 @@ tasks.register("runVmProtectPipelineDebug") {
                 // vmengine so 与最终输出 so。
                 "--vmengine-so", hostSo.absolutePath,
                 "--output-so", protectedHostSo.absolutePath,
-                // patch origin（entry-dispatch 模式由 VmProtect 内部固定）。
-                "--patch-origin-so", vmpPatchOriginSo.absolutePath,
         ]
         selectedFunctions.each { fn ->
             // 加固函数列表：由 -PvmpFunctions 显式给出。
@@ -443,4 +441,3 @@ dependencies {
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 }
-

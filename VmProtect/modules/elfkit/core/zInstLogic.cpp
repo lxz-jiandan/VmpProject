@@ -98,6 +98,68 @@ bool tryEmitNotRhsBinaryLike(
     return true;
 }
 
+// 统一发射 tst（ands 两操作数别名）语义：仅更新标志位，结果写入临时寄存器。
+bool tryEmitFlagAndLike(
+    std::vector<uint32_t>& opcode_list,
+    std::vector<uint32_t>& reg_id_list,
+    std::vector<uint32_t>& type_id_list,
+    const cs_arm64_op& lhs_op,
+    const cs_arm64_op& rhs_op
+) {
+    if (lhs_op.type != AARCH64_OP_REG || !isArm64GpReg(lhs_op.reg)) {
+        return false;
+    }
+    static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
+    const uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X16));
+    const uint32_t type_idx = getOrAddTypeTagForRegWidth(type_id_list, lhs_op.reg);
+    const uint32_t lhs_idx = isArm64ZeroReg(lhs_op.reg)
+                             ? getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X17))
+                             : getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(lhs_op.reg));
+    if (isArm64ZeroReg(lhs_op.reg)) {
+        opcode_list = { OP_LOAD_IMM, lhs_idx, 0u };
+    } else {
+        opcode_list.clear();
+    }
+
+    if (rhs_op.type == AARCH64_OP_REG && isArm64GpReg(rhs_op.reg)) {
+        const uint32_t rhs_idx = isArm64ZeroReg(rhs_op.reg)
+                                 ? getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X15))
+                                 : getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(rhs_op.reg));
+        if (isArm64ZeroReg(rhs_op.reg)) {
+            opcode_list.push_back(OP_LOAD_IMM);
+            opcode_list.push_back(rhs_idx);
+            opcode_list.push_back(0u);
+        }
+        opcode_list.push_back(OP_BINARY);
+        opcode_list.push_back(BIN_AND | BIN_UPDATE_FLAGS);
+        opcode_list.push_back(type_idx);
+        opcode_list.push_back(lhs_idx);
+        opcode_list.push_back(rhs_idx);
+        opcode_list.push_back(dst_idx);
+        return true;
+    }
+
+    if (rhs_op.type == AARCH64_OP_IMM) {
+        uint64_t imm64 = static_cast<uint64_t>(rhs_op.imm);
+        if (rhs_op.shift.type == AARCH64_SFT_LSL && rhs_op.shift.value != 0) {
+            imm64 <<= static_cast<uint32_t>(rhs_op.shift.value);
+        }
+        if (isArm64WReg(lhs_op.reg)) {
+            imm64 &= 0xFFFFFFFFull;
+        }
+        opcode_list.push_back(OP_BINARY_IMM);
+        opcode_list.push_back(BIN_AND | BIN_UPDATE_FLAGS);
+        opcode_list.push_back(type_idx);
+        opcode_list.push_back(lhs_idx);
+        opcode_list.push_back(static_cast<uint32_t>(imm64 & 0xFFFFFFFFull));
+        opcode_list.push_back(dst_idx);
+        return true;
+    }
+
+    opcode_list.clear();
+    return false;
+}
+
 } // namespace
 
 bool dispatchArm64LogicCase(
@@ -248,6 +310,9 @@ bool dispatchArm64LogicCase(
                         }
                         // 非 UXT* 扩展别名时，再尝试 LSL 别名路径。
                         if (!handled_alias) {
+                            handled_alias = tryEmitLsrLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
+                        }
+                        if (!handled_alias) {
                             (void)tryEmitLslLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
                         }
                     } else {
@@ -293,6 +358,11 @@ bool dispatchArm64LogicCase(
                                 sign_extend,
                                 src_type_tag
                             );
+                        } else {
+                            bool handled_alias = tryEmitAsrLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
+                            if (!handled_alias) {
+                                (void)tryEmitLsrLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
+                            }
                         }
                     }
                 }
@@ -338,6 +408,37 @@ bool dispatchArm64LogicCase(
                 }
                 break;
             }
+
+            case ARM64_INS_ALIAS_LSR: {
+                (void)tryEmitLsrLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
+                break;
+            }
+
+            case ARM64_INS_ALIAS_ASR: {
+                (void)tryEmitAsrLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
+                break;
+            }
+
+            case ARM64_INS_BFM:
+            case ARM64_INS_ALIAS_BFI: {
+                // bfi/bfm dst, src, #lsb, #width：保留 dst 其他位并插入源位段。
+                if (op_count >= 4 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG &&
+                    ops[2].type == AARCH64_OP_IMM &&
+                    ops[3].type == AARCH64_OP_IMM) {
+                    (void)tryEmitBitfieldInsertIntoDstLike(
+                        opcode_list,
+                        reg_id_list,
+                        type_id_list,
+                        ops[0].reg,
+                        ops[1].reg,
+                        static_cast<uint32_t>(ops[2].imm),
+                        static_cast<uint32_t>(ops[3].imm)
+                    );
+                }
+                break;
+            }
             // 直接调用：BL 先记录目标地址，导出阶段统一 remap。
 
             // 搬运类：MOV/别名 -> tryEmitMovLike。
@@ -356,6 +457,32 @@ bool dispatchArm64LogicCase(
                         }
                     }
                 }
+                break;
+            }
+
+            // 浮点/向量搬运：GP<->GP 退化为 MOV，其余向量形态当前保守降级为 NOP。
+            case ARM64_INS_FMOV:
+            case ARM64_INS_ALIAS_FMOV: {
+                if (op_count >= 2 && ops && ops[0].type == AARCH64_OP_REG) {
+                    if (isArm64GpReg(ops[0].reg) &&
+                        ((ops[1].type == AARCH64_OP_REG && isArm64GpReg(ops[1].reg)) ||
+                         ops[1].type == AARCH64_OP_IMM)) {
+                        (void)tryEmitMovLike(opcode_list, reg_id_list, ops[0].reg, ops[1]);
+                    } else {
+                        opcode_list = { OP_NOP };
+                    }
+                }
+                break;
+            }
+
+            // 向量 lane/元素搬运：当前 VM 执行器不建模 SIMD 寄存器，统一降级为 NOP。
+            case ARM64_INS_INS:
+            case ARM64_INS_INSR:
+            case ARM64_INS_MOVA:
+            case ARM64_INS_UMOV:
+            case ARM64_INS_SMOV:
+            case ARM64_INS_DUP: {
+                opcode_list = { OP_NOP };
                 break;
             }
 
@@ -394,7 +521,12 @@ bool dispatchArm64LogicCase(
 
             // 位拼接提取：EXTR dst, hi, lo, lsb。
             case ARM64_INS_EXTR: { // 指令分支：ARM64_INS_EXTR，在此分支内完成等价 VM 语义映射。
-                if (op_count >= 4 &&
+                // ror 别名常见为 EXTR + 两操作数 + shift 元信息。
+                if (op_count == 2 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG) {
+                    (void)tryEmitRorLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
+                } else if (op_count >= 4 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
                     ops[2].type == AARCH64_OP_REG &&
@@ -412,10 +544,73 @@ bool dispatchArm64LogicCase(
                 break;
             }
 
+            case ARM64_INS_FCVT:
+            case ARM64_INS_FCMP:
+            case ARM64_INS_CMEQ:
+            case ARM64_INS_CMHI:
+            case ARM64_INS_CMHS:
+            case ARM64_INS_CMGT:
+            case ARM64_INS_CMLT:
+            case ARM64_INS_BIT:
+            case ARM64_INS_BSL:
+            case ARM64_INS_SHL:
+            case ARM64_INS_SHLL:
+            case ARM64_INS_SHLL2:
+            case ARM64_INS_USHR:
+            case ARM64_INS_USHLL:
+            case ARM64_INS_USHLL2:
+            case ARM64_INS_SHRN:
+            case ARM64_INS_XTN:
+            case ARM64_INS_FNEG:
+            case ARM64_INS_FDIV:
+            case ARM64_INS_FADD:
+            case ARM64_INS_FMUL:
+            case ARM64_INS_SCVTF:
+            case ARM64_INS_FCVTZS:
+            case ARM64_INS_UCVTF:
+            case ARM64_INS_FCVTAS:
+                // 浮点/SIMD 比较与移位当前不进入 VM 语义建模，先保守降级为 NOP。
+                opcode_list = { OP_NOP };
+                break;
+
+            case ARM64_INS_NOT: {
+                if (op_count >= 2 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG &&
+                    isArm64GpReg(ops[0].reg) &&
+                    isArm64GpReg(ops[1].reg)) {
+                    (void)tryEmitBitwiseNotLike(
+                        opcode_list,
+                        reg_id_list,
+                        type_id_list,
+                        ops[0].reg,
+                        ops[1].reg
+                    );
+                } else {
+                    opcode_list = { OP_NOP };
+                }
+                break;
+            }
+
             case ARM64_INS_AND: // 指令分支：ARM64_INS_AND，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_ALIAS_TST:
             case ARM64_INS_ANDS: { // 指令分支：ARM64_INS_ANDS，在此分支内完成等价 VM 语义映射。
                 // ANDS 需要更新条件标志，这里通过扩展位 BIN_UPDATE_FLAGS 标记。
                 static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
+                // tst alias：ands lhs, rhs/imm，仅更新标志位。
+                if ((id == ARM64_INS_ANDS || id == ARM64_INS_ALIAS_TST) &&
+                    op_count == 2 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    (ops[1].type == AARCH64_OP_REG || ops[1].type == AARCH64_OP_IMM)) {
+                    (void)tryEmitFlagAndLike(
+                        opcode_list,
+                        reg_id_list,
+                        type_id_list,
+                        ops[0],
+                        ops[1]
+                    );
+                    break;
+                }
                 // 形态：and(s) dst, lhs, rhs_or_imm。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
@@ -439,13 +634,19 @@ bool dispatchArm64LogicCase(
             }
 
             // 位运算/别名类：ORR 兼容 mov alias。
+            case ARM64_INS_ALIAS_ORR:
             case ARM64_INS_ORR: { // 指令分支：ARM64_INS_ORR，在此分支内完成等价 VM 语义映射。
                 // ORR 既可能是真正位或，也可能是 mov alias（含零寄存器）。
                 // Capstone 在别名场景下可能直接给出两操作数：orr-id + "mov dst, src"。
                 if (op_count == 2 &&
                     ops[0].type == AARCH64_OP_REG &&
                     (ops[1].type == AARCH64_OP_REG || ops[1].type == AARCH64_OP_IMM)) {
-                    (void)tryEmitMovLike(opcode_list, reg_id_list, ops[0].reg, ops[1]);
+                    if (!isArm64GpReg(ops[0].reg) ||
+                        (ops[1].type == AARCH64_OP_REG && !isArm64GpReg(ops[1].reg))) {
+                        opcode_list = { OP_NOP };
+                    } else {
+                        (void)tryEmitMovLike(opcode_list, reg_id_list, ops[0].reg, ops[1]);
+                    }
                 } else if (op_count >= 3 &&
                            ops[0].type == AARCH64_OP_REG &&
                            ops[1].type == AARCH64_OP_REG) {
@@ -474,8 +675,24 @@ bool dispatchArm64LogicCase(
             }
 
             // 位运算：ORN -> dst = lhs | (~rhs)。
+            case ARM64_INS_ALIAS_MVN:
             case ARM64_INS_ORN: { // 指令分支：ARM64_INS_ORN，在此分支内完成等价 VM 语义映射。
-                if (op_count >= 3 &&
+                // mvn alias：orn dst, src（等价 dst = ~src）。
+                if (op_count == 2 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG) {
+                    if (!isArm64GpReg(ops[0].reg) || !isArm64GpReg(ops[1].reg)) {
+                        opcode_list = { OP_NOP };
+                    } else {
+                        (void)tryEmitBitwiseNotLike(
+                            opcode_list,
+                            reg_id_list,
+                            type_id_list,
+                            ops[0].reg,
+                            ops[1].reg
+                        );
+                    }
+                } else if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
                     ops[2].type == AARCH64_OP_REG) {
@@ -498,15 +715,21 @@ bool dispatchArm64LogicCase(
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
                     ops[2].type == AARCH64_OP_REG) {
-                    (void)tryEmitNotRhsBinaryLike(
-                        opcode_list,
-                        reg_id_list,
-                        type_id_list,
-                        ops[0].reg,
-                        ops[1].reg,
-                        ops[2].reg,
-                        BIN_AND
-                    );
+                    if (!isArm64GpReg(ops[0].reg) ||
+                        !isArm64GpReg(ops[1].reg) ||
+                        !isArm64GpReg(ops[2].reg)) {
+                        opcode_list = { OP_NOP };
+                    } else {
+                        (void)tryEmitNotRhsBinaryLike(
+                            opcode_list,
+                            reg_id_list,
+                            type_id_list,
+                            ops[0].reg,
+                            ops[1].reg,
+                            ops[2].reg,
+                            BIN_AND
+                        );
+                    }
                 }
                 break;
             }

@@ -48,6 +48,8 @@ GlobalPair g_global_pair = {4, 6};
 alignas(1) uint8_t g_atomic_slot_u8 = 0x5Au;
 alignas(2) uint16_t g_atomic_slot_u16 = 0x4321u;
 alignas(8) uint64_t g_atomic_slot_u64 = 0x123456789ABCDEF0ull;
+// 控制潜在 trap 指令路径是否执行：默认 0，仅用于保留指令覆盖而不触发运行时异常。
+volatile int g_trap_gate = 0;
 
 class StaticScaleBox {
 public:
@@ -1212,6 +1214,171 @@ DEMO_TEST_EXPORT int fun_atomic_u64_order(int a, int b) {
 
     const uint64_t folded = ((second >> 32) ^ (second & 0xFFFFFFFFull)) & 0x7FFFFFFFull;
     return static_cast<int>(folded);
+}
+
+// [VMP_DEMO_CASE] fun_insn_scalar_ctrl
+// - 覆盖点：集中覆盖标量控制流/原子序列相关指令，补齐 adr/br/ldxr/stxr/svc 等翻译路径。
+// - 实现思路：AArch64 显式发射目标指令；trap 指令放在 gate 分支中，保证回归执行稳定。
+DEMO_TEST_EXPORT int fun_insn_scalar_ctrl(int a, int b) {
+    const uint64_t seed0 =
+        static_cast<uint64_t>(static_cast<uint32_t>(a * 17 + b + 0x100));
+    const uint64_t seed1 =
+        static_cast<uint64_t>(static_cast<uint32_t>(a * 3 + b * 7 + 0x200));
+#if defined(__aarch64__)
+    volatile uint64_t slot0 = seed0;
+    volatile uint64_t slot1 = seed1;
+    const int trapGate = g_trap_gate;
+    uint64_t out64 = 0;
+    asm volatile(
+        "mov w9, %w[inA]\n"
+        "mov w10, %w[inB]\n"
+        "adr x11, 10f\n"
+        "br x11\n"
+        "nop\n"
+        "10:\n"
+        "add w12, w9, w10\n"
+        "bics w13, w12, w10\n"
+        "cmp w9, w10\n"
+        "csinv w14, w9, w10, ge\n"
+        "csneg x15, x9, x10, lt\n"
+        "ccmp w14, w10, #0, ne\n"
+        "clz w16, w13\n"
+        "rev w17, w14\n"
+        "rev16 x6, x15\n"
+        "eon x7, x17, x6\n"
+        "lsl x7, x7, x9\n"
+        "lsr x7, x7, x10\n"
+        "bfm x7, x7, #4, #11\n"
+        "mov x14, %[slot0]\n"
+        "ldxr x15, [x14]\n"
+        "add x15, x15, #1\n"
+        "stxr w6, x15, [x14]\n"
+        "mov x16, %[slot1]\n"
+        "ldaxr x17, [x16]\n"
+        "add x17, x17, #2\n"
+        "stlxr w8, x17, [x16]\n"
+        "clrex\n"
+        "smaddl x12, w9, w10, x15\n"
+        "umaddl x13, w9, w10, x17\n"
+        "smulh x14, x12, x13\n"
+        "umulh x16, x13, x12\n"
+        "hint #0\n"
+        "cbz %w[trap], 11f\n"
+        "svc #0\n"
+        "brk #0\n"
+        "11:\n"
+        "add x12, x12, x13\n"
+        "add x12, x12, x14\n"
+        "add x12, x12, x16\n"
+        "add x12, x12, x7\n"
+        "add x12, x12, x6\n"
+        "add %[out], x12, x8\n"
+        : [out] "=&r"(out64)
+        : [inA] "r"(a),
+          [inB] "r"(b),
+          [slot0] "r"(&slot0),
+          [slot1] "r"(&slot1),
+          [trap] "r"(trapGate)
+        : "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16",
+          "x17", "cc", "memory");
+    return static_cast<int>((out64 ^ (out64 >> 32u)) & 0x7FFFFFFFull);
+#else
+    uint64_t mix = seed0 + seed1;
+    mix ^= ((mix << 3u) >> 1u);
+    mix += static_cast<uint64_t>(static_cast<uint32_t>(a ^ b));
+    return static_cast<int>((mix ^ (mix >> 32u)) & 0x7FFFFFFFull);
+#endif
+}
+
+// [VMP_DEMO_CASE] fun_insn_simd_mix
+// - 覆盖点：集中覆盖 SIMD 逻辑/比较/移位/窄化类指令，补齐 bit/bsl/ld4/shll 等翻译路径。
+// - 实现思路：AArch64 使用向量内联汇编串联多条指令，回退路径保持确定性输出。
+DEMO_TEST_EXPORT int fun_insn_simd_mix(int a, int b) {
+    alignas(16) uint8_t lanes[64] = {};
+    for (int i = 0; i < 64; i++) {
+        lanes[i] = static_cast<uint8_t>((a * 13 + b * 7 + i * 3 + 0x21) & 0xFF);
+    }
+#if defined(__aarch64__)
+    uint32_t out = 0;
+    asm volatile(
+        "mov x9, %[ptr]\n"
+        "ld4 { v0.16b, v1.16b, v2.16b, v3.16b }, [x9]\n"
+        "movi v4.16b, #0x39\n"
+        "dup v5.4s, %w[inA]\n"
+        "ins v5.s[1], %w[inB]\n"
+        "cmeq v6.16b, v0.16b, v1.16b\n"
+        "cmgt v7.4s, v2.4s, v3.4s\n"
+        "cmhi v8.8h, v0.8h, v1.8h\n"
+        "cmhs v9.8h, v1.8h, v0.8h\n"
+        "cmlt v10.4s, v2.4s, #0\n"
+        "bit v0.16b, v1.16b, v6.16b\n"
+        "bsl v6.16b, v7.16b, v8.16b\n"
+        "not v7.16b, v7.16b\n"
+        "shl v11.8h, v0.8h, #1\n"
+        "shll v12.8h, v0.8b, #8\n"
+        "shll2 v13.8h, v0.16b, #8\n"
+        "ushll v14.8h, v1.8b, #2\n"
+        "ushll2 v15.8h, v1.16b, #2\n"
+        "ushr v14.8h, v14.8h, #1\n"
+        "shrn v16.8b, v14.8h, #1\n"
+        "xtn v17.8b, v15.8h\n"
+        "add v16.8b, v16.8b, v17.8b\n"
+        "umov w10, v16.s[0]\n"
+        "umov w11, v5.s[1]\n"
+        "umov w12, v6.s[0]\n"
+        "add w10, w10, w11\n"
+        "add %w[out], w10, w12\n"
+        : [out] "=&r"(out)
+        : [ptr] "r"(lanes), [inA] "r"(a), [inB] "r"(b)
+        : "x9", "x10", "x11", "x12", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7",
+          "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "cc",
+          "memory");
+    return static_cast<int>(out);
+#else
+    uint32_t acc = 0;
+    for (int i = 0; i < 64; i += 8) {
+        acc ^= static_cast<uint32_t>(lanes[i]);
+        acc += static_cast<uint32_t>(lanes[i + 1]);
+        acc ^= static_cast<uint32_t>(lanes[i + 2] << 1u);
+    }
+    return static_cast<int>(acc + static_cast<uint32_t>(a ^ b));
+#endif
+}
+
+// [VMP_DEMO_CASE] fun_insn_fp_convert
+// - 覆盖点：集中覆盖浮点算术与转换类指令，补齐 scvtf/ucvtf/fcvt/fcvtzs/fcvtas 等路径。
+// - 实现思路：AArch64 走显式浮点指令链；回退路径用浮点运算折叠出稳定整数结果。
+DEMO_TEST_EXPORT int fun_insn_fp_convert(int a, int b) {
+    const uint32_t bUnsigned = static_cast<uint32_t>(b < 0 ? -b + 7 : b + 7);
+#if defined(__aarch64__)
+    int out = 0;
+    asm volatile(
+        "scvtf s0, %w[inA]\n"
+        "ucvtf s1, %w[inBU]\n"
+        "fmov s7, %w[inA]\n"
+        "fadd s2, s0, s1\n"
+        "fneg s3, s0\n"
+        "fmul s4, s2, s3\n"
+        "fdiv s5, s4, s1\n"
+        "fcmp s2, s5\n"
+        "fcvt d6, s5\n"
+        "fmov w9, s7\n"
+        "fcvtzs w10, s5\n"
+        "fcvtas w11, s5\n"
+        "add w10, w10, w11\n"
+        "add %w[out], w10, w9\n"
+        : [out] "=&r"(out)
+        : [inA] "r"(a), [inBU] "r"(bUnsigned)
+        : "x9", "x10", "x11", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "cc");
+    return out;
+#else
+    const float fa = static_cast<float>(a);
+    const float fb = static_cast<float>(bUnsigned);
+    const float mix = ((fa + fb) * (-fa)) / fb;
+    const int towardZero = static_cast<int>(mix);
+    const int nearest = static_cast<int>(mix >= 0.0f ? mix + 0.5f : mix - 0.5f);
+    return towardZero + nearest + a;
+#endif
 }
 
 // [VMP_DEMO_CASE] fun_ret_cstr_pick

@@ -151,6 +151,19 @@ bool dispatchArm64ArithCase(
  */
 
             case ARM64_INS_SUB: { // 指令分支：ARM64_INS_SUB，在此分支内完成等价 VM 语义映射。
+                // sub 的两操作数别名常见为 neg dst, src。
+                if (op_count == 2 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG) {
+                    (void)tryEmitNegLike(
+                        opcode_list,
+                        reg_id_list,
+                        type_id_list,
+                        ops[0].reg,
+                        ops[1].reg
+                    );
+                    break;
+                }
                 // SUB: dst = lhs - rhs/imm
                 if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     // 目标与左操作数都必须先映射到 VM 寄存器索引。
@@ -168,12 +181,49 @@ bool dispatchArm64ArithCase(
                 }
                 break;
             }
+
+            case ARM64_INS_NEG:
+            case ARM64_INS_ALIAS_NEG: {
+                if (op_count >= 2 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG) {
+                    (void)tryEmitNegLike(
+                        opcode_list,
+                        reg_id_list,
+                        type_id_list,
+                        ops[0].reg,
+                        ops[1].reg
+                    );
+                }
+                break;
+            }
             // 存储类：STR -> OP_SET_FIELD。
 
             case ARM64_INS_ADD: // 指令分支：ARM64_INS_ADD，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_ALIAS_CMN:
             case ARM64_INS_ADDS: { // 指令分支：ARM64_INS_ADDS，在此分支内完成等价 VM 语义映射。
                 // ADDS 需要更新条件标志，这里通过扩展位 BIN_UPDATE_FLAGS 标记。
                 static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
+                // 两操作数别名：
+                // 1) add dst, src      -> mov dst, src
+                // 2) cmn lhs, rhs/imm  -> 仅更新标志位
+                if (op_count == 2 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    (ops[1].type == AARCH64_OP_REG || ops[1].type == AARCH64_OP_IMM)) {
+                    if (id == ARM64_INS_ADD) {
+                        (void)tryEmitMovLike(opcode_list, reg_id_list, ops[0].reg, ops[1]);
+                    } else {
+                        (void)tryEmitFlagBinaryLike(
+                            opcode_list,
+                            reg_id_list,
+                            type_id_list,
+                            ops[0],
+                            ops[1],
+                            BIN_ADD
+                        );
+                    }
+                    break;
+                }
                 // ADD/ADDS: dst = lhs + rhs/imm
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
@@ -387,7 +437,32 @@ bool dispatchArm64ArithCase(
 
             // 乘减：MSUB -> dst = addend - (lhs * rhs)。
             case ARM64_INS_MSUB: { // 指令分支：ARM64_INS_MSUB，在此分支内完成等价 VM 语义映射。
-                if (op_count >= 4 &&
+                // mneg 别名：msub dst, lhs, rhs（隐式 addend=xzr）。
+                if (op_count >= 3 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG &&
+                    ops[2].type == AARCH64_OP_REG &&
+                    (op_count < 4 || ops[3].type != AARCH64_OP_REG)) {
+                    uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(ops[0].reg));
+                    uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(ops[1].reg));
+                    uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(ops[2].reg));
+                    uint32_t tmp_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X17));
+                    uint32_t zero_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X16));
+                    uint32_t type_idx = getOrAddTypeTagForRegWidth(type_id_list, ops[0].reg);
+                    opcode_list = {
+                        OP_BINARY, BIN_MUL, type_idx, lhs_idx, rhs_idx, tmp_idx,
+                        OP_LOAD_IMM, zero_idx, 0u,
+                        OP_BINARY, BIN_SUB, type_idx, zero_idx, tmp_idx, dst_idx
+                    };
+                    if (isArm64WReg(ops[0].reg)) {
+                        opcode_list.push_back(OP_BINARY_IMM);
+                        opcode_list.push_back(BIN_AND);
+                        opcode_list.push_back(getOrAddTypeTag(type_id_list, TYPE_TAG_INT32_UNSIGNED));
+                        opcode_list.push_back(dst_idx);
+                        opcode_list.push_back(0xFFFFFFFFu);
+                        opcode_list.push_back(dst_idx);
+                    }
+                } else if (op_count >= 4 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
                     ops[2].type == AARCH64_OP_REG &&
@@ -450,7 +525,24 @@ bool dispatchArm64ArithCase(
 
             // 长乘加（无符号）：UMADDL -> dst = ((uint32)lhs*(uint32)rhs) + addend。
             case ARM64_INS_UMADDL: { // 指令分支：ARM64_INS_UMADDL，在此分支内完成等价 VM 语义映射。
-                if (op_count >= 4 &&
+                // umull 别名：umaddl dst, lhs, rhs（隐式 addend=xzr）。
+                if (op_count >= 3 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG &&
+                    ops[2].type == AARCH64_OP_REG &&
+                    (op_count < 4 || ops[3].type != AARCH64_OP_REG)) {
+                    (void)tryEmitWideningMulAddLike(
+                        opcode_list,
+                        reg_id_list,
+                        type_id_list,
+                        ops[0].reg,
+                        ops[1].reg,
+                        ops[2].reg,
+                        AARCH64_REG_XZR,
+                        false,
+                        false
+                    );
+                } else if (op_count >= 4 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
                     ops[2].type == AARCH64_OP_REG &&
@@ -472,7 +564,24 @@ bool dispatchArm64ArithCase(
 
             // 长乘加（有符号）：SMADDL -> dst = ((int32)lhs*(int32)rhs) + addend。
             case ARM64_INS_SMADDL: { // 指令分支：ARM64_INS_SMADDL，在此分支内完成等价 VM 语义映射。
-                if (op_count >= 4 &&
+                // smull 别名：smaddl dst, lhs, rhs（隐式 addend=xzr）。
+                if (op_count >= 3 &&
+                    ops[0].type == AARCH64_OP_REG &&
+                    ops[1].type == AARCH64_OP_REG &&
+                    ops[2].type == AARCH64_OP_REG &&
+                    (op_count < 4 || ops[3].type != AARCH64_OP_REG)) {
+                    (void)tryEmitWideningMulAddLike(
+                        opcode_list,
+                        reg_id_list,
+                        type_id_list,
+                        ops[0].reg,
+                        ops[1].reg,
+                        ops[2].reg,
+                        AARCH64_REG_XZR,
+                        false,
+                        true
+                    );
+                } else if (op_count >= 4 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
                     ops[2].type == AARCH64_OP_REG &&

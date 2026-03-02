@@ -635,6 +635,9 @@ std::string buildProtectResultText() {
         {"fun_atomic_u8_order", fun_atomic_u8_order, 2, 4, "fun_atomic_u8_order_ref"},
         {"fun_atomic_u16_order", fun_atomic_u16_order, 2, 4, "fun_atomic_u16_order_ref"},
         {"fun_atomic_u64_order", fun_atomic_u64_order, 2, 4, "fun_atomic_u64_order_ref"},
+        {"fun_insn_scalar_ctrl", fun_insn_scalar_ctrl, 2, 4, "fun_insn_scalar_ctrl_ref"},
+        {"fun_insn_simd_mix", fun_insn_simd_mix, 2, 4, "fun_insn_simd_mix_ref"},
+        {"fun_insn_fp_convert", fun_insn_fp_convert, 2, 4, "fun_insn_fp_convert_ref"},
     };
 
     const std::vector<I64Case> i64Cases = {

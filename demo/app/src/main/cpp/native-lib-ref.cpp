@@ -75,6 +75,9 @@
 #define fun_atomic_u8_order fun_atomic_u8_order_ref
 #define fun_atomic_u16_order fun_atomic_u16_order_ref
 #define fun_atomic_u64_order fun_atomic_u64_order_ref
+#define fun_insn_scalar_ctrl fun_insn_scalar_ctrl_ref
+#define fun_insn_simd_mix fun_insn_simd_mix_ref
+#define fun_insn_fp_convert fun_insn_fp_convert_ref
 #define fun_ret_cstr_pick fun_ret_cstr_pick_ref
 #define fun_ret_std_string_mix fun_ret_std_string_mix_ref
 #define fun_ret_vector_mix fun_ret_vector_mix_ref
