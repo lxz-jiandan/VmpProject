@@ -3,6 +3,15 @@ plugins {
     alias(libs.plugins.androidApplication)
 }
 
+// [VMP_FLOW_NOTE] 模块级说明
+// - demo 模块负责“设备侧验证”，不是加固核心逻辑承载模块。
+// - 构建阶段会把 VmEngine 产出的受保护 so 覆盖到 demo 的 libdemo.so。
+// - 因此本模块的关键职责是“保证集成链路正确”，而非功能复杂度。
+// - 若覆盖步骤失效，运行时会回退到未保护实现，导致回归判定失真。
+// - packagingOptions 中的配置用于保证 so 尾部结构不被打包流程破坏。
+// - 本脚本中的路径解析策略默认以最近构建产物为准，适配多变体场景。
+// - 建议任何路径/任务依赖变更都同步更新回归脚本和 README 说明。
+
 // 每次回归可注入构建戳，避免 Windows 下旧目录句柄占用导致清理失败。
 def vmpDemoBuildStamp = project.findProperty("vmpDemoBuildStamp") as String
 if (vmpDemoBuildStamp != null && !vmpDemoBuildStamp.trim().isEmpty()) {
