@@ -49,6 +49,11 @@ tools/*.orig
 # Local helper binaries at repository root
 /llvm-objdump.exe
 /readelf.exe
+/coverage_report.md
+/branch_addr_list.txt
+/libdemo_expand.so
+/mz_zip_get_error_string.bin
+/mz_zip_get_error_string.txt
 
 *.txt
 *.bin
