@@ -14,7 +14,7 @@
 #include <string>   // std::string（文本字段）。
 #include <vector>   // std::vector（机器码字节容器）。
 
-#include <capstone/arm64.h>
+#include <capstone/arm64.h>  // AArch64 指令/寄存器常量定义。
 #include <capstone/capstone.h>
 
 /*
@@ -25,60 +25,60 @@
 
 // AArch64 -> VM 未编码中间结果。
 // 该结构被 zFunction 的缓存路径与 dump 导出路径复用，属于翻译层与导出层之间的稳定接口。
-struct zInstAsmUnencodedBytecode {
+struct zInstAsmUnencodedBytecode {  // 数据结构声明：承载跨阶段传递的中间状态。
     // 函数前缀指令（与真实 ARM 地址解耦）：
     // 当前用于承载 OP_ALLOC_RETURN / OP_ALLOC_VSP 等运行时预置指令。
     // 注意：该容器中的指令不参与“地址->PC”映射，只在最终扁平指令流中位于最前面。
-    std::vector<uint32_t> preludeWords;
-    uint32_t registerCount = 0;
-    std::vector<uint32_t> regList;
-    uint32_t typeCount = 0;
-    std::vector<uint32_t> typeTags;
-    uint32_t initValueCount = 0;
-    std::map<uint64_t, std::vector<uint32_t>> instByAddress;
-    std::map<uint64_t, std::string> asmByAddress;
-    uint32_t instCount = 0;
-    uint32_t branchCount = 0;
-    std::vector<uint32_t> branchWords;
-    std::vector<uint32_t> branchLookupWords;
-    std::vector<uint64_t> branchLookupAddrs;
-    std::vector<uint64_t> branchAddrWords;
-    bool translationOk = true;
-    std::string translationError;
-};
+    std::vector<uint32_t> preludeWords;  // 状态更新：记录本步骤的中间结果或配置。
+    uint32_t registerCount = 0;  // 状态更新：记录本步骤的中间结果或配置。
+    std::vector<uint32_t> regList;  // 状态更新：记录本步骤的中间结果或配置。
+    uint32_t typeCount = 0;  // 状态更新：记录本步骤的中间结果或配置。
+    std::vector<uint32_t> typeTags;  // 状态更新：记录本步骤的中间结果或配置。
+    uint32_t initValueCount = 0;  // 状态更新：记录本步骤的中间结果或配置。
+    std::map<uint64_t, std::vector<uint32_t>> instByAddress;  // 状态更新：记录本步骤的中间结果或配置。
+    std::map<uint64_t, std::string> asmByAddress;  // 状态更新：记录本步骤的中间结果或配置。
+    uint32_t instCount = 0;  // 状态更新：记录本步骤的中间结果或配置。
+    uint32_t branchCount = 0;  // 状态更新：记录本步骤的中间结果或配置。
+    std::vector<uint32_t> branchWords;  // 状态更新：记录本步骤的中间结果或配置。
+    std::vector<uint32_t> branchLookupWords;  // 状态更新：记录本步骤的中间结果或配置。
+    std::vector<uint64_t> branchLookupAddrs;  // 状态更新：记录本步骤的中间结果或配置。
+    std::vector<uint64_t> branchAddrWords;  // 状态更新：记录本步骤的中间结果或配置。
+    bool translationOk = true;  // 状态更新：记录本步骤的中间结果或配置。
+    std::string translationError;  // 状态更新：记录本步骤的中间结果或配置。
+};  // 状态更新：记录本步骤的中间结果或配置。
 
-class zInstAsm {
-public:
+class zInstAsm {  // 类型声明：定义该组件的职责边界与可见接口。
+public:  // 可见性分区：限定调用方可访问的接口范围。
     // 打开 AArch64 Capstone 句柄。
     // 仅负责 cs_open；若失败会把 handle 置 0 并返回 false。
-    static bool open(csh& handle);
+    static bool open(csh& handle);  // 状态更新：记录本步骤的中间结果或配置。
     // 一步完成“打开句柄 + 开启 detail 模式”。
     // detail 模式是解析操作数(op_count/operands)所必需的前置条件。
-    static bool openWithDetail(csh& handle);
+    static bool openWithDetail(csh& handle);  // 状态更新：记录本步骤的中间结果或配置。
     // 在已打开句柄上启用 CS_OPT_DETAIL。
-    static bool enableDetail(csh handle);
+    static bool enableDetail(csh handle);  // 状态更新：记录本步骤的中间结果或配置。
     // 关闭句柄并清零，防止上层误用悬空句柄。
-    static void close(csh& handle);
+    static void close(csh& handle);  // 状态更新：记录本步骤的中间结果或配置。
 
     // 反汇编 [code, code + size) 区间的全部指令。
     // baseAddr 作为反汇编地址基准写入 cs_insn.address。
-    static size_t disasm(csh handle,
-                         const uint8_t* code,
-                         size_t size,
-                         uint64_t baseAddr,
-                         cs_insn*& outInsn);
+    static size_t disasm(csh handle,  // 参数声明：该参数参与当前语义分发或结果组装。
+                         const uint8_t* code,  // 参数声明：该参数参与当前语义分发或结果组装。
+                         size_t size,  // 参数声明：该参数参与当前语义分发或结果组装。
+                         uint64_t baseAddr,  // 参数声明：该参数参与当前语义分发或结果组装。
+                         cs_insn*& outInsn);  // 状态更新：记录本步骤的中间结果或配置。
     // 释放 disasm() 返回的指令缓存。
-    static void freeInsn(cs_insn* insn, size_t count);
+    static void freeInsn(cs_insn* insn, size_t count);  // 状态更新：记录本步骤的中间结果或配置。
 
     // mnemonic / 文本辅助方法。
     // getMnemonic: 返回助记符字符串（空安全）。
-    static std::string getMnemonic(const cs_insn& insn);
+    static std::string getMnemonic(const cs_insn& insn);  // 状态更新：记录本步骤的中间结果或配置。
     // buildAsmText: 组装 "mnemonic op_str" 可读文本（dump/日志共用）。
-    static std::string buildAsmText(const cs_insn& insn);
+    static std::string buildAsmText(const cs_insn& insn);  // 状态更新：记录本步骤的中间结果或配置。
 
     // 端到端翻译入口：
     // 原始 ARM64 机器码 -> VM 未编码中间字节码结构。
-    static zInstAsmUnencodedBytecode buildUnencodedBytecode(const uint8_t* code, size_t size, uint64_t baseAddr);
+    static zInstAsmUnencodedBytecode buildUnencodedBytecode(const uint8_t* code, size_t size, uint64_t baseAddr);  // 状态更新：记录本步骤的中间结果或配置。
 };
 
 class zInst {

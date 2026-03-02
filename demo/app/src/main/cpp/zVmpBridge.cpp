@@ -12,6 +12,28 @@
 
 #include "demo.h"
 
+// 设计说明（bridge 层）：
+// 1) 本文件不是业务逻辑实现，而是“回归执行器 + 结果聚合器”。
+// 2) 输入侧：固定 case 表定义了函数名、参数和 ref 符号名。
+// 3) 执行侧：每个 append*CaseResult 负责一个返回类型分组。
+// 4) 校验侧：通过 dlsym(RTLD_DEFAULT, *_ref) 获取未加固对照实现。
+// 5) 比较侧：按 expected/actual/status 三列输出统一格式文本。
+// 6) 可读性：结果表宽度固定，便于终端与 UI 两端直接阅读。
+// 7) 可定位性：每个用例同时输出表格行与 logcat 诊断日志。
+// 8) 稳定性：单用例失败不短路，最终 summary 反映全量通过率。
+// 9) 分层边界：JNI 入口只做字符串返回，不承载校验逻辑。
+// 10) 维护策略：新增 fun_* 时，应在 case 表中同步补 entry。
+// 11) 异常策略：ref 符号解析失败时写 N/A，避免中断整批回归。
+// 12) 类型策略：整数/布尔/字符串/容器分组处理，减少 ABI 混淆。
+// 13) 字符串策略：长文本做摘要，既保留信息又防止版面污染。
+// 14) 容器策略：vector 输出摘要而非原文，降低日志体积。
+// 15) 核心目标：快速判断“加固版本是否与对照版本语义等价”。
+// 16) 演进策略：新增返回类型时，优先新增 appendXxxCaseResult 保持结构对称。
+// 17) 对照策略：case 中的 refName 与符号映射显式写死，避免隐式约定失效。
+// 18) 诊断策略：文本结果服务人工浏览，logcat 结果服务快速二分定位。
+// 19) 可测性：所有关键路径都可通过固定参数重复触发，不依赖随机输入。
+// 20) 该层只做“组织与比较”，不替代离线系统对翻译正确性的根因分析。
+
 namespace {
 
 constexpr const char* kLogTag = "VMP_DEMO";
@@ -122,8 +144,13 @@ Fn resolveRefSymbol(const char* symbolName) {
 }
 
 // [VMP_BRIDGE_FUNC] std::string makeSafeString(const char* value)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：统一处理空指针字符串，避免桥接展示层出现崩溃或未定义行为。
+// - 实现思路：把 nullptr 映射为占位文本，确保后续比较与日志输出稳定。
+// - 输入约束：仅做格式层处理，不引入业务语义分支。
+// - 输出约束：输出保持可打印且长度可控，避免污染结果表结构。
+// - 失败处理：该层不抛异常，尽量返回可比较的兜底文本。
+// - 定位方式：所有上层 append* 都复用这些函数，便于统一行为。
+// - 设计取舍：优先保证可读摘要，而不是保留完整原始文本。
 std::string makeSafeString(const char* value) {
     if (value == nullptr) {
         return "(null)";
@@ -132,8 +159,13 @@ std::string makeSafeString(const char* value) {
 }
 
 // [VMP_BRIDGE_FUNC] std::string formatShortText(const std::string& value)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：限制展示列宽，保证长文本不会破坏结果表格对齐。
+// - 实现思路：超过阈值时截断并追加省略号，保留可读摘要用于比对。
+// - 输入约束：仅做格式层处理，不引入业务语义分支。
+// - 输出约束：输出保持可打印且长度可控，避免污染结果表结构。
+// - 失败处理：该层不抛异常，尽量返回可比较的兜底文本。
+// - 定位方式：所有上层 append* 都复用这些函数，便于统一行为。
+// - 设计取舍：优先保证可读摘要，而不是保留完整原始文本。
 std::string formatShortText(const std::string& value) {
     if (value.size() <= 14) {
         return value;
@@ -142,8 +174,13 @@ std::string formatShortText(const std::string& value) {
 }
 
 // [VMP_BRIDGE_FUNC] std::string formatVectorDigest(const std::vector<int>& values)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：将 vector 结果压缩为摘要，避免直接打印大数组造成噪声。
+// - 实现思路：提取长度、求和、xor、首尾元素，兼顾信息量与可读性。
+// - 输入约束：仅做格式层处理，不引入业务语义分支。
+// - 输出约束：输出保持可打印且长度可控，避免污染结果表结构。
+// - 失败处理：该层不抛异常，尽量返回可比较的兜底文本。
+// - 定位方式：所有上层 append* 都复用这些函数，便于统一行为。
+// - 设计取舍：优先保证可读摘要，而不是保留完整原始文本。
 std::string formatVectorDigest(const std::vector<int>& values) {
     long long sum = 0;
     int xorValue = 0;
@@ -160,8 +197,13 @@ std::string formatVectorDigest(const std::vector<int>& values) {
 }
 
 // [VMP_BRIDGE_FUNC] bool appendIntCaseResult(std::ostringstream& oss, const IntCase& c)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：执行单个类型用例的 expected/actual 对比，并输出统一格式行。
+// - 实现思路：先通过 dlsym 获取 *_ref 基线，再调用被测函数并记录 PASS/FAIL。
+// - 输入约束：参数来自固定 case 表，避免 JNI 层注入不稳定输入形态。
+// - 失败处理：若 *_ref 解析失败则写入 N/A 并返回 false，但不中断总流程。
+// - 定位方式：同时写表格行与 logcat，便于按函数名精确定位偏差来源。
+// - 稳定性：表格列宽固定，确保文本结果可直接用于回归比对。
+// - 设计取舍：每种返回类型独立处理，减少模板分支带来的可读性负担。
 bool appendIntCaseResult(std::ostringstream& oss, const IntCase& c) {
     BinaryFn refFn = resolveRefSymbol<BinaryFn>(c.refName);
     if (refFn == nullptr) {
@@ -192,8 +234,13 @@ bool appendIntCaseResult(std::ostringstream& oss, const IntCase& c) {
 }
 
 // [VMP_BRIDGE_FUNC] bool appendI64CaseResult(std::ostringstream& oss, const I64Case& c)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：执行单个类型用例的 expected/actual 对比，并输出统一格式行。
+// - 实现思路：先通过 dlsym 获取 *_ref 基线，再调用被测函数并记录 PASS/FAIL。
+// - 输入约束：参数来自固定 case 表，避免 JNI 层注入不稳定输入形态。
+// - 失败处理：若 *_ref 解析失败则写入 N/A 并返回 false，但不中断总流程。
+// - 定位方式：同时写表格行与 logcat，便于按函数名精确定位偏差来源。
+// - 稳定性：表格列宽固定，确保文本结果可直接用于回归比对。
+// - 设计取舍：每种返回类型独立处理，减少模板分支带来的可读性负担。
 bool appendI64CaseResult(std::ostringstream& oss, const I64Case& c) {
     I64Fn refFn = resolveRefSymbol<I64Fn>(c.refName);
     if (refFn == nullptr) {
@@ -224,8 +271,13 @@ bool appendI64CaseResult(std::ostringstream& oss, const I64Case& c) {
 }
 
 // [VMP_BRIDGE_FUNC] bool appendU64CaseResult(std::ostringstream& oss, const U64Case& c)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：执行单个类型用例的 expected/actual 对比，并输出统一格式行。
+// - 实现思路：先通过 dlsym 获取 *_ref 基线，再调用被测函数并记录 PASS/FAIL。
+// - 输入约束：参数来自固定 case 表，避免 JNI 层注入不稳定输入形态。
+// - 失败处理：若 *_ref 解析失败则写入 N/A 并返回 false，但不中断总流程。
+// - 定位方式：同时写表格行与 logcat，便于按函数名精确定位偏差来源。
+// - 稳定性：表格列宽固定，确保文本结果可直接用于回归比对。
+// - 设计取舍：每种返回类型独立处理，减少模板分支带来的可读性负担。
 bool appendU64CaseResult(std::ostringstream& oss, const U64Case& c) {
     U64Fn refFn = resolveRefSymbol<U64Fn>(c.refName);
     if (refFn == nullptr) {
@@ -256,8 +308,13 @@ bool appendU64CaseResult(std::ostringstream& oss, const U64Case& c) {
 }
 
 // [VMP_BRIDGE_FUNC] bool appendBoolCaseResult(std::ostringstream& oss, const BoolCase& c)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：执行单个类型用例的 expected/actual 对比，并输出统一格式行。
+// - 实现思路：先通过 dlsym 获取 *_ref 基线，再调用被测函数并记录 PASS/FAIL。
+// - 输入约束：参数来自固定 case 表，避免 JNI 层注入不稳定输入形态。
+// - 失败处理：若 *_ref 解析失败则写入 N/A 并返回 false，但不中断总流程。
+// - 定位方式：同时写表格行与 logcat，便于按函数名精确定位偏差来源。
+// - 稳定性：表格列宽固定，确保文本结果可直接用于回归比对。
+// - 设计取舍：每种返回类型独立处理，减少模板分支带来的可读性负担。
 bool appendBoolCaseResult(std::ostringstream& oss, const BoolCase& c) {
     BoolFn refFn = resolveRefSymbol<BoolFn>(c.refName);
     if (refFn == nullptr) {
@@ -288,8 +345,13 @@ bool appendBoolCaseResult(std::ostringstream& oss, const BoolCase& c) {
 }
 
 // [VMP_BRIDGE_FUNC] bool appendI16CaseResult(std::ostringstream& oss, const I16Case& c)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：执行单个类型用例的 expected/actual 对比，并输出统一格式行。
+// - 实现思路：先通过 dlsym 获取 *_ref 基线，再调用被测函数并记录 PASS/FAIL。
+// - 输入约束：参数来自固定 case 表，避免 JNI 层注入不稳定输入形态。
+// - 失败处理：若 *_ref 解析失败则写入 N/A 并返回 false，但不中断总流程。
+// - 定位方式：同时写表格行与 logcat，便于按函数名精确定位偏差来源。
+// - 稳定性：表格列宽固定，确保文本结果可直接用于回归比对。
+// - 设计取舍：每种返回类型独立处理，减少模板分支带来的可读性负担。
 bool appendI16CaseResult(std::ostringstream& oss, const I16Case& c) {
     I16Fn refFn = resolveRefSymbol<I16Fn>(c.refName);
     if (refFn == nullptr) {
@@ -320,8 +382,13 @@ bool appendI16CaseResult(std::ostringstream& oss, const I16Case& c) {
 }
 
 // [VMP_BRIDGE_FUNC] bool appendU16CaseResult(std::ostringstream& oss, const U16Case& c)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：执行单个类型用例的 expected/actual 对比，并输出统一格式行。
+// - 实现思路：先通过 dlsym 获取 *_ref 基线，再调用被测函数并记录 PASS/FAIL。
+// - 输入约束：参数来自固定 case 表，避免 JNI 层注入不稳定输入形态。
+// - 失败处理：若 *_ref 解析失败则写入 N/A 并返回 false，但不中断总流程。
+// - 定位方式：同时写表格行与 logcat，便于按函数名精确定位偏差来源。
+// - 稳定性：表格列宽固定，确保文本结果可直接用于回归比对。
+// - 设计取舍：每种返回类型独立处理，减少模板分支带来的可读性负担。
 bool appendU16CaseResult(std::ostringstream& oss, const U16Case& c) {
     U16Fn refFn = resolveRefSymbol<U16Fn>(c.refName);
     if (refFn == nullptr) {
@@ -352,8 +419,13 @@ bool appendU16CaseResult(std::ostringstream& oss, const U16Case& c) {
 }
 
 // [VMP_BRIDGE_FUNC] bool appendI8CaseResult(std::ostringstream& oss, const I8Case& c)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：执行单个类型用例的 expected/actual 对比，并输出统一格式行。
+// - 实现思路：先通过 dlsym 获取 *_ref 基线，再调用被测函数并记录 PASS/FAIL。
+// - 输入约束：参数来自固定 case 表，避免 JNI 层注入不稳定输入形态。
+// - 失败处理：若 *_ref 解析失败则写入 N/A 并返回 false，但不中断总流程。
+// - 定位方式：同时写表格行与 logcat，便于按函数名精确定位偏差来源。
+// - 稳定性：表格列宽固定，确保文本结果可直接用于回归比对。
+// - 设计取舍：每种返回类型独立处理，减少模板分支带来的可读性负担。
 bool appendI8CaseResult(std::ostringstream& oss, const I8Case& c) {
     I8Fn refFn = resolveRefSymbol<I8Fn>(c.refName);
     if (refFn == nullptr) {
@@ -384,8 +456,13 @@ bool appendI8CaseResult(std::ostringstream& oss, const I8Case& c) {
 }
 
 // [VMP_BRIDGE_FUNC] bool appendCstrCaseResult(std::ostringstream& oss, const CstrCase& c)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：执行单个类型用例的 expected/actual 对比，并输出统一格式行。
+// - 实现思路：先通过 dlsym 获取 *_ref 基线，再调用被测函数并记录 PASS/FAIL。
+// - 输入约束：参数来自固定 case 表，避免 JNI 层注入不稳定输入形态。
+// - 失败处理：若 *_ref 解析失败则写入 N/A 并返回 false，但不中断总流程。
+// - 定位方式：同时写表格行与 logcat，便于按函数名精确定位偏差来源。
+// - 稳定性：表格列宽固定，确保文本结果可直接用于回归比对。
+// - 设计取舍：每种返回类型独立处理，减少模板分支带来的可读性负担。
 bool appendCstrCaseResult(std::ostringstream& oss, const CstrCase& c) {
     CstrFn refFn = resolveRefSymbol<CstrFn>(c.refName);
     if (refFn == nullptr) {
@@ -416,8 +493,13 @@ bool appendCstrCaseResult(std::ostringstream& oss, const CstrCase& c) {
 }
 
 // [VMP_BRIDGE_FUNC] bool appendStringCaseResult(std::ostringstream& oss, const StringCase& c)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：执行单个类型用例的 expected/actual 对比，并输出统一格式行。
+// - 实现思路：先通过 dlsym 获取 *_ref 基线，再调用被测函数并记录 PASS/FAIL。
+// - 输入约束：参数来自固定 case 表，避免 JNI 层注入不稳定输入形态。
+// - 失败处理：若 *_ref 解析失败则写入 N/A 并返回 false，但不中断总流程。
+// - 定位方式：同时写表格行与 logcat，便于按函数名精确定位偏差来源。
+// - 稳定性：表格列宽固定，确保文本结果可直接用于回归比对。
+// - 设计取舍：每种返回类型独立处理，减少模板分支带来的可读性负担。
 bool appendStringCaseResult(std::ostringstream& oss, const StringCase& c) {
     StringFn refFn = resolveRefSymbol<StringFn>(c.refName);
     if (refFn == nullptr) {
@@ -448,8 +530,13 @@ bool appendStringCaseResult(std::ostringstream& oss, const StringCase& c) {
 }
 
 // [VMP_BRIDGE_FUNC] bool appendVectorCaseResult(std::ostringstream& oss, const VectorCase& c)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：执行单个类型用例的 expected/actual 对比，并输出统一格式行。
+// - 实现思路：先通过 dlsym 获取 *_ref 基线，再调用被测函数并记录 PASS/FAIL。
+// - 输入约束：参数来自固定 case 表，避免 JNI 层注入不稳定输入形态。
+// - 失败处理：若 *_ref 解析失败则写入 N/A 并返回 false，但不中断总流程。
+// - 定位方式：同时写表格行与 logcat，便于按函数名精确定位偏差来源。
+// - 稳定性：表格列宽固定，确保文本结果可直接用于回归比对。
+// - 设计取舍：每种返回类型独立处理，减少模板分支带来的可读性负担。
 bool appendVectorCaseResult(std::ostringstream& oss, const VectorCase& c) {
     VectorFn refFn = resolveRefSymbol<VectorFn>(c.refName);
     if (refFn == nullptr) {
@@ -482,8 +569,13 @@ bool appendVectorCaseResult(std::ostringstream& oss, const VectorCase& c) {
 }
 
 // [VMP_BRIDGE_FUNC] std::string buildProtectResultText()
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：统一编排所有用例执行与汇总，形成可直接展示的回归报表。
+// - 实现思路：按类型分组迭代 append*CaseResult，最终输出 PASS 统计。
+// - 输入约束：用例清单在函数内显式定义，保证执行顺序与输出顺序稳定。
+// - 输出约束：统一 expected/actual/status 三列，便于人工和脚本双重读取。
+// - 失败处理：单用例失败不会短路，最终以 summary 呈现全量通过率。
+// - 定位方式：按类型分组执行，能快速缩小到具体 ABI 或指令分组。
+// - 设计取舍：可读性优先，接受少量重复代码换取调试效率。
 std::string buildProtectResultText() {
     std::ostringstream oss;
     oss << "demo protect results\n";
@@ -656,8 +748,13 @@ std::string buildProtectResultText() {
 
 extern "C" JNIEXPORT jstring JNICALL
 // [VMP_BRIDGE_FUNC] Java_com_example_demo_MainActivity_getProtectResults(JNIEnv* env, jobject /*thiz*/)
-// - ??????????????????????
-// - ???????????????????????
+// - 覆盖点：提供 JNI 入口，把 native 侧比对结果返回给 Java 界面层。
+// - 实现思路：调用汇总函数构造文本，再通过 NewStringUTF 回传。
+// - 输入约束：JNI 层不接收外部参数，确保展示文本由 native 内部完全决定。
+// - 输出约束：始终返回 UTF-8 字符串，供 UI 层直接显示。
+// - 失败处理：若内部比较失败也返回文本结果，不在 JNI 层抛异常。
+// - 定位方式：Java 仅负责展示，问题定位仍回到 native 报表与日志。
+// - 设计取舍：保持 JNI 入口极薄，减少跨层维护成本。
 Java_com_example_demo_MainActivity_getProtectResults(JNIEnv* env, jobject /*thiz*/) {
     const std::string resultText = buildProtectResultText();
     return env->NewStringUTF(resultText.c_str());

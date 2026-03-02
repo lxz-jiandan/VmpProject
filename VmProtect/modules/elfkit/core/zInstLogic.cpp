@@ -5,44 +5,44 @@
  */
 #include "zInst.h"
 
-namespace {
+namespace {  // 命名空间入口：收敛内部实现细节，避免对外暴露辅助符号。
 
 // 统一生成 EXTR 类语义：dst = (hi:lo) >> lsb，并按目标宽度收口。
-bool tryEmitExtrLike(
-    std::vector<uint32_t>& opcode_list,
-    std::vector<uint32_t>& reg_id_list,
-    std::vector<uint32_t>& type_id_list,
-    int dst_reg,
-    int hi_reg,
-    int lo_reg,
-    uint32_t lsb
-) {
-    if (!isArm64GpReg(dst_reg) || !isArm64GpReg(hi_reg) || !isArm64GpReg(lo_reg)) {
-        return false;
+bool tryEmitExtrLike(  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+    std::vector<uint32_t>& opcode_list,  // 参数声明：该参数参与当前语义分发或结果组装。
+    std::vector<uint32_t>& reg_id_list,  // 参数声明：该参数参与当前语义分发或结果组装。
+    std::vector<uint32_t>& type_id_list,  // 参数声明：该参数参与当前语义分发或结果组装。
+    int dst_reg,  // 参数声明：该参数参与当前语义分发或结果组装。
+    int hi_reg,  // 参数声明：该参数参与当前语义分发或结果组装。
+    int lo_reg,  // 参数声明：该参数参与当前语义分发或结果组装。
+    uint32_t lsb  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+) {  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+    if (!isArm64GpReg(dst_reg) || !isArm64GpReg(hi_reg) || !isArm64GpReg(lo_reg)) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return false;  // 失败出口：当前条件下中止并上抛错误。
     }
-    const uint32_t bit_width = isArm64WReg(dst_reg) ? 32u : 64u;
-    const uint32_t safe_lsb = lsb % bit_width;
-    const uint32_t type_idx = isArm64WReg(dst_reg)
-                              ? getOrAddTypeTag(type_id_list, TYPE_TAG_INT32_UNSIGNED)
-                              : getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_UNSIGNED);
-    const uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(dst_reg));
-    const uint32_t hi_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(hi_reg));
-    const uint32_t lo_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(lo_reg));
-    if (safe_lsb == 0u) {
-        opcode_list = { OP_MOV, lo_idx, dst_idx };
-        return true;
+    const uint32_t bit_width = isArm64WReg(dst_reg) ? 32u : 64u;  // 状态更新：记录本步骤的中间结果或配置。
+    const uint32_t safe_lsb = lsb % bit_width;  // 状态更新：记录本步骤的中间结果或配置。
+    const uint32_t type_idx = isArm64WReg(dst_reg)  // 声明行：保持接口签名与实现语义对齐。
+                              ? getOrAddTypeTag(type_id_list, TYPE_TAG_INT32_UNSIGNED)  // 声明行：保持接口签名与实现语义对齐。
+                              : getOrAddTypeTag(type_id_list, TYPE_TAG_INT64_UNSIGNED);  // 状态更新：记录本步骤的中间结果或配置。
+    const uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(dst_reg));  // 状态更新：记录本步骤的中间结果或配置。
+    const uint32_t hi_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(hi_reg));  // 状态更新：记录本步骤的中间结果或配置。
+    const uint32_t lo_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(lo_reg));  // 状态更新：记录本步骤的中间结果或配置。
+    if (safe_lsb == 0u) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        opcode_list = { OP_MOV, lo_idx, dst_idx };  // 状态更新：记录本步骤的中间结果或配置。
+        return true;  // 返回阶段：输出当前路径计算结果。
     }
-    const uint32_t tmp_lo = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X16));
-    const uint32_t tmp_hi = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X17));
-    opcode_list = {
-        OP_BINARY_IMM, BIN_LSR, type_idx, lo_idx, safe_lsb, tmp_lo,
-        OP_BINARY_IMM, BIN_SHL, type_idx, hi_idx, (bit_width - safe_lsb), tmp_hi,
-        OP_BINARY, BIN_OR, type_idx, tmp_lo, tmp_hi, dst_idx
-    };
-    if (isArm64WReg(dst_reg)) {
-        opcode_list.push_back(OP_BINARY_IMM);
-        opcode_list.push_back(BIN_AND);
-        opcode_list.push_back(type_idx);
+    const uint32_t tmp_lo = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X16));  // 状态更新：记录本步骤的中间结果或配置。
+    const uint32_t tmp_hi = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X17));  // 状态更新：记录本步骤的中间结果或配置。
+    opcode_list = {  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+        OP_BINARY_IMM, BIN_LSR, type_idx, lo_idx, safe_lsb, tmp_lo,  // 参数声明：该参数参与当前语义分发或结果组装。
+        OP_BINARY_IMM, BIN_SHL, type_idx, hi_idx, (bit_width - safe_lsb), tmp_hi,  // 参数声明：该参数参与当前语义分发或结果组装。
+        OP_BINARY, BIN_OR, type_idx, tmp_lo, tmp_hi, dst_idx  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+    };  // 状态更新：记录本步骤的中间结果或配置。
+    if (isArm64WReg(dst_reg)) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        opcode_list.push_back(OP_BINARY_IMM);  // 状态更新：记录本步骤的中间结果或配置。
+        opcode_list.push_back(BIN_AND);  // 状态更新：记录本步骤的中间结果或配置。
+        opcode_list.push_back(type_idx);  // 状态更新：记录本步骤的中间结果或配置。
         opcode_list.push_back(dst_idx);
         opcode_list.push_back(0xFFFFFFFFu);
         opcode_list.push_back(dst_idx);
@@ -125,12 +125,12 @@ bool dispatchArm64LogicCase(
  * - Grouped by instruction domain.
  */
 
-            case ARM64_INS_SXTB:
-            case ARM64_INS_SXTH:
-            case ARM64_INS_SXTW:
-            case ARM64_INS_UXTB:
-            case ARM64_INS_UXTH:
-            case ARM64_INS_UXTW: {
+            case ARM64_INS_SXTB: // 指令分支：ARM64_INS_SXTB，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_SXTH: // 指令分支：ARM64_INS_SXTH，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_SXTW: // 指令分支：ARM64_INS_SXTW，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_UXTB: // 指令分支：ARM64_INS_UXTB，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_UXTH: // 指令分支：ARM64_INS_UXTH，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_UXTW: { // 指令分支：ARM64_INS_UXTW，在此分支内完成等价 VM 语义映射。
                 // sxt*/uxt*：按源位宽做符号/零扩展后写入目标寄存器。
                 if (op_count >= 2 &&
                     ops[0].type == AARCH64_OP_REG &&
@@ -138,27 +138,27 @@ bool dispatchArm64LogicCase(
                     bool sign_extend = false;
                     uint32_t src_type_tag = TYPE_TAG_INT32_SIGNED_2;
                     switch (id) {
-                        case ARM64_INS_SXTB:
+                        case ARM64_INS_SXTB: // 指令分支：ARM64_INS_SXTB，在此分支内完成等价 VM 语义映射。
                             sign_extend = true;
                             src_type_tag = TYPE_TAG_INT8_SIGNED;
                             break;
-                        case ARM64_INS_SXTH:
+                        case ARM64_INS_SXTH: // 指令分支：ARM64_INS_SXTH，在此分支内完成等价 VM 语义映射。
                             sign_extend = true;
                             src_type_tag = TYPE_TAG_INT16_SIGNED;
                             break;
-                        case ARM64_INS_SXTW:
+                        case ARM64_INS_SXTW: // 指令分支：ARM64_INS_SXTW，在此分支内完成等价 VM 语义映射。
                             sign_extend = true;
                             src_type_tag = TYPE_TAG_INT32_SIGNED_2;
                             break;
-                        case ARM64_INS_UXTB:
+                        case ARM64_INS_UXTB: // 指令分支：ARM64_INS_UXTB，在此分支内完成等价 VM 语义映射。
                             sign_extend = false;
                             src_type_tag = TYPE_TAG_INT8_UNSIGNED;
                             break;
-                        case ARM64_INS_UXTH:
+                        case ARM64_INS_UXTH: // 指令分支：ARM64_INS_UXTH，在此分支内完成等价 VM 语义映射。
                             sign_extend = false;
                             src_type_tag = TYPE_TAG_INT16_UNSIGNED;
                             break;
-                        case ARM64_INS_UXTW:
+                        case ARM64_INS_UXTW: // 指令分支：ARM64_INS_UXTW，在此分支内完成等价 VM 语义映射。
                             sign_extend = false;
                             src_type_tag = TYPE_TAG_INT32_UNSIGNED;
                             break;
@@ -179,8 +179,8 @@ bool dispatchArm64LogicCase(
             }
             // 位提取别名：UBFX/SBFX。
 
-            case ARM64_INS_ALIAS_UBFX:
-            case ARM64_INS_ALIAS_SBFX: {
+            case ARM64_INS_ALIAS_UBFX: // 指令分支：ARM64_INS_ALIAS_UBFX，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_ALIAS_SBFX: { // 指令分支：ARM64_INS_ALIAS_SBFX，在此分支内完成等价 VM 语义映射。
                 // ubfx/sbfx dst, src, #lsb, #width
                 if (op_count >= 4 &&
                     ops[0].type == AARCH64_OP_REG &&
@@ -205,10 +205,10 @@ bool dispatchArm64LogicCase(
             }
             // 位域移动：UBFM/SBFM（先覆盖 non-wrap 常见形态）。
 
-            case ARM64_INS_UBFM:
-            case ARM64_INS_SBFM:
-            case ARM64_INS_ALIAS_UBFIZ:
-            case ARM64_INS_ALIAS_SBFIZ: {
+            case ARM64_INS_UBFM: // 指令分支：ARM64_INS_UBFM，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_SBFM: // 指令分支：ARM64_INS_SBFM，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_ALIAS_UBFIZ: // 指令分支：ARM64_INS_ALIAS_UBFIZ，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_ALIAS_SBFIZ: { // 指令分支：ARM64_INS_ALIAS_SBFIZ，在此分支内完成等价 VM 语义映射。
                 const bool is_ubfm_family = (id == ARM64_INS_UBFM || id == ARM64_INS_ALIAS_UBFIZ);
                 const bool is_insert_alias = (id == ARM64_INS_ALIAS_UBFIZ || id == ARM64_INS_ALIAS_SBFIZ);
                 // 先处理别名短操作数形态（不依赖 mnemonic 字符串）：
@@ -341,7 +341,7 @@ bool dispatchArm64LogicCase(
             // 直接调用：BL 先记录目标地址，导出阶段统一 remap。
 
             // 搬运类：MOV/别名 -> tryEmitMovLike。
-            case ARM64_INS_MOV: {
+            case ARM64_INS_MOV: { // 指令分支：ARM64_INS_MOV，在此分支内完成等价 VM 语义映射。
                 // mov（含别名形态）统一交给 tryEmitMovLike 处理。
                 if (op_count >= 2 && ops && ops[0].type == AARCH64_OP_REG) {
                     if (!isArm64GpReg(ops[0].reg)) {
@@ -360,7 +360,7 @@ bool dispatchArm64LogicCase(
             }
 
             // SIMD 立即数搬运：当前执行器不建模向量寄存器，保守降级为 NOP 以保证可翻译。
-            case ARM64_INS_MOVI: {
+            case ARM64_INS_MOVI: { // 指令分支：ARM64_INS_MOVI，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 1 && ops && ops[0].type == AARCH64_OP_REG) {
                     if (!isArm64GpReg(ops[0].reg)) {
                         opcode_list = { OP_NOP };
@@ -371,8 +371,8 @@ bool dispatchArm64LogicCase(
                 break;
             }
 
-            case ARM64_INS_MOVZ:
-            case ARM64_INS_MOVN: {
+            case ARM64_INS_MOVZ: // 指令分支：ARM64_INS_MOVZ，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_MOVN: { // 指令分支：ARM64_INS_MOVN，在此分支内完成等价 VM 语义映射。
                 // MOVZ/MOVN：构造立即数并写入目标寄存器。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_IMM) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(ops[0].reg));
@@ -393,7 +393,7 @@ bool dispatchArm64LogicCase(
             }
 
             // 位拼接提取：EXTR dst, hi, lo, lsb。
-            case ARM64_INS_EXTR: {
+            case ARM64_INS_EXTR: { // 指令分支：ARM64_INS_EXTR，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 4 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -412,8 +412,8 @@ bool dispatchArm64LogicCase(
                 break;
             }
 
-            case ARM64_INS_AND:
-            case ARM64_INS_ANDS: {
+            case ARM64_INS_AND: // 指令分支：ARM64_INS_AND，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_ANDS: { // 指令分支：ARM64_INS_ANDS，在此分支内完成等价 VM 语义映射。
                 // ANDS 需要更新条件标志，这里通过扩展位 BIN_UPDATE_FLAGS 标记。
                 static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
                 // 形态：and(s) dst, lhs, rhs_or_imm。
@@ -439,7 +439,7 @@ bool dispatchArm64LogicCase(
             }
 
             // 位运算/别名类：ORR 兼容 mov alias。
-            case ARM64_INS_ORR: {
+            case ARM64_INS_ORR: { // 指令分支：ARM64_INS_ORR，在此分支内完成等价 VM 语义映射。
                 // ORR 既可能是真正位或，也可能是 mov alias（含零寄存器）。
                 // Capstone 在别名场景下可能直接给出两操作数：orr-id + "mov dst, src"。
                 if (op_count == 2 &&
@@ -474,7 +474,7 @@ bool dispatchArm64LogicCase(
             }
 
             // 位运算：ORN -> dst = lhs | (~rhs)。
-            case ARM64_INS_ORN: {
+            case ARM64_INS_ORN: { // 指令分支：ARM64_INS_ORN，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -493,7 +493,7 @@ bool dispatchArm64LogicCase(
             }
 
             // 位运算：BIC -> dst = lhs & (~rhs)。
-            case ARM64_INS_BIC: {
+            case ARM64_INS_BIC: { // 指令分支：ARM64_INS_BIC，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -512,7 +512,7 @@ bool dispatchArm64LogicCase(
             }
 
             // 位运算+标志：BICS -> dst = lhs & (~rhs)，并更新 NZCV。
-            case ARM64_INS_BICS: {
+            case ARM64_INS_BICS: { // 指令分支：ARM64_INS_BICS，在此分支内完成等价 VM 语义映射。
                 static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
@@ -532,7 +532,7 @@ bool dispatchArm64LogicCase(
             }
 
             // 位运算：EON -> dst = lhs xor (~rhs)。
-            case ARM64_INS_EON: {
+            case ARM64_INS_EON: { // 指令分支：ARM64_INS_EON，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -551,7 +551,7 @@ bool dispatchArm64LogicCase(
             }
 
             // 位运算：EOR -> OP_BINARY/OP_BINARY_IMM(BIN_XOR)。
-            case ARM64_INS_EOR: {
+            case ARM64_INS_EOR: { // 指令分支：ARM64_INS_EOR，在此分支内完成等价 VM 语义映射。
                 // EOR: dst = lhs xor rhs/imm（含寄存器 LSL 扩展）。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
@@ -602,7 +602,7 @@ bool dispatchArm64LogicCase(
             }
 
             // 字节重排：REV（32/64bit 全字节反转）。
-            case ARM64_INS_REV: {
+            case ARM64_INS_REV: { // 指令分支：ARM64_INS_REV，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     (void)tryEmitReverseBytesLike(
                         opcode_list,
@@ -617,7 +617,7 @@ bool dispatchArm64LogicCase(
             }
 
             // 字节重排：REV16（每个 16bit 半字内交换字节）。
-            case ARM64_INS_REV16: {
+            case ARM64_INS_REV16: { // 指令分支：ARM64_INS_REV16，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     (void)tryEmitReverseBytesLike(
                         opcode_list,

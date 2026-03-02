@@ -11,6 +11,10 @@
 // 6) 若漏配宏，回归会表现为 dlsym 失败或结果列缺失。
 // 7) include native-lib.cpp 的顺序需保持在宏定义之后。
 // 8) 该策略可避免手写一份 ref 副本导致维护漂移。
+// 9) ref 版本不参与加固，职责是提供“语义基线”而不是性能基线。
+// 10) 当 fun_* 与 fun_*_ref 出现差异时，优先怀疑翻译链路或符号接管链路。
+// 11) 该文件按“一行一个映射”展开，便于 review 时快速检查漏项。
+// 12) 若未来拆分 native-lib.cpp，需保持映射与 include 关系的一致性。
 
 #define fun_add fun_add_ref
 #define fun_for fun_for_ref

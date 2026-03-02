@@ -11,6 +11,7 @@ plugins {
 // - packagingOptions 中的配置用于保证 so 尾部结构不被打包流程破坏。
 // - 本脚本中的路径解析策略默认以最近构建产物为准，适配多变体场景。
 // - 建议任何路径/任务依赖变更都同步更新回归脚本和 README 说明。
+// - prepareProtectedDemoSo 的存在是为了把“受保护产物安装”显式化、可观测化。
 
 // 每次回归可注入构建戳，避免 Windows 下旧目录句柄占用导致清理失败。
 def vmpDemoBuildStamp = project.findProperty("vmpDemoBuildStamp") as String

@@ -5,6 +5,32 @@
 #include <android/log.h>
 #include "demo.h"
 
+// 设计说明（demo native 用例集）：
+// 1) 本文件承载 fun_* 被测实现，是加固输入与运行时对照的核心样本集。
+// 2) 用例目标不是追求算法复杂度，而是覆盖翻译链路中的关键语义组合。
+// 3) 覆盖维度包含：算术、循环、条件分支、函数调用、间接调用、全局状态访问。
+// 4) 还覆盖了：C++ 返回类型、容器返回、窄整数返回、布尔返回与 64 位返回。
+// 5) 指令维度包含 AArch64 的扩展、位域、条件选择、乘加除法和访存指令路径。
+// 6) 内存语义维度包含 release/acquire 原子读写，确保跨线程可见性语义可回归。
+// 7) 设计原则一：输入固定、流程确定，保证偏差出现时可复现可定位。
+// 8) 设计原则二：每个函数只验证一类主语义，避免单函数混杂过多变量。
+// 9) 设计原则三：保留 fallback C++ 等价实现，便于非 AArch64 也能编译与验证。
+// 10) helper_* 用于构造稳定的间接调用目标，避免函数表路径失真。
+// 11) global/static 组用于验证数据段读写和静态状态更新语义。
+// 12) ret_* 组用于覆盖不同 ABI 返回路径，减少仅 int 返回造成的盲区。
+// 13) atomic_* 组用于覆盖不同位宽原子操作，检验内存序处理是否一致。
+// 14) 本文件与 native-lib-ref.cpp 通过宏重命名形成同源对照，降低测试偏差。
+// 15) bridge 层会逐项对比 fun_* 与 fun_*_ref，输出 expected/actual 报表。
+// 16) 若新增 fun_*，应同步补充声明、ref 映射与 bridge case，避免覆盖缺口。
+// 17) 命名上优先体现“验证点”而非业务含义，便于与 README 的能力分组对应。
+// 18) 每个用例都尽量保持副作用可控，避免跨用例状态污染影响判定。
+// 19) 对全局状态有写操作的函数，尽量在返回值中折叠写后结果以提升可观测性。
+// 20) 对指令回归函数，AArch64 分支强调“触发目标指令”，fallback 分支强调“语义等价”。
+// 21) 对 ABI 回归函数，返回值形态优先覆盖寄存器传递差异明显的类型组合。
+// 22) 对控制流回归函数，优先构造多路径汇合点，放大分支选择错误带来的差异。
+// 23) 对内存访问回归函数，尽量覆盖读取、写入、符号扩展和步进访问四类行为。
+// 24) 以上分组并非互斥，函数可在主验证点之外附带覆盖次级语义。
+
 #define DEMO_TEST_EXPORT extern "C" __attribute__((visibility("default"))) __attribute__((used)) __attribute__((noinline)) __attribute__((optnone))
 
 namespace {
@@ -36,7 +62,8 @@ public:
 int StaticScaleBox::s_scale = 3;
 
 // [VMP_DEMO_HELPER] helper_abs_diff
-// - ???????????????????????
+// - 覆盖点：提供可复用的小型算术 helper，给间接调用和函数表分发提供稳定目标。
+// - 实现思路：保持纯计算和低副作用，让翻译链路能稳定观察 call 边界与返回值。
 int helper_abs_diff(int lhs, int rhs) {
     if (lhs > rhs) {
         return lhs - rhs;
@@ -45,25 +72,29 @@ int helper_abs_diff(int lhs, int rhs) {
 }
 
 // [VMP_DEMO_HELPER] helper_mul_add
-// - ???????????????????????
+// - 覆盖点：提供可复用的小型算术 helper，给间接调用和函数表分发提供稳定目标。
+// - 实现思路：保持纯计算和低副作用，让翻译链路能稳定观察 call 边界与返回值。
 int helper_mul_add(int lhs, int rhs) {
     return lhs * rhs + lhs - rhs;
 }
 
 // [VMP_DEMO_HELPER] helper_route0
-// - ???????????????????????
+// - 覆盖点：提供可复用的小型算术 helper，给间接调用和函数表分发提供稳定目标。
+// - 实现思路：保持纯计算和低副作用，让翻译链路能稳定观察 call 边界与返回值。
 int helper_route0(int x, int y) {
     return x + y + 1;
 }
 
 // [VMP_DEMO_HELPER] helper_route1
-// - ???????????????????????
+// - 覆盖点：提供可复用的小型算术 helper，给间接调用和函数表分发提供稳定目标。
+// - 实现思路：保持纯计算和低副作用，让翻译链路能稳定观察 call 边界与返回值。
 int helper_route1(int x, int y) {
     return x * y + 2;
 }
 
 // [VMP_DEMO_HELPER] helper_route2
-// - ???????????????????????
+// - 覆盖点：提供可复用的小型算术 helper，给间接调用和函数表分发提供稳定目标。
+// - 实现思路：保持纯计算和低副作用，让翻译链路能稳定观察 call 边界与返回值。
 int helper_route2(int x, int y) {
     return x - y + 3;
 }
@@ -71,15 +102,15 @@ int helper_route2(int x, int y) {
 } // namespace
 
 // [VMP_DEMO_CASE] fun_add
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖算术与循环主路径，作为回归基线验证加固前后结果一致性。
+// - 实现思路：使用确定性输入与固定迭代流程，确保出现偏差时可快速复现定位。
 extern "C" int fun_add(int a, int b) {
     return a + b;
 }
 
 // [VMP_DEMO_CASE] fun_for
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖算术与循环主路径，作为回归基线验证加固前后结果一致性。
+// - 实现思路：使用确定性输入与固定迭代流程，确保出现偏差时可快速复现定位。
 extern "C" int fun_for(int a, int b) {
     int ret = 0;
     for (int i = 0; i < 5; i++) {
@@ -90,8 +121,8 @@ extern "C" int fun_for(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_for_add
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖算术与循环主路径，作为回归基线验证加固前后结果一致性。
+// - 实现思路：使用确定性输入与固定迭代流程，确保出现偏差时可快速复现定位。
 extern "C" int fun_for_add(int a, int b) {
     int ret = 0;
     for (int i = 0; i < 5; i++) {
@@ -102,8 +133,8 @@ extern "C" int fun_for_add(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_if_sub
-// - ?????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件分支与标志位驱动路径，检验分支选择与短路语义。
+// - 实现思路：设计互斥分支并在汇合点统一折叠输出，方便对照实现定位差异。
 extern "C" int fun_if_sub(int a, int b) {
     if (a > b) {
         return a - b;
@@ -112,8 +143,8 @@ extern "C" int fun_if_sub(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_countdown_muladd
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖算术与循环主路径，作为回归基线验证加固前后结果一致性。
+// - 实现思路：使用确定性输入与固定迭代流程，确保出现偏差时可快速复现定位。
 extern "C" int fun_countdown_muladd(int a, int b) {
     int ret = 0;
     int n = a;
@@ -125,8 +156,8 @@ extern "C" int fun_countdown_muladd(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_loop_call_mix
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖算术与循环主路径，作为回归基线验证加固前后结果一致性。
+// - 实现思路：使用确定性输入与固定迭代流程，确保出现偏差时可快速复现定位。
 extern "C" int fun_loop_call_mix(int a, int b) {
     int ret = 0;
     for (int i = 0; i < 4; i++) {
@@ -140,8 +171,8 @@ extern "C" int fun_loop_call_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_call_chain
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：串联多个已导出函数，验证跨函数调用链在加固后仍保持语义一致。
+// - 实现思路：顺序组合 fun_for、fun_add、fun_if_sub 的结果，构造可直观看差异的聚合返回。
 extern "C" int fun_call_chain(int a, int b) {
     int first = fun_for(a, b);
     int second = fun_add(a, b);
@@ -150,8 +181,8 @@ extern "C" int fun_call_chain(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_branch_call
-// - ?????????????????
-// - ?????????????????????????
+// - 覆盖点：同一入口内同时覆盖分支选择与后续函数调用，检验控制流拼接是否正确。
+// - 实现思路：先按 a/b 关系选择不同路径，再统一叠加 fun_add 结果做二次校验。
 extern "C" int fun_branch_call(int a, int b) {
     int ret = 0;
     if (a >= b) {
@@ -163,8 +194,8 @@ extern "C" int fun_branch_call(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_cpp_make_string
-// - ?????C++ ??????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 C++ 对象与容器路径，验证加固后 C++ ABI 相关调用与返回。
+// - 实现思路：通过字符串、向量、虚调度构造结果，避免仅算术路径通过回归。
 extern "C" std::string fun_cpp_make_string(int a, int b) {
     std::string ret = "A";
     ret += std::to_string(a);
@@ -174,16 +205,16 @@ extern "C" std::string fun_cpp_make_string(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_cpp_string_len
-// - ?????C++ ??????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 C++ 对象与容器路径，验证加固后 C++ ABI 相关调用与返回。
+// - 实现思路：通过字符串、向量、虚调度构造结果，避免仅算术路径通过回归。
 extern "C" int fun_cpp_string_len(int a, int b) {
     std::string value = fun_cpp_make_string(a, b);
     return static_cast<int>(value.size());
 }
 
 // [VMP_DEMO_CASE] fun_cpp_vector_sum
-// - ?????C++ ??????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 C++ 对象与容器路径，验证加固后 C++ ABI 相关调用与返回。
+// - 实现思路：通过字符串、向量、虚调度构造结果，避免仅算术路径通过回归。
 extern "C" int fun_cpp_vector_sum(int a, int b) {
     std::vector<int> values;
     values.push_back(a);
@@ -214,8 +245,8 @@ public:
 };
 
 // [VMP_DEMO_CASE] fun_cpp_virtual_mix
-// - ?????C++ ??????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 C++ 对象与容器路径，验证加固后 C++ ABI 相关调用与返回。
+// - 实现思路：通过字符串、向量、虚调度构造结果，避免仅算术路径通过回归。
 extern "C" int fun_cpp_virtual_mix(int a, int b) {
     CalcAdd add;
     CalcMix mix;
@@ -225,8 +256,8 @@ extern "C" int fun_cpp_virtual_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_div_mod_chain
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖算术与循环主路径，作为回归基线验证加固前后结果一致性。
+// - 实现思路：使用确定性输入与固定迭代流程，确保出现偏差时可快速复现定位。
 extern "C" int fun_div_mod_chain(int a, int b) {
     const int lhs = a * b + 17;
     const int qBase = a + 1;
@@ -245,8 +276,8 @@ extern "C" int fun_div_mod_chain(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_shift_mix
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件分支与标志位驱动路径，检验分支选择与短路语义。
+// - 实现思路：设计互斥分支并在汇合点统一折叠输出，方便对照实现定位差异。
 extern "C" int fun_shift_mix(int a, int b) {
     const int leftSeed = a + 5;
     int left = 0;
@@ -264,8 +295,8 @@ extern "C" int fun_shift_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_do_while_path
-// - ?????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖算术与循环主路径，作为回归基线验证加固前后结果一致性。
+// - 实现思路：使用确定性输入与固定迭代流程，确保出现偏差时可快速复现定位。
 extern "C" int fun_do_while_path(int a, int b) {
     const int base = a + b;
     int acc = 0;
@@ -283,8 +314,8 @@ extern "C" int fun_do_while_path(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_nested_continue_break
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖算术与循环主路径，作为回归基线验证加固前后结果一致性。
+// - 实现思路：使用确定性输入与固定迭代流程，确保出现偏差时可快速复现定位。
 extern "C" int fun_nested_continue_break(int a, int b) {
     int acc = 0;
     for (int i = 0; i < 5; i++) {
@@ -302,8 +333,8 @@ extern "C" int fun_nested_continue_break(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_indirect_call_mix
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 helper 间接调用与条件分派混合场景，避免仅直连调用路径被验证。
+// - 实现思路：先计算基础值，再按 index 奇偶切换 helper，最后叠加统一混合项。
 extern "C" int fun_indirect_call_mix(int a, int b) {
     const int index = a + b;
     const int value0 = fun_add(a, b);
@@ -318,8 +349,8 @@ extern "C" int fun_indirect_call_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_unsigned_compare_fold
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件分支与标志位驱动路径，检验分支选择与短路语义。
+// - 实现思路：设计互斥分支并在汇合点统一折叠输出，方便对照实现定位差异。
 extern "C" int fun_unsigned_compare_fold(int a, int b) {
     const uint32_t ua = static_cast<uint32_t>(a * 11 + 1);
     const uint32_t ub = static_cast<uint32_t>(b * 7 + 2);
@@ -329,8 +360,8 @@ extern "C" int fun_unsigned_compare_fold(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_local_array_walk
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖数组与指针步进访问，检验地址计算与别名访问语义。
+// - 实现思路：通过多元素遍历与索引权重折叠结果，让内存路径更容易暴露偏差。
 extern "C" int fun_local_array_walk(int a, int b) {
     int values[6] = {a, b, a + b, a - b, a * 2, b * 3};
     int acc = 0;
@@ -345,8 +376,8 @@ extern "C" int fun_local_array_walk(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_switch_fallthrough
-// - ?????switch/?????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 switch 分发与多分支汇合路径，检验 case 命中与落地语义。
+// - 实现思路：先按 key 进入不同分支，再叠加循环或后处理，放大路径差异。
 extern "C" int fun_switch_fallthrough(int a, int b) {
     const int key = (a << 2) + b;
     int acc = 1;
@@ -374,8 +405,8 @@ extern "C" int fun_switch_fallthrough(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_short_circuit_logic
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件分支与标志位驱动路径，检验分支选择与短路语义。
+// - 实现思路：设计互斥分支并在汇合点统一折叠输出，方便对照实现定位差异。
 extern "C" int fun_short_circuit_logic(int a, int b) {
     int guard = 0;
     if (a > 0 && (++guard > 0)) {
@@ -388,8 +419,8 @@ extern "C" int fun_short_circuit_logic(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_select_mix
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件分支与标志位驱动路径，检验分支选择与短路语义。
+// - 实现思路：设计互斥分支并在汇合点统一折叠输出，方便对照实现定位差异。
 extern "C" int fun_select_mix(int a, int b) {
     const int x = (a > b) ? (a * 3) : (b * 2);
     const int y = (((a + b) & 1) != 0) ? (x + 5) : (x - 3);
@@ -397,8 +428,8 @@ extern "C" int fun_select_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_global_data_mix
-// - ???????/?????????
-// - ?????????????????????????
+// - 覆盖点：覆盖全局与静态状态访问，验证符号和数据段读写语义。
+// - 实现思路：组合全局表、全局结构和静态成员结果，形成稳定可回归输出。
 DEMO_TEST_EXPORT int fun_global_data_mix(int a, int b) {
     const int part0 = static_cast<int>(g_global_table[0]) + a + a;
     const int part1 = static_cast<int>(g_global_table[2]) + static_cast<int>(g_global_table[1]);
@@ -406,8 +437,8 @@ DEMO_TEST_EXPORT int fun_global_data_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_static_local_table
-// - ???????/?????????
-// - ?????????????????????????
+// - 覆盖点：覆盖全局与静态状态访问，验证符号和数据段读写语义。
+// - 实现思路：组合全局表、全局结构和静态成员结果，形成稳定可回归输出。
 DEMO_TEST_EXPORT int fun_static_local_table(int a, int b) {
     static const int kWeights[4] = {1, 3, 5, 7};
     int idx = a + b;
@@ -428,8 +459,8 @@ DEMO_TEST_EXPORT int fun_static_local_table(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_global_struct_acc
-// - ???????/?????????
-// - ?????????????????????????
+// - 覆盖点：覆盖全局与静态状态访问，验证符号和数据段读写语义。
+// - 实现思路：组合全局表、全局结构和静态成员结果，形成稳定可回归输出。
 DEMO_TEST_EXPORT int fun_global_struct_acc(int a, int b) {
     const int seed = g_global_pair.left + g_global_pair.right + a + b + a;
     const int selector = (a > b) ? 3 : 4;
@@ -438,16 +469,16 @@ DEMO_TEST_EXPORT int fun_global_struct_acc(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_class_static_member
-// - ???????/?????????
-// - ?????????????????????????
+// - 覆盖点：覆盖全局与静态状态访问，验证符号和数据段读写语义。
+// - 实现思路：组合全局表、全局结构和静态成员结果，形成稳定可回归输出。
 DEMO_TEST_EXPORT int fun_class_static_member(int a, int b) {
     const int first = StaticScaleBox::eval(a, b);
     return first - StaticScaleBox::s_scale + g_global_bias;
 }
 
 // [VMP_DEMO_CASE] fun_multi_branch_path
-// - ?????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件分支与标志位驱动路径，检验分支选择与短路语义。
+// - 实现思路：设计互斥分支并在汇合点统一折叠输出，方便对照实现定位差异。
 DEMO_TEST_EXPORT int fun_multi_branch_path(int a, int b) {
     int x = a + b + a;
     int ret = 0;
@@ -472,8 +503,8 @@ DEMO_TEST_EXPORT int fun_multi_branch_path(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_switch_dispatch
-// - ?????switch/?????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 switch 分发与多分支汇合路径，检验 case 命中与落地语义。
+// - 实现思路：先按 key 进入不同分支，再叠加循环或后处理，放大路径差异。
 DEMO_TEST_EXPORT int fun_switch_dispatch(int a, int b) {
     int key = a + b;
     switch (key) {
@@ -492,8 +523,8 @@ DEMO_TEST_EXPORT int fun_switch_dispatch(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_bitmask_branch
-// - ?????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件分支与标志位驱动路径，检验分支选择与短路语义。
+// - 实现思路：设计互斥分支并在汇合点统一折叠输出，方便对照实现定位差异。
 DEMO_TEST_EXPORT int fun_bitmask_branch(int a, int b) {
     int mixed = (a & 7) | (b & 3);
     if ((mixed & 1) != 0) {
@@ -506,8 +537,8 @@ DEMO_TEST_EXPORT int fun_bitmask_branch(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_global_table_rw
-// - ???????/?????????
-// - ?????????????????????????
+// - 覆盖点：覆盖全局数组写入后再读取的顺序语义，验证数据依赖不被破坏。
+// - 实现思路：先改写两个槽位，再组合读取结果并叠加输入生成最终值。
 DEMO_TEST_EXPORT int fun_global_table_rw(int a, int b) {
     g_global_table[2] = static_cast<uint32_t>(a + b + 30);
     g_global_table[3] = static_cast<uint32_t>(a + 40);
@@ -516,8 +547,8 @@ DEMO_TEST_EXPORT int fun_global_table_rw(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_global_mutable_state
-// - ???????/?????????
-// - ?????????????????????????
+// - 覆盖点：显式读写全局可变状态，检验加固后全局区访问与写回语义。
+// - 实现思路：先更新 bias 和表项，再把全局结果折叠为返回值，便于回归断言。
 DEMO_TEST_EXPORT int fun_global_mutable_state(int a, int b) {
     g_global_bias = a + b + 3;
     g_global_table[0] = static_cast<uint32_t>(a + 10);
@@ -527,8 +558,8 @@ DEMO_TEST_EXPORT int fun_global_mutable_state(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_flag_merge_cbz
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件分支与标志位驱动路径，检验分支选择与短路语义。
+// - 实现思路：设计互斥分支并在汇合点统一折叠输出，方便对照实现定位差异。
 DEMO_TEST_EXPORT int fun_flag_merge_cbz(int a, int b) {
     const int base = a + b;
     int acc = 0;
@@ -546,8 +577,8 @@ DEMO_TEST_EXPORT int fun_flag_merge_cbz(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ptr_stride_sum
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖数组与指针步进访问，检验地址计算与别名访问语义。
+// - 实现思路：通过多元素遍历与索引权重折叠结果，让内存路径更容易暴露偏差。
 DEMO_TEST_EXPORT int fun_ptr_stride_sum(int a, int b) {
     int values[6] = {a, b, a + b, a - b, a * 2, b * 2};
     int* ptr = values;
@@ -559,8 +590,8 @@ DEMO_TEST_EXPORT int fun_ptr_stride_sum(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_fn_table_dispatch
-// - ?????switch/?????????
-// - ?????????????????????????
+// - 覆盖点：通过函数指针表覆盖间接跳转路径，验证分发表在翻译后仍可正确命中。
+// - 实现思路：用可控索引选择两次路由函数并合并结果，形成稳定可比对的输出。
 DEMO_TEST_EXPORT int fun_fn_table_dispatch(int a, int b) {
     using RouteFn = int (*)(int, int);
     RouteFn table[3] = {helper_route0, helper_route1, helper_route2};
@@ -581,8 +612,8 @@ DEMO_TEST_EXPORT int fun_fn_table_dispatch(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_clamp_window
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖算术与循环主路径，作为回归基线验证加固前后结果一致性。
+// - 实现思路：使用确定性输入与固定迭代流程，确保出现偏差时可快速复现定位。
 DEMO_TEST_EXPORT int fun_clamp_window(int a, int b) {
     int values[5] = {a - 6, b - 1, a + b + 3, a * 4, b * 3 - 2};
     int sum = 0;
@@ -600,8 +631,8 @@ DEMO_TEST_EXPORT int fun_clamp_window(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_i64_mix
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖非 int 返回 ABI（宽整数、布尔、窄整数）的寄存器传递语义。
+// - 实现思路：以 a/b 组合构造分段计算与边界处理，确保 expected/actual 易于比对。
 DEMO_TEST_EXPORT long long fun_ret_i64_mix(int a, int b) {
     long long acc = 0;
     for (int i = 0; i < 8; i++) {
@@ -617,8 +648,8 @@ DEMO_TEST_EXPORT long long fun_ret_i64_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_u64_mix
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖非 int 返回 ABI（宽整数、布尔、窄整数）的寄存器传递语义。
+// - 实现思路：以 a/b 组合构造分段计算与边界处理，确保 expected/actual 易于比对。
 DEMO_TEST_EXPORT unsigned long long fun_ret_u64_mix(int a, int b) {
     unsigned long long value =
         (static_cast<unsigned long long>(static_cast<uint32_t>(a)) << 32) |
@@ -633,8 +664,8 @@ DEMO_TEST_EXPORT unsigned long long fun_ret_u64_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_bool_gate
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖非 int 返回 ABI（宽整数、布尔、窄整数）的寄存器传递语义。
+// - 实现思路：以 a/b 组合构造分段计算与边界处理，确保 expected/actual 易于比对。
 DEMO_TEST_EXPORT bool fun_ret_bool_gate(int a, int b) {
     const int left = a * 3 - b;
     const int right = b * 2 - a;
@@ -642,8 +673,8 @@ DEMO_TEST_EXPORT bool fun_ret_bool_gate(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_i16_pack
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖非 int 返回 ABI（宽整数、布尔、窄整数）的寄存器传递语义。
+// - 实现思路：以 a/b 组合构造分段计算与边界处理，确保 expected/actual 易于比对。
 DEMO_TEST_EXPORT short fun_ret_i16_pack(int a, int b) {
     int acc = a;
     for (int i = 0; i < 5; i++) {
@@ -657,8 +688,8 @@ DEMO_TEST_EXPORT short fun_ret_i16_pack(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_switch_loop_acc
-// - ?????switch/?????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 switch 分发与多分支汇合路径，检验 case 命中与落地语义。
+// - 实现思路：先按 key 进入不同分支，再叠加循环或后处理，放大路径差异。
 DEMO_TEST_EXPORT int fun_switch_loop_acc(int a, int b) {
     const int seed = a + b;
     int acc = 0;
@@ -692,8 +723,8 @@ DEMO_TEST_EXPORT int fun_switch_loop_acc(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_struct_alias_walk
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖数组与指针步进访问，检验地址计算与别名访问语义。
+// - 实现思路：通过多元素遍历与索引权重折叠结果，让内存路径更容易暴露偏差。
 DEMO_TEST_EXPORT int fun_struct_alias_walk(int a, int b) {
     struct LocalPair {
         int left;
@@ -725,8 +756,8 @@ DEMO_TEST_EXPORT int fun_struct_alias_walk(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_unsigned_edge_paths
-// - ?????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件分支与标志位驱动路径，检验分支选择与短路语义。
+// - 实现思路：设计互斥分支并在汇合点统一折叠输出，方便对照实现定位差异。
 DEMO_TEST_EXPORT int fun_unsigned_edge_paths(int a, int b) {
     const uint32_t ua = static_cast<uint32_t>(a + 15);
     const uint32_t ub = static_cast<uint32_t>(b + 9);
@@ -749,8 +780,8 @@ DEMO_TEST_EXPORT int fun_unsigned_edge_paths(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_reverse_ptr_mix
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖数组与指针步进访问，检验地址计算与别名访问语义。
+// - 实现思路：通过多元素遍历与索引权重折叠结果，让内存路径更容易暴露偏差。
 DEMO_TEST_EXPORT int fun_reverse_ptr_mix(int a, int b) {
     int values[7] = {
         a,
@@ -776,8 +807,8 @@ DEMO_TEST_EXPORT int fun_reverse_ptr_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_guarded_chain_mix
-// - ?????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件分支与标志位驱动路径，检验分支选择与短路语义。
+// - 实现思路：设计互斥分支并在汇合点统一折叠输出，方便对照实现定位差异。
 DEMO_TEST_EXPORT int fun_guarded_chain_mix(int a, int b) {
     const int x = a + b;
     const int y = a - b;
@@ -805,8 +836,8 @@ DEMO_TEST_EXPORT int fun_guarded_chain_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_i64_steps
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖非 int 返回 ABI（宽整数、布尔、窄整数）的寄存器传递语义。
+// - 实现思路：以 a/b 组合构造分段计算与边界处理，确保 expected/actual 易于比对。
 DEMO_TEST_EXPORT long long fun_ret_i64_steps(int a, int b) {
     long long acc = 50000LL;
     long long step = static_cast<long long>(a + b);
@@ -826,8 +857,8 @@ DEMO_TEST_EXPORT long long fun_ret_i64_steps(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_u64_acc
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖非 int 返回 ABI（宽整数、布尔、窄整数）的寄存器传递语义。
+// - 实现思路：以 a/b 组合构造分段计算与边界处理，确保 expected/actual 易于比对。
 DEMO_TEST_EXPORT unsigned long long fun_ret_u64_acc(int a, int b) {
     unsigned long long acc = static_cast<unsigned long long>(static_cast<uint32_t>(a + 1));
     acc <<= 40;
@@ -845,8 +876,8 @@ DEMO_TEST_EXPORT unsigned long long fun_ret_u64_acc(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_bool_mix2
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖非 int 返回 ABI（宽整数、布尔、窄整数）的寄存器传递语义。
+// - 实现思路：以 a/b 组合构造分段计算与边界处理，确保 expected/actual 易于比对。
 DEMO_TEST_EXPORT bool fun_ret_bool_mix2(int a, int b) {
     const int left = a + b + b;
     const int right = a + a + a + b;
@@ -857,8 +888,8 @@ DEMO_TEST_EXPORT bool fun_ret_bool_mix2(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_u16_blend
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖非 int 返回 ABI（宽整数、布尔、窄整数）的寄存器传递语义。
+// - 实现思路：以 a/b 组合构造分段计算与边界处理，确保 expected/actual 易于比对。
 DEMO_TEST_EXPORT unsigned short fun_ret_u16_blend(int a, int b) {
     unsigned int acc = static_cast<unsigned int>(a + 20);
     for (int i = 0; i < 4; i++) {
@@ -877,8 +908,8 @@ DEMO_TEST_EXPORT unsigned short fun_ret_u16_blend(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_i8_wave
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖非 int 返回 ABI（宽整数、布尔、窄整数）的寄存器传递语义。
+// - 实现思路：以 a/b 组合构造分段计算与边界处理，确保 expected/actual 易于比对。
 DEMO_TEST_EXPORT signed char fun_ret_i8_wave(int a, int b) {
     int acc = a - b;
     for (int i = 0; i < 6; i++) {
@@ -898,8 +929,8 @@ DEMO_TEST_EXPORT signed char fun_ret_i8_wave(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ext_insn_mix
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖扩展类指令（sxt/uxt）翻译路径，并保留非 AArch64 回退逻辑。
+// - 实现思路：AArch64 走内联汇编显式触发目标指令，其他平台走等价 C++ 语义。
 DEMO_TEST_EXPORT int fun_ext_insn_mix(int a, int b) {
 #if defined(__aarch64__)
     int out = 0;
@@ -930,8 +961,8 @@ DEMO_TEST_EXPORT int fun_ext_insn_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_bfm_nonwrap
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 ubfm/sbfm 非环绕位域提取语义，验证 immr<=imms 的翻译行为。
+// - 实现思路：AArch64 使用显式指令路径，非 AArch64 用移位与符号扩展模拟。
 DEMO_TEST_EXPORT int fun_bfm_nonwrap(int a, int b) {
 #if defined(__aarch64__)
     int out = 0;
@@ -958,8 +989,8 @@ DEMO_TEST_EXPORT int fun_bfm_nonwrap(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_bfm_wrap
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 ubfm/sbfm 环绕位域语义，验证 immr>imms 时的边界行为。
+// - 实现思路：构造带高位种子的输入并做指令与等价 C++ 双路径对照。
 DEMO_TEST_EXPORT int fun_bfm_wrap(int a, int b) {
 #if defined(__aarch64__)
     uint32_t seed = 0xF0000000u |
@@ -992,8 +1023,8 @@ DEMO_TEST_EXPORT int fun_bfm_wrap(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_csinc_path
-// - ?????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖条件选择并自增（csinc）路径，检验条件码驱动的结果选择。
+// - 实现思路：AArch64 直接触发 csinc，回退路径用等价三元表达式保持一致语义。
 DEMO_TEST_EXPORT int fun_csinc_path(int a, int b) {
 #if defined(__aarch64__)
     int out = 0;
@@ -1012,8 +1043,8 @@ DEMO_TEST_EXPORT int fun_csinc_path(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_madd_msub_div
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：集中覆盖 madd/msub/udiv/sdiv 的组合翻译，验证整数算术主干指令。
+// - 实现思路：先准备有符号和无符号分母分子，再按同序列折叠结果降低误判。
 DEMO_TEST_EXPORT int fun_madd_msub_div(int a, int b) {
     const int lhs = a + 37;
     const int rhs = b + 11;
@@ -1060,8 +1091,8 @@ DEMO_TEST_EXPORT int fun_madd_msub_div(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_orn_bic_extr
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 orn/bic/extr 的位运算与跨寄存器拼接提取路径。
+// - 实现思路：AArch64 使用指令直测，回退实现用按位运算和 64 位拼接对齐语义。
 DEMO_TEST_EXPORT int fun_orn_bic_extr(int a, int b) {
     const uint32_t lhs = static_cast<uint32_t>(a * 13 + 0x1234);
     const uint32_t rhs = static_cast<uint32_t>(b * 7 + 0x00AB00CD);
@@ -1090,8 +1121,8 @@ DEMO_TEST_EXPORT int fun_orn_bic_extr(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_mem_half_signed
-// - ????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖半字节存取与有符号加载路径，检验内存访问翻译细节。
+// - 实现思路：AArch64 走 sturh/ldurh/ldrsb/ldrsh，回退路径用对应类型转换模拟。
 DEMO_TEST_EXPORT int fun_mem_half_signed(int a, int b) {
     const uint16_t rawHalf = static_cast<uint16_t>(a * 19 + b * 3 + 0x2345);
     const uint8_t rawByte = static_cast<uint8_t>(a - b * 5 - 33);
@@ -1135,8 +1166,8 @@ DEMO_TEST_EXPORT int fun_mem_half_signed(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_atomic_u8_order
-// - ??????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 8 位原子 release/acquire 读写顺序，校验内存序语义。
+// - 实现思路：两轮 store/load 串联并折叠返回，确保顺序和可见性都被回归覆盖。
 DEMO_TEST_EXPORT int fun_atomic_u8_order(int a, int b) {
     uint8_t seed = static_cast<uint8_t>((a * 17 + b * 3 + 0x21) & 0xFF);
     __atomic_store_n(&g_atomic_slot_u8, seed, __ATOMIC_RELEASE);
@@ -1150,8 +1181,8 @@ DEMO_TEST_EXPORT int fun_atomic_u8_order(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_atomic_u16_order
-// - ??????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 16 位原子 release/acquire 读写顺序，补齐窄整数场景。
+// - 实现思路：先写入种子再做增量写回，通过异或结果放大顺序偏差。
 DEMO_TEST_EXPORT int fun_atomic_u16_order(int a, int b) {
     uint16_t seed = static_cast<uint16_t>((a * 257 + b * 17 + 0x1357) & 0xFFFF);
     __atomic_store_n(&g_atomic_slot_u16, seed, __ATOMIC_RELEASE);
@@ -1165,8 +1196,8 @@ DEMO_TEST_EXPORT int fun_atomic_u16_order(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_atomic_u64_order
-// - ??????????????????
-// - ?????????????????????????
+// - 覆盖点：覆盖 64 位原子读写与高低位折叠，验证宽寄存器路径的稳定性。
+// - 实现思路：构造宽位种子并二次写回，最后折叠高低 32 位生成可比较结果。
 DEMO_TEST_EXPORT int fun_atomic_u64_order(int a, int b) {
     const uint64_t seedLeft = static_cast<uint64_t>((a + 1) * (b + 33));
     const uint64_t seedRight = static_cast<uint64_t>(a * 131 + b * 17 + 0x9D);
@@ -1184,8 +1215,8 @@ DEMO_TEST_EXPORT int fun_atomic_u64_order(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_cstr_pick
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖 const char* 返回 ABI 与线程局部缓存生命周期语义。
+// - 实现思路：使用 thread_local 字符串缓存生成稳定 c_str，避免悬空指针。
 DEMO_TEST_EXPORT const char* fun_ret_cstr_pick(int a, int b) {
     // 使用线程局部字符串，返回稳定的 c_str 指针（直到下一次同线程调用）。
     static thread_local std::string cache;
@@ -1207,8 +1238,8 @@ DEMO_TEST_EXPORT const char* fun_ret_cstr_pick(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_std_string_mix
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖 std::string 返回路径与字符串拼接场景。
+// - 实现思路：组合数字、cstr 结果和奇偶标签，形成结构化且可读的输出。
 DEMO_TEST_EXPORT std::string fun_ret_std_string_mix(int a, int b) {
     std::string out = "mix";
     out.push_back(':');
@@ -1225,8 +1256,8 @@ DEMO_TEST_EXPORT std::string fun_ret_std_string_mix(int a, int b) {
 }
 
 // [VMP_DEMO_CASE] fun_ret_vector_mix
-// - ??????????? ABI ?????
-// - ?????????????????????????
+// - 覆盖点：覆盖 std::vector 返回 ABI 与动态填充场景。
+// - 实现思路：按索引奇偶构造序列并补充尾项，使桥接层可做摘要对比。
 DEMO_TEST_EXPORT std::vector<int> fun_ret_vector_mix(int a, int b) {
     std::vector<int> values;
     values.reserve(6);

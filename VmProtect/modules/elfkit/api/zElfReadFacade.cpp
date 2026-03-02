@@ -15,7 +15,7 @@
 // 引入底层 patchbay 只读 ELF 实现。
 #include "zPatchbayApi.h"
 
-namespace vmp::elfkit {
+namespace vmp::elfkit {  // 流程注记：该语句参与当前阶段的语义实现。
 
 // 门面内部实现：仅持有底层 PatchElfImage。
 class zElfReadFacade::Impl {

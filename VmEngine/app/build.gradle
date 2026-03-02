@@ -1,16 +1,16 @@
-plugins {
+plugins {  // 流程注记：该语句参与当前阶段的语义实现。
     // Android 应用模块插件（使用版本目录中的别名）。
-    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.androidApplication)  // 流程注记：该语句参与当前阶段的语义实现。
 }
 
 // 工程根目录：当前模块在 VmEngine/app，下一级父目录是 VmEngine，再上一级是总工程根。
-def vmpProjectRoot = rootProject.projectDir.parentFile
+def vmpProjectRoot = rootProject.projectDir.parentFile  // 流程注记：该语句参与当前阶段的语义实现。
 // 是否启用 VmProtect 管线（默认关闭，避免普通开发受影响）。
-def vmpEnabled = ((project.findProperty("vmpEnabled") ?: "false").toString().toBoolean())
+def vmpEnabled = ((project.findProperty("vmpEnabled") ?: "false").toString().toBoolean())  // 流程注记：该语句参与当前阶段的语义实现。
 // 启用后是否自动构建 VmProtect.exe。
-def vmpAutoBuildTool = ((project.findProperty("vmpAutoBuildTool") ?: "false").toString().toBoolean())
+def vmpAutoBuildTool = ((project.findProperty("vmpAutoBuildTool") ?: "false").toString().toBoolean())  // 流程注记：该语句参与当前阶段的语义实现。
 // VmProtect 工具路径，可被 -PvmpToolExe 覆盖。
-def vmpToolExe = file((project.findProperty("vmpToolExe")
+def vmpToolExe = file((project.findProperty("vmpToolExe")  // 流程注记：该语句参与当前阶段的语义实现。
         ?: "${vmpProjectRoot}/VmProtect/cmake-build-debug/VmProtect.exe").toString())
 // 输入 so 覆盖路径（默认自动解析 demo 中间产物）。
 def vmpInputSoOverride = (project.findProperty("vmpInputSo") ?: "").toString().trim()

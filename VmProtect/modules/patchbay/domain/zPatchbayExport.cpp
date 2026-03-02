@@ -17,8 +17,8 @@
 #include <vector>
 
 // patchbay 主流程：构建 alias 表并写回 ELF。
-bool exportAliasSymbolsPatchbay(const char* inputPath,
-                                const char* outputPath,
+bool exportAliasSymbolsPatchbay(const char* inputPath,  // 流程注记：该语句参与当前阶段的语义实现。
+                                const char* outputPath,  // 流程注记：该语句参与当前阶段的语义实现。
                                 const std::vector<AliasPair>& aliasPairs,
                                 std::string* error) {
     // 入参校验：输入路径、输出路径、alias 列表都必须有效。

@@ -30,23 +30,23 @@
 #define ELFW(what) ELF32_ ## what
 #endif
 
-namespace {
+namespace {  // 流程注记：该语句参与当前阶段的语义实现。
 
-constexpr size_t kPageSize = 4096;
+constexpr size_t kPageSize = 4096;  // 状态更新：记录本步骤的中间结果或配置。
 // PageMask 用于把任意地址向下对齐到页边界。
-constexpr ElfW(Addr) kPageMask = static_cast<ElfW(Addr)>(~(kPageSize - 1));
+constexpr ElfW(Addr) kPageMask = static_cast<ElfW(Addr)>(~(kPageSize - 1));  // 状态更新：记录本步骤的中间结果或配置。
 
 // AArch64 当前回归路径中实际会用到的 RELA 类型。
 // 0: 不处理；257: 绝对地址；1025/1026: 全局数据/PLT 槽；1027: 相对地址；1032: IRELATIVE。
-constexpr ElfW(Word) kRelAarch64None = 0;
-constexpr ElfW(Word) kRelAarch64Abs64 = 257;
-constexpr ElfW(Word) kRelAarch64GlobDat = 1025;
-constexpr ElfW(Word) kRelAarch64JumpSlot = 1026;
-constexpr ElfW(Word) kRelAarch64Relative = 1027;
-constexpr ElfW(Word) kRelAarch64IRelative = 1032;
+constexpr ElfW(Word) kRelAarch64None = 0;  // 状态更新：记录本步骤的中间结果或配置。
+constexpr ElfW(Word) kRelAarch64Abs64 = 257;  // 状态更新：记录本步骤的中间结果或配置。
+constexpr ElfW(Word) kRelAarch64GlobDat = 1025;  // 状态更新：记录本步骤的中间结果或配置。
+constexpr ElfW(Word) kRelAarch64JumpSlot = 1026;  // 状态更新：记录本步骤的中间结果或配置。
+constexpr ElfW(Word) kRelAarch64Relative = 1027;  // 状态更新：记录本步骤的中间结果或配置。
+constexpr ElfW(Word) kRelAarch64IRelative = 1032;  // 状态更新：记录本步骤的中间结果或配置。
 
 // 页对齐辅助：用于 mprotect / 段拷贝边界计算。
-inline ElfW(Addr) PageStart(ElfW(Addr) addr) {
+inline ElfW(Addr) PageStart(ElfW(Addr) addr) {  // 处理阶段入口：进入该函数或代码块的主流程。
     return addr & kPageMask;
 }
 

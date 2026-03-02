@@ -1,49 +1,49 @@
 #include "zPipelineCoverage.h"
 
-// ???????????????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 #include <algorithm>
-// ?? C ???????? mnemonic ???
+// 助记符兜底路径：当指令 ID 不稳定时，按 mnemonic 做保守判定。
 #include <cstring>
-// ?????????? markdown ???
+// Markdown 输出步骤：把统计结果格式化为可读报告文本。
 #include <fstream>
-// ???? map??????????
+// 映射步骤：把原始键值折叠为稳定可比较的数据结构。
 #include <map>
-// ????????????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 #include <sstream>
-// ????????????????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 #include <unordered_set>
-// ?? move ?????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 #include <utility>
-// ?????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 #include <vector>
 
-// ?? ARM64 ?? ID ???
+// ARM64 指令集合维护：用于定义当前翻译器的已支持范围。
 #include <capstone/arm64.h>
-// ?? capstone ?????
+// Capstone 相关步骤：用于获取指令 ID、助记符与操作数字段。
 #include <capstone/capstone.h>
 
-// ???????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 #include "zLog.h"
 // ARM64 disasm utility facade.
 #include "zInst.h"
-// ???????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 #include "zPipelineCli.h"
 
-// ?? vmp ??????
-namespace vmp {
+// 进入 vmp 命名空间，实现覆盖率统计主流程。
+namespace vmp {  // 流程注记：该语句参与当前阶段的语义实现。
 
-// ?????????????????????
-namespace {
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
+namespace {  // 流程注记：该语句参与当前阶段的语义实现。
 
-// ?????????? ARM64 ?????
-std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
-    // ??????????????????? ID?
-    std::unordered_set<unsigned int> ids = {
-        ARM64_INS_ADD,
-        ARM64_INS_ADDS,
-        ARM64_INS_ASR,
-        ARM64_INS_ADRP,
-        ARM64_INS_ALIAS_LSL,
+// ARM64 处理步骤：围绕指令分类与支持度统计展开。
+std::unordered_set<unsigned int> buildSupportedInsnIdSet() {  // 处理阶段入口：进入该函数或代码块的主流程。
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
+    std::unordered_set<unsigned int> ids = {  // 流程注记：该语句参与当前阶段的语义实现。
+        ARM64_INS_ADD,  // 流程注记：该语句参与当前阶段的语义实现。
+        ARM64_INS_ADDS,  // 流程注记：该语句参与当前阶段的语义实现。
+        ARM64_INS_ASR,  // 流程注记：该语句参与当前阶段的语义实现。
+        ARM64_INS_ADRP,  // 流程注记：该语句参与当前阶段的语义实现。
+        ARM64_INS_ALIAS_LSL,  // 流程注记：该语句参与当前阶段的语义实现。
         ARM64_INS_AND,
         ARM64_INS_ANDS,
         ARM64_INS_B,
@@ -113,7 +113,7 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
         ARM64_INS_SVC,
         ARM64_INS_BRK,
     };
-// ???? capstone ??????????? ID?
+// Capstone 相关步骤：用于获取指令 ID、助记符与操作数字段。
     ids.insert(ARM64_INS_CLZ);
     ids.insert(ARM64_INS_FCVTAS);
     ids.insert(ARM64_INS_FCVTZS);
@@ -121,9 +121,9 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
     ids.insert(ARM64_INS_FMUL);
     ids.insert(ARM64_INS_SCVTF);
     ids.insert(ARM64_INS_SHRN);
-// ???? capstone ??????????? ID?
+// Capstone 相关步骤：用于获取指令 ID、助记符与操作数字段。
     ids.insert(ARM64_INS_LDRSW);
-// ???? capstone ??????????? ID?
+// Capstone 相关步骤：用于获取指令 ID、助记符与操作数字段。
     ids.insert(ARM64_INS_LDURSW);
     ids.insert(ARM64_INS_EXTR);
     ids.insert(ARM64_INS_STURB);
@@ -139,17 +139,17 @@ std::unordered_set<unsigned int> buildSupportedInsnIdSet() {
     ids.insert(ARM64_INS_LDAR);
     ids.insert(ARM64_INS_BICS);
     ids.insert(ARM64_INS_EON);
-    // ?????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     return ids;
 }
 
-// ??? ID ???????? mnemonic ?????????
+// 助记符兜底路径：当指令 ID 不稳定时，按 mnemonic 做保守判定。
 bool isSupportedByFallbackMnemonic(const char* mnemonic) {
-    // ??????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (mnemonic == nullptr) {
         return false;
     }
-    // ?????????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     return std::strcmp(mnemonic, "mov") == 0 ||
            std::strcmp(mnemonic, "mul") == 0 ||
            std::strcmp(mnemonic, "and") == 0 ||
@@ -264,43 +264,43 @@ bool isSupportedByFallbackMnemonic(const char* mnemonic) {
             std::strcmp(mnemonic, "brk") == 0;
 }
 
-// ?????????????????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 bool isInstructionSupported(const std::unordered_set<unsigned int>& supportedIds,
                             unsigned int insnId,
                             const char* mnemonic) {
-    // ??? ID ????????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (supportedIds.find(insnId) != supportedIds.end()) {
         return true;
     }
-    // ID ?????? mnemonic ?????
+    // 助记符兜底路径：当指令 ID 不稳定时，按 mnemonic 做保守判定。
     return isSupportedByFallbackMnemonic(mnemonic);
 }
 
-// ???????????????? mov(123)?
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 std::string buildInstructionLabel(csh handle, unsigned int insnId, const char* mnemonic) {
-    // ??? capstone ????????
+    // Capstone 相关步骤：用于获取指令 ID、助记符与操作数字段。
     const char* capName = cs_insn_name(handle, insnId);
-    // ??????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     std::string name;
-    // capstone ??????????
+    // Capstone 相关步骤：用于获取指令 ID、助记符与操作数字段。
     if (capName != nullptr && capName[0] != '\0') {
         name = capName;
-    // ???????????? mnemonic?
+    // 助记符兜底路径：当指令 ID 不稳定时，按 mnemonic 做保守判定。
     } else if (mnemonic != nullptr && mnemonic[0] != '\0') {
         name = mnemonic;
-    // ?????????????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     } else {
         name = "unknown";
     }
-    // ???????(ID)??????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     std::ostringstream oss;
     oss << name << "(" << insnId << ")";
     return oss.str();
 }
 
-// ??????? markdown ???????
+// Markdown 输出步骤：把统计结果格式化为可读报告文本。
 std::string markdownSafe(std::string value) {
-    // markdown ??????? |?????? / ????????
+    // Markdown 输出步骤：把统计结果格式化为可读报告文本。
     for (char& ch : value) {
         if (ch == '|') {
             ch = '/';
@@ -309,41 +309,41 @@ std::string markdownSafe(std::string value) {
     return value;
 }
 
-// ?????????????????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 void analyzeCoverageForFunction(csh handle,
                                 const std::unordered_set<unsigned int>& supportedIds,
                                 const vmp::elfkit::FunctionView& function,
                                 FunctionCoverageRow& row,
                                 CoverageBoard& board) {
-    // ??????????????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (function.getData() == nullptr || function.getSize() == 0) {
         return;
     }
 
-    // capstone ??????????
+    // Capstone 相关步骤：用于获取指令 ID、助记符与操作数字段。
     cs_insn* insn = nullptr;
-    // ?????????????? offset?
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     const size_t instructionCount = zInstAsm::disasm(handle,
                                                       function.getData(),
                                                       function.getSize(),
                                                       function.getOffset(),
                                                       insn);
-    // ??????/??????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     for (size_t instructionIndex = 0; instructionIndex < instructionCount; ++instructionIndex) {
         const cs_insn& currentInsn = insn[instructionIndex];
-        // ??????????????
+        // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
         const bool supported = isInstructionSupported(supportedIds,
                                                       currentInsn.id,
                                                       currentInsn.mnemonic);
-        // ????????????
+        // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
         const std::string label = buildInstructionLabel(handle,
                                                         currentInsn.id,
                                                         currentInsn.mnemonic);
-        // ?????? +1?
+        // 计数步骤：命中当前分支时更新对应计数器。
         ++row.totalInstructions;
-        // ?????? +1?
+        // 计数步骤：命中当前分支时更新对应计数器。
         ++board.totalInstructions;
-        // ????????????
+        // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
         if (supported) {
             ++row.supportedInstructions;
             ++board.supportedInstructions;
@@ -354,39 +354,39 @@ void analyzeCoverageForFunction(csh handle,
             ++board.unsupportedHistogram[label];
         }
     }
-    // ?????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (insn != nullptr) {
         zInstAsm::freeInsn(insn, instructionCount);
     }
 }
 
-// ?????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 }  // namespace
 
-// ?????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 bool buildCoverageBoard(const std::vector<std::string>& functionNames,
                         const std::vector<elfkit::FunctionView>& functions,
                         CoverageBoard& board) {
-    // ?????????????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (functionNames.size() != functions.size()) {
         LOGE("coverage failed: functionNames/functions size mismatch nameCount=%llu functionCount=%llu",
              static_cast<unsigned long long>(functionNames.size()),
              static_cast<unsigned long long>(functions.size()));
         return false;
     }
-    // capstone ???
+    // Capstone 相关步骤：用于获取指令 ID、助记符与操作数字段。
     csh handle = 0;
-    // ?? ARM64 ??????
+    // ARM64 处理步骤：围绕指令分类与支持度统计展开。
     if (!zInstAsm::open(handle)) {
         LOGE("coverage failed: capstone cs_open failed");
         return false;
     }
 
-    // ????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     const std::unordered_set<unsigned int> supportedIds = buildSupportedInsnIdSet();
-    // ???????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     board.functionRows.reserve(functions.size());
-    // ??????????????????? board?
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     for (size_t functionIndex = 0; functionIndex < functions.size(); ++functionIndex) {
         FunctionCoverageRow row;
         row.functionName = functionNames[functionIndex];
@@ -398,22 +398,22 @@ bool buildCoverageBoard(const std::vector<std::string>& functionNames,
         board.functionRows.push_back(std::move(row));
     }
 
-    // ?? capstone ???
+    // Capstone 相关步骤：用于获取指令 ID、助记符与操作数字段。
     zInstAsm::close(handle);
     return true;
 }
 
-// ????????????? prepareTranslation ?????
+// 与 prepareTranslation 对齐：保持口径一致，避免统计偏差。
 bool fillTranslationStatus(const std::vector<elfkit::FunctionView>& functions,
                            CoverageBoard& board) {
-    // ???????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (board.functionRows.size() != functions.size()) {
         LOGE("fillTranslationStatus failed: rowCount/functionCount mismatch rowCount=%llu functionCount=%llu",
              static_cast<unsigned long long>(board.functionRows.size()),
              static_cast<unsigned long long>(functions.size()));
         return false;
     }
-    // ???????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     for (size_t functionIndex = 0; functionIndex < functions.size(); ++functionIndex) {
         FunctionCoverageRow& row = board.functionRows[functionIndex];
         row.translateOk = functions[functionIndex].prepareTranslation(&row.translateError);
@@ -422,84 +422,84 @@ bool fillTranslationStatus(const std::vector<elfkit::FunctionView>& functions,
     return true;
 }
 
-// ???????????? + ????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 bool runCoverageAnalyzeFlow(const std::vector<std::string>& functionNames,
                             const std::vector<elfkit::FunctionView>& functions,
                             CoverageBoard& board) {
-    // ??????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (!buildCoverageBoard(functionNames, functions, board)) {
         return false;
     }
-    // ????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (!fillTranslationStatus(functions, board)) {
         return false;
     }
     return true;
 }
 
-// ?????????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 bool runCoverageReportFlow(const VmProtectConfig& config, const CoverageBoard& board) {
-    // ?? coverage ???????
+    // 覆盖率统计步骤：聚合已支持与未支持指令并输出摘要。
     const std::string coverageReportPath = joinOutputPath(config, config.coverageReport);
-    // ????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (!writeCoverageReport(coverageReportPath, board)) {
         LOGE("failed to write coverage report: %s", coverageReportPath.c_str());
         return false;
     }
-    // ???????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     LOGI("coverage report written: %s", coverageReportPath.c_str());
     return true;
 }
 
-// ??????????
+// 流程说明：该注释位置用于解释当前统计链路的关键步骤。
 bool runCoverageFlow(const VmProtectConfig& config,
                      const std::vector<std::string>& functionNames,
                      const std::vector<elfkit::FunctionView>& functions,
                      CoverageBoard* outBoard) {
-    // ????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     CoverageBoard board;
-    // ???????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (!runCoverageAnalyzeFlow(functionNames, functions, board)) {
         return false;
     }
-    // ??????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (!runCoverageReportFlow(config, board)) {
         return false;
     }
-    // ???????????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (outBoard != nullptr) {
         *outBoard = board;
     }
     return true;
 }
 
-// ???????? markdown ???
+// Markdown 输出步骤：把统计结果格式化为可读报告文本。
 bool writeCoverageReport(const std::string& reportPath, const CoverageBoard& board) {
-    // ????????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     std::ofstream out(reportPath, std::ios::trunc);
-    // ?????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     if (!out) {
         return false;
     }
 
-    // ???????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     out << "# ARM64 Translation Coverage Board\n\n";
-    // ???????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     out << "| Metric | Value |\n";
     out << "| --- | ---: |\n";
-    // ???????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     out << "| Total instructions | " << board.totalInstructions << " |\n";
-    // ?????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     out << "| Supported instructions | " << board.supportedInstructions << " |\n";
-    // ?????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     out << "| Unsupported instructions | " << board.unsupportedInstructions << " |\n\n";
 
-    // ??????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     out << "## Per Function\n\n";
-    // ????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     out << "| Function | Total | Supported | Unsupported | Translation OK | Translation Error |\n";
     out << "| --- | ---: | ---: | ---: | --- | --- |\n";
-    // ?????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     for (const FunctionCoverageRow& row : board.functionRows) {
         out << "| " << row.functionName
             << " | " << row.totalInstructions
@@ -509,20 +509,20 @@ bool writeCoverageReport(const std::string& reportPath, const CoverageBoard& boa
             << " | " << (row.translateError.empty() ? "-" : row.translateError)
             << " |\n";
     }
-    // ???????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     out << "\n";
 
-    // ?????????????/????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     auto dumpHistogram = [&out](const std::string& title,
                                 const std::map<std::string, uint64_t>& hist) {
-        // ???????
+        // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
         out << "## " << title << "\n\n";
-        // ?????
+        // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
         out << "| Instruction | Count |\n";
         out << "| --- | ---: |\n";
-        // ? map ??????????????
+        // 映射步骤：把原始键值折叠为稳定可比较的数据结构。
         std::vector<std::pair<std::string, uint64_t>> sorted(hist.begin(), hist.end());
-        // ??????????????????????
+        // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
         std::sort(sorted.begin(), sorted.end(),
                   [](const auto& lhs, const auto& rhs) {
                       if (lhs.second != rhs.second) {
@@ -530,23 +530,23 @@ bool writeCoverageReport(const std::string& reportPath, const CoverageBoard& boa
                       }
                       return lhs.first < rhs.first;
                   });
-        // ?????
+        // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
         for (const auto& item : sorted) {
             out << "| " << markdownSafe(item.first) << " | " << item.second << " |\n";
         }
-        // ?????????????
+        // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
         out << "\n";
     };
 
-    // ??????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     dumpHistogram("Unsupported Instructions", board.unsupportedHistogram);
-    // ?????????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     dumpHistogram("Supported Instructions", board.supportedHistogram);
-    // ??????
+    // 流程说明：该注释位置用于解释当前统计链路的关键步骤。
     return static_cast<bool>(out);
 }
 
-// ?? vmp ?????
+// 进入 vmp 命名空间，实现覆盖率统计主流程。
 }  // namespace vmp
 
 

@@ -11,7 +11,7 @@
 #include <sstream>  // std::ostringstream。
 #include <iomanip>  // std::hex/std::setw/std::setfill。
 #include <utility>  // std::move。
-#include <cinttypes>
+#include <cinttypes>  // 引入 PRI* 宏，保证跨平台格式化输出一致。
 #include <cstring>
 #include <algorithm>
 #include <iterator>
@@ -21,213 +21,213 @@
 #include <capstone/arm64.h>
 
 // 通过移动构造接管机器码与反汇编文本，避免不必要拷贝。
-zInst::zInst(uint64_t address,
-             std::vector<uint8_t> rawBytes,
-             uint32_t instructionLength,
-             std::string asmType,
-             std::string disasmText)
+zInst::zInst(uint64_t address,  // 参数声明：该参数参与当前语义分发或结果组装。
+             std::vector<uint8_t> rawBytes,  // 参数声明：该参数参与当前语义分发或结果组装。
+             uint32_t instructionLength,  // 参数声明：该参数参与当前语义分发或结果组装。
+             std::string asmType,  // 参数声明：该参数参与当前语义分发或结果组装。
+             std::string disasmText)  // 声明行：保持接口签名与实现语义对齐。
     // 保存地址。
-    : addressValue(address),
+    : addressValue(address),  // 成员初始化：把构造输入稳定映射到对象内部状态。
       // 移动接管机器码字节数组（避免复制成本）。
-      rawBytesValue(std::move(rawBytes)),
+      rawBytesValue(std::move(rawBytes)),  // 参数声明：该参数参与当前语义分发或结果组装。
       // 保存指令长度。
-      instructionLengthValue(instructionLength),
+      instructionLengthValue(instructionLength),  // 参数声明：该参数参与当前语义分发或结果组装。
       // 移动接管类型文本（例如 "add"/"bl"/"ret"）。
-      asmTypeValue(std::move(asmType)),
+      asmTypeValue(std::move(asmType)),  // 参数声明：该参数参与当前语义分发或结果组装。
       // 移动接管反汇编文本（例如 "add x0, x0, #1"）。
-      disasmTextValue(std::move(disasmText)) {
+      disasmTextValue(std::move(disasmText)) {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 构造体主体无需额外逻辑。
 }
 
-uint64_t zInst::getAddress() const {
+uint64_t zInst::getAddress() const {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 返回地址快照。
-    return addressValue;
+    return addressValue;  // 返回阶段：输出当前路径计算结果。
 }
 
-const std::vector<uint8_t>& zInst::getRawBytes() const {
+const std::vector<uint8_t>& zInst::getRawBytes() const {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 返回机器码只读引用，避免额外拷贝。
-    return rawBytesValue;
+    return rawBytesValue;  // 返回阶段：输出当前路径计算结果。
 }
 
-uint32_t zInst::getInstructionLength() const {
+uint32_t zInst::getInstructionLength() const {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 返回指令长度。
-    return instructionLengthValue;
+    return instructionLengthValue;  // 返回阶段：输出当前路径计算结果。
 }
 
-const std::string& zInst::getAsmType() const {
+const std::string& zInst::getAsmType() const {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 返回类型标签。
-    return asmTypeValue;
+    return asmTypeValue;  // 返回阶段：输出当前路径计算结果。
 }
 
-const std::string& zInst::getDisasmText() const {
+const std::string& zInst::getDisasmText() const {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 返回反汇编文本。
-    return disasmTextValue;
+    return disasmTextValue;  // 返回阶段：输出当前路径计算结果。
 }
 
-std::string zInst::getInfo() const {
+std::string zInst::getInfo() const {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 使用字符串流拼接统一输出格式，便于日志与回归脚本稳定匹配。
-    std::ostringstream oss;
+    std::ostringstream oss;  // 状态更新：记录本步骤的中间结果或配置。
 
     // 统一输出地址、长度和指令类型。
     // 地址按十六进制显示，便于与反汇编工具对齐。
-    oss << "addr=0x" << std::hex << addressValue << std::dec;
+    oss << "addr=0x" << std::hex << addressValue << std::dec;  // 状态更新：记录本步骤的中间结果或配置。
     // 输出长度。
-    oss << ", len=" << instructionLengthValue;
+    oss << ", len=" << instructionLengthValue;  // 状态更新：记录本步骤的中间结果或配置。
     // 输出类型。
-    oss << ", type=" << asmTypeValue;
+    oss << ", type=" << asmTypeValue;  // 状态更新：记录本步骤的中间结果或配置。
     // 输出机器码前缀。
-    oss << ", bytes=";
+    oss << ", bytes=";  // 状态更新：记录本步骤的中间结果或配置。
 
     // 机器码按两位十六进制拼接，格式与常见反汇编工具一致。
-    for (size_t byteIndex = 0; byteIndex < rawBytesValue.size(); ++byteIndex) {
+    for (size_t byteIndex = 0; byteIndex < rawBytesValue.size(); ++byteIndex) {  // 迭代步骤：按既定顺序推进状态聚合。
         // 字节之间用空格分隔。
-        if (byteIndex > 0) oss << ' ';
+        if (byteIndex > 0) oss << ' ';  // 分支守卫：满足前置条件后再进入后续处理路径。
         // 每字节补齐两位十六进制（00~ff）。
-        oss << std::hex << std::setw(2) << std::setfill('0')
-            << static_cast<unsigned>(rawBytesValue[byteIndex]);
+        oss << std::hex << std::setw(2) << std::setfill('0')  // 声明行：保持接口签名与实现语义对齐。
+            << static_cast<unsigned>(rawBytesValue[byteIndex]);  // 状态更新：记录本步骤的中间结果或配置。
     }
     // 恢复十进制流状态，避免影响后续数字输出。
-    oss << std::dec;
+    oss << std::dec;  // 状态更新：记录本步骤的中间结果或配置。
     // 追加反汇编文本尾段。
-    oss << ", text=" << disasmTextValue;
+    oss << ", text=" << disasmTextValue;  // 状态更新：记录本步骤的中间结果或配置。
     // 返回完整信息字符串。
-    return oss.str();
+    return oss.str();  // 返回阶段：输出当前路径计算结果。
 }
 
-zInst::zAsmDomain zInst::classifyArm64Domain(unsigned int instructionId) {
+zInst::zAsmDomain zInst::classifyArm64Domain(unsigned int instructionId) {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 先按 instruction id 分发；这是主路径，速度更快且语义稳定。
-    switch (instructionId) {
+    switch (instructionId) {  // 分发表入口：按标签分发到对应语义实现。
         // branch
-        case ARM64_INS_RET:
-        case ARM64_INS_BR:
-        case ARM64_INS_BLR:
-        case ARM64_INS_B:
-        case ARM64_INS_CSEL:
-        case ARM64_INS_CBZ:
-        case ARM64_INS_CBNZ:
-        case ARM64_INS_TBZ:
-        case ARM64_INS_TBNZ:
-        case ARM64_INS_BL:
-        case ARM64_INS_CSINC:
-        case ARM64_INS_CSINV:
-        case ARM64_INS_ALIAS_CSET:
-            return zAsmDomain::Branch;
+        case ARM64_INS_RET: // 指令分支：ARM64_INS_RET，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_BR: // 指令分支：ARM64_INS_BR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_BLR: // 指令分支：ARM64_INS_BLR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_B: // 指令分支：ARM64_INS_B，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_CSEL: // 指令分支：ARM64_INS_CSEL，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_CBZ: // 指令分支：ARM64_INS_CBZ，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_CBNZ: // 指令分支：ARM64_INS_CBNZ，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_TBZ: // 指令分支：ARM64_INS_TBZ，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_TBNZ: // 指令分支：ARM64_INS_TBNZ，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_BL: // 指令分支：ARM64_INS_BL，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_CSINC: // 指令分支：ARM64_INS_CSINC，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_CSINV: // 指令分支：ARM64_INS_CSINV，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ALIAS_CSET: // 指令分支：ARM64_INS_ALIAS_CSET，在此分支内完成等价 VM 语义映射。
+            return zAsmDomain::Branch;  // 返回阶段：输出当前路径计算结果。
 
         // memory
-        case ARM64_INS_STR:
-        case ARM64_INS_LDR:
-        case ARM64_INS_STP:
-        case ARM64_INS_LDP:
-        case ARM64_INS_STRB:
-        case ARM64_INS_STRH:
-        case ARM64_INS_LDRB:
-        case ARM64_INS_LDRH:
-        case ARM64_INS_STUR:
-        case ARM64_INS_STURB:
-        case ARM64_INS_STURH:
-        case ARM64_INS_STLRB:
-        case ARM64_INS_STLRH:
-        case ARM64_INS_STLR:
-        case ARM64_INS_STLXR:
-        case ARM64_INS_STXR:
-        case ARM64_INS_LDUR:
-        case ARM64_INS_LDAXR:
-        case ARM64_INS_LDXR:
-        case ARM64_INS_LDARB:
-        case ARM64_INS_LDARH:
-        case ARM64_INS_LDAR:
-        case ARM64_INS_LDURB:
-        case ARM64_INS_LDURH:
-        case ARM64_INS_LDURSW:
-        case ARM64_INS_ALIAS_LDURSW:
-        case ARM64_INS_LDRSB:
-        case ARM64_INS_LDRSH:
-        case ARM64_INS_LDRSW:
-            return zAsmDomain::Memory;
+        case ARM64_INS_STR: // 指令分支：ARM64_INS_STR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDR: // 指令分支：ARM64_INS_LDR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STP: // 指令分支：ARM64_INS_STP，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDP: // 指令分支：ARM64_INS_LDP，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STRB: // 指令分支：ARM64_INS_STRB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STRH: // 指令分支：ARM64_INS_STRH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDRB: // 指令分支：ARM64_INS_LDRB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDRH: // 指令分支：ARM64_INS_LDRH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STUR: // 指令分支：ARM64_INS_STUR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STURB: // 指令分支：ARM64_INS_STURB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STURH: // 指令分支：ARM64_INS_STURH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STLRB: // 指令分支：ARM64_INS_STLRB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STLRH: // 指令分支：ARM64_INS_STLRH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STLR: // 指令分支：ARM64_INS_STLR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STLXR: // 指令分支：ARM64_INS_STLXR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_STXR: // 指令分支：ARM64_INS_STXR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDUR: // 指令分支：ARM64_INS_LDUR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDAXR: // 指令分支：ARM64_INS_LDAXR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDXR: // 指令分支：ARM64_INS_LDXR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDARB: // 指令分支：ARM64_INS_LDARB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDARH: // 指令分支：ARM64_INS_LDARH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDAR: // 指令分支：ARM64_INS_LDAR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDURB: // 指令分支：ARM64_INS_LDURB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDURH: // 指令分支：ARM64_INS_LDURH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDURSW: // 指令分支：ARM64_INS_LDURSW，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ALIAS_LDURSW: // 指令分支：ARM64_INS_ALIAS_LDURSW，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDRSB: // 指令分支：ARM64_INS_LDRSB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDRSH: // 指令分支：ARM64_INS_LDRSH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LDRSW: // 指令分支：ARM64_INS_LDRSW，在此分支内完成等价 VM 语义映射。
+            return zAsmDomain::Memory;  // 返回阶段：输出当前路径计算结果。
 
         // logic
-        case ARM64_INS_SXTB:
-        case ARM64_INS_SXTH:
-        case ARM64_INS_SXTW:
-        case ARM64_INS_UXTB:
-        case ARM64_INS_UXTH:
-        case ARM64_INS_UXTW:
-        case ARM64_INS_ALIAS_UBFX:
-        case ARM64_INS_ALIAS_SBFX:
-        case ARM64_INS_ALIAS_UBFIZ:
-        case ARM64_INS_ALIAS_SBFIZ:
-        case ARM64_INS_UBFM:
-        case ARM64_INS_SBFM:
-        case ARM64_INS_MOV:
-        case ARM64_INS_MOVI:
-        case ARM64_INS_MOVZ:
-        case ARM64_INS_MOVN:
-        case ARM64_INS_EXTR:
-        case ARM64_INS_AND:
-        case ARM64_INS_ANDS:
-        case ARM64_INS_ORR:
-        case ARM64_INS_ORN:
-        case ARM64_INS_BIC:
-        case ARM64_INS_BICS:
-        case ARM64_INS_EON:
-        case ARM64_INS_EOR:
-        case ARM64_INS_REV:
-        case ARM64_INS_REV16:
-            return zAsmDomain::Logic;
+        case ARM64_INS_SXTB: // 指令分支：ARM64_INS_SXTB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_SXTH: // 指令分支：ARM64_INS_SXTH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_SXTW: // 指令分支：ARM64_INS_SXTW，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_UXTB: // 指令分支：ARM64_INS_UXTB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_UXTH: // 指令分支：ARM64_INS_UXTH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_UXTW: // 指令分支：ARM64_INS_UXTW，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ALIAS_UBFX: // 指令分支：ARM64_INS_ALIAS_UBFX，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ALIAS_SBFX: // 指令分支：ARM64_INS_ALIAS_SBFX，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ALIAS_UBFIZ: // 指令分支：ARM64_INS_ALIAS_UBFIZ，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ALIAS_SBFIZ: // 指令分支：ARM64_INS_ALIAS_SBFIZ，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_UBFM: // 指令分支：ARM64_INS_UBFM，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_SBFM: // 指令分支：ARM64_INS_SBFM，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_MOV: // 指令分支：ARM64_INS_MOV，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_MOVI: // 指令分支：ARM64_INS_MOVI，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_MOVZ: // 指令分支：ARM64_INS_MOVZ，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_MOVN: // 指令分支：ARM64_INS_MOVN，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_EXTR: // 指令分支：ARM64_INS_EXTR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_AND: // 指令分支：ARM64_INS_AND，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ANDS: // 指令分支：ARM64_INS_ANDS，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ORR: // 指令分支：ARM64_INS_ORR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ORN: // 指令分支：ARM64_INS_ORN，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_BIC: // 指令分支：ARM64_INS_BIC，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_BICS: // 指令分支：ARM64_INS_BICS，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_EON: // 指令分支：ARM64_INS_EON，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_EOR: // 指令分支：ARM64_INS_EOR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_REV: // 指令分支：ARM64_INS_REV，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_REV16: // 指令分支：ARM64_INS_REV16，在此分支内完成等价 VM 语义映射。
+            return zAsmDomain::Logic;  // 返回阶段：输出当前路径计算结果。
 
         // arith
-        case ARM64_INS_SUB:
-        case ARM64_INS_ADD:
-        case ARM64_INS_ADDS:
-        case ARM64_INS_MOVK:
-        case ARM64_INS_LSL:
-        case ARM64_INS_LSLR:
-        case ARM64_INS_ALIAS_LSL:
-        case ARM64_INS_LSR:
-        case ARM64_INS_ASR:
-        case ARM64_INS_ROR:
-        case ARM64_INS_CLZ:
-        case ARM64_INS_MUL:
-        case ARM64_INS_MADD:
-        case ARM64_INS_MSUB:
-        case ARM64_INS_UMULL:
-        case ARM64_INS_SMULL:
-        case ARM64_INS_UMADDL:
-        case ARM64_INS_SMADDL:
-        case ARM64_INS_UMULH:
-        case ARM64_INS_SMULH:
-        case ARM64_INS_UDIV:
-        case ARM64_INS_SDIV:
-        case ARM64_INS_ADR:
-        case ARM64_INS_ADRP:
-        case ARM64_INS_MRS:
-        case ARM64_INS_HINT:
-        case ARM64_INS_CLREX:
-        case ARM64_INS_BRK:
-        case ARM64_INS_SVC:
-        case ARM64_INS_SUBS:
-            return zAsmDomain::Arith;
+        case ARM64_INS_SUB: // 指令分支：ARM64_INS_SUB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ADD: // 指令分支：ARM64_INS_ADD，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ADDS: // 指令分支：ARM64_INS_ADDS，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_MOVK: // 指令分支：ARM64_INS_MOVK，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LSL: // 指令分支：ARM64_INS_LSL，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LSLR: // 指令分支：ARM64_INS_LSLR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ALIAS_LSL: // 指令分支：ARM64_INS_ALIAS_LSL，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_LSR: // 指令分支：ARM64_INS_LSR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ASR: // 指令分支：ARM64_INS_ASR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ROR: // 指令分支：ARM64_INS_ROR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_CLZ: // 指令分支：ARM64_INS_CLZ，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_MUL: // 指令分支：ARM64_INS_MUL，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_MADD: // 指令分支：ARM64_INS_MADD，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_MSUB: // 指令分支：ARM64_INS_MSUB，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_UMULL: // 指令分支：ARM64_INS_UMULL，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_SMULL: // 指令分支：ARM64_INS_SMULL，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_UMADDL: // 指令分支：ARM64_INS_UMADDL，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_SMADDL: // 指令分支：ARM64_INS_SMADDL，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_UMULH: // 指令分支：ARM64_INS_UMULH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_SMULH: // 指令分支：ARM64_INS_SMULH，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_UDIV: // 指令分支：ARM64_INS_UDIV，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_SDIV: // 指令分支：ARM64_INS_SDIV，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ADR: // 指令分支：ARM64_INS_ADR，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_ADRP: // 指令分支：ARM64_INS_ADRP，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_MRS: // 指令分支：ARM64_INS_MRS，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_HINT: // 指令分支：ARM64_INS_HINT，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_CLREX: // 指令分支：ARM64_INS_CLREX，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_BRK: // 指令分支：ARM64_INS_BRK，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_SVC: // 指令分支：ARM64_INS_SVC，在此分支内完成等价 VM 语义映射。
+        case ARM64_INS_SUBS: // 指令分支：ARM64_INS_SUBS，在此分支内完成等价 VM 语义映射。
+            return zAsmDomain::Arith;  // 返回阶段：输出当前路径计算结果。
 
-        default:
-            break;
+        default:  // 兜底分支：未命中显式 case 时走保守处理路径。
+            break;  // 状态更新：记录本步骤的中间结果或配置。
     }
     // 未命中则保持 Unknown，翻译阶段将按严格模式直接判定为 unsupported instruction id。
-    return zAsmDomain::Unknown;
+    return zAsmDomain::Unknown;  // 返回阶段：输出当前路径计算结果。
 }
 
-const char* zInst::getAsmDomainName(zAsmDomain domain) {
-    switch (domain) {
-        case zAsmDomain::Arith:
-            return "arith";
-        case zAsmDomain::Logic:
-            return "logic";
-        case zAsmDomain::Memory:
-            return "memory";
-        case zAsmDomain::Branch:
-            return "branch";
-        case zAsmDomain::Unknown:
-        default:
-            return "unknown";
+const char* zInst::getAsmDomainName(zAsmDomain domain) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    switch (domain) {  // 分发表入口：按标签分发到对应语义实现。
+        case zAsmDomain::Arith:  // 分支命中：执行该标签对应的语义映射。
+            return "arith";  // 返回阶段：输出当前路径计算结果。
+        case zAsmDomain::Logic:  // 分支命中：执行该标签对应的语义映射。
+            return "logic";  // 返回阶段：输出当前路径计算结果。
+        case zAsmDomain::Memory:  // 分支命中：执行该标签对应的语义映射。
+            return "memory";  // 返回阶段：输出当前路径计算结果。
+        case zAsmDomain::Branch:  // 分支命中：执行该标签对应的语义映射。
+            return "branch";  // 返回阶段：输出当前路径计算结果。
+        case zAsmDomain::Unknown:  // 分支命中：执行该标签对应的语义映射。
+        default:  // 兜底分支：未命中显式 case 时走保守处理路径。
+            return "unknown";  // 返回阶段：输出当前路径计算结果。
     }
 }
 
@@ -235,153 +235,153 @@ const char* zInst::getAsmDomainName(zAsmDomain domain) {
  * [VMP_FLOW_NOTE] merged from zInstAsmCore.cpp
  * - 合并原因：按当前工程调整，将反汇编辅助实现并入 zInst.cpp。
  */
-bool zInstAsm::open(csh& handle) {
-    handle = 0;
+bool zInstAsm::open(csh& handle) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    handle = 0;  // 状态更新：记录本步骤的中间结果或配置。
     // 显式指定小端模式，避免平台默认值差异导致行为不一致。
-    if (cs_open(CS_ARCH_AARCH64, CS_MODE_LITTLE_ENDIAN, &handle) != CS_ERR_OK) {
-        handle = 0;
-        return false;
+    if (cs_open(CS_ARCH_AARCH64, CS_MODE_LITTLE_ENDIAN, &handle) != CS_ERR_OK) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        handle = 0;  // 状态更新：记录本步骤的中间结果或配置。
+        return false;  // 失败出口：当前条件下中止并上抛错误。
     }
-    return true;
+    return true;  // 返回阶段：输出当前路径计算结果。
 }
 
-bool zInstAsm::openWithDetail(csh& handle) {
-    if (!open(handle)) {
-        return false;
+bool zInstAsm::openWithDetail(csh& handle) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    if (!open(handle)) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return false;  // 失败出口：当前条件下中止并上抛错误。
     }
-    if (!enableDetail(handle)) {
-        close(handle);
-        return false;
+    if (!enableDetail(handle)) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        close(handle);  // 状态更新：记录本步骤的中间结果或配置。
+        return false;  // 失败出口：当前条件下中止并上抛错误。
     }
-    return true;
+    return true;  // 返回阶段：输出当前路径计算结果。
 }
 
-bool zInstAsm::enableDetail(csh handle) {
-    return cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON) == CS_ERR_OK;
+bool zInstAsm::enableDetail(csh handle) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    return cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON) == CS_ERR_OK;  // 返回阶段：输出当前路径计算结果。
 }
 
-void zInstAsm::close(csh& handle) {
-    if (handle == 0) {
-        return;
+void zInstAsm::close(csh& handle) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    if (handle == 0) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return;  // 状态更新：记录本步骤的中间结果或配置。
     }
-    cs_close(&handle);
-    handle = 0;
+    cs_close(&handle);  // 状态更新：记录本步骤的中间结果或配置。
+    handle = 0;  // 状态更新：记录本步骤的中间结果或配置。
 }
 
-size_t zInstAsm::disasm(csh handle,
-                         const uint8_t* code,
-                         size_t size,
-                         uint64_t baseAddr,
-                         cs_insn*& outInsn) {
-    outInsn = nullptr;
-    if (handle == 0 || code == nullptr || size == 0) {
-        return 0;
+size_t zInstAsm::disasm(csh handle,  // 参数声明：该参数参与当前语义分发或结果组装。
+                         const uint8_t* code,  // 参数声明：该参数参与当前语义分发或结果组装。
+                         size_t size,  // 参数声明：该参数参与当前语义分发或结果组装。
+                         uint64_t baseAddr,  // 参数声明：该参数参与当前语义分发或结果组装。
+                         cs_insn*& outInsn) {  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+    outInsn = nullptr;  // 状态更新：记录本步骤的中间结果或配置。
+    if (handle == 0 || code == nullptr || size == 0) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return 0;  // 返回阶段：输出当前路径计算结果。
     }
-    return cs_disasm(handle, code, size, baseAddr, 0, &outInsn);
+    return cs_disasm(handle, code, size, baseAddr, 0, &outInsn);  // 返回阶段：输出当前路径计算结果。
 }
 
-void zInstAsm::freeInsn(cs_insn* insn, size_t count) {
-    if (insn == nullptr || count == 0) {
-        return;
+void zInstAsm::freeInsn(cs_insn* insn, size_t count) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    if (insn == nullptr || count == 0) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return;  // 状态更新：记录本步骤的中间结果或配置。
     }
-    cs_free(insn, count);
+    cs_free(insn, count);  // 状态更新：记录本步骤的中间结果或配置。
 }
 
-std::string zInstAsm::getMnemonic(const cs_insn& insn) {
-    return insn.mnemonic ? insn.mnemonic : "";
+std::string zInstAsm::getMnemonic(const cs_insn& insn) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    return insn.mnemonic ? insn.mnemonic : "";  // 返回阶段：输出当前路径计算结果。
 }
 
-std::string zInstAsm::buildAsmText(const cs_insn& insn) {
-    std::string text = getMnemonic(insn);
-    if (insn.op_str != nullptr && insn.op_str[0] != '\0') {
-        if (!text.empty()) {
-            text.push_back(' ');
+std::string zInstAsm::buildAsmText(const cs_insn& insn) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    std::string text = getMnemonic(insn);  // 状态更新：记录本步骤的中间结果或配置。
+    if (insn.op_str != nullptr && insn.op_str[0] != '\0') {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        if (!text.empty()) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+            text.push_back(' ');  // 状态更新：记录本步骤的中间结果或配置。
         }
-        text += insn.op_str;
+        text += insn.op_str;  // 状态更新：记录本步骤的中间结果或配置。
     }
-    return text;
+    return text;  // 返回阶段：输出当前路径计算结果。
 }
 
-static std::string buildOperandDetail(uint8_t op_count, cs_arm64_op* ops) {
-    if (ops == nullptr || op_count == 0) {
-        return "none";
+static std::string buildOperandDetail(uint8_t op_count, cs_arm64_op* ops) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    if (ops == nullptr || op_count == 0) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return "none";  // 返回阶段：输出当前路径计算结果。
     }
-    std::ostringstream oss;
-    for (uint8_t i = 0; i < op_count; ++i) {
-        if (i != 0) {
-            oss << "; ";
+    std::ostringstream oss;  // 状态更新：记录本步骤的中间结果或配置。
+    for (uint8_t i = 0; i < op_count; ++i) {  // 迭代步骤：按既定顺序推进状态聚合。
+        if (i != 0) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+            oss << "; ";  // 状态更新：记录本步骤的中间结果或配置。
         }
-        const cs_arm64_op& op = ops[i];
-        oss << "#" << static_cast<unsigned>(i) << "{type=" << static_cast<unsigned>(op.type);
-        if (op.type == AARCH64_OP_REG) {
-            oss << ",reg=" << static_cast<unsigned>(op.reg);
-        } else if (op.type == AARCH64_OP_IMM) {
-            oss << ",imm=0x" << std::hex << static_cast<unsigned long long>(op.imm) << std::dec;
-        } else if (op.type == AARCH64_OP_MEM) {
-            oss << ",mem.base=" << static_cast<unsigned>(op.mem.base)
-                << ",mem.index=" << static_cast<unsigned>(op.mem.index)
-                << ",mem.disp=" << op.mem.disp;
+        const cs_arm64_op& op = ops[i];  // 状态更新：记录本步骤的中间结果或配置。
+        oss << "#" << static_cast<unsigned>(i) << "{type=" << static_cast<unsigned>(op.type);  // 状态更新：记录本步骤的中间结果或配置。
+        if (op.type == AARCH64_OP_REG) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+            oss << ",reg=" << static_cast<unsigned>(op.reg);  // 状态更新：记录本步骤的中间结果或配置。
+        } else if (op.type == AARCH64_OP_IMM) {  // 处理阶段入口：进入该函数或代码块的主流程。
+            oss << ",imm=0x" << std::hex << static_cast<unsigned long long>(op.imm) << std::dec;  // 状态更新：记录本步骤的中间结果或配置。
+        } else if (op.type == AARCH64_OP_MEM) {  // 处理阶段入口：进入该函数或代码块的主流程。
+            oss << ",mem.base=" << static_cast<unsigned>(op.mem.base)  // 声明行：保持接口签名与实现语义对齐。
+                << ",mem.index=" << static_cast<unsigned>(op.mem.index)  // 声明行：保持接口签名与实现语义对齐。
+                << ",mem.disp=" << op.mem.disp;  // 状态更新：记录本步骤的中间结果或配置。
         }
-        oss << ",shift=(" << static_cast<unsigned>(op.shift.type)
-            << "," << static_cast<unsigned>(op.shift.value) << ")";
-        oss << ",ext=" << static_cast<unsigned>(op.ext);
-        oss << "}";
+        oss << ",shift=(" << static_cast<unsigned>(op.shift.type)  // 声明行：保持接口签名与实现语义对齐。
+            << "," << static_cast<unsigned>(op.shift.value) << ")";  // 状态更新：记录本步骤的中间结果或配置。
+        oss << ",ext=" << static_cast<unsigned>(op.ext);  // 状态更新：记录本步骤的中间结果或配置。
+        oss << "}";  // 状态更新：记录本步骤的中间结果或配置。
     }
-    return oss.str();
+    return oss.str();  // 返回阶段：输出当前路径计算结果。
 }
 
-static std::string buildInsnBytePreview(const cs_insn& insn) {
-    return vmp::base::format::hexBytesPreview(insn.bytes, static_cast<size_t>(insn.size), 8);
+static std::string buildInsnBytePreview(const cs_insn& insn) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    return vmp::base::format::hexBytesPreview(insn.bytes, static_cast<size_t>(insn.size), 8);  // 返回阶段：输出当前路径计算结果。
 }
 
-uint32_t arm64CapstoneToArchIndex(unsigned int reg) {
+uint32_t arm64CapstoneToArchIndex(unsigned int reg) {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 把 Capstone 寄存器枚举映射到 VM 侧统一索引。
-    if (reg == AARCH64_REG_SP || reg == AARCH64_REG_WSP) return 31;
-    if (reg == AARCH64_REG_FP || reg == AARCH64_REG_X29) return 29;
-    if (reg == AARCH64_REG_LR || reg == AARCH64_REG_X30) return 30;
-    if (reg >= AARCH64_REG_W0 && reg <= AARCH64_REG_W30) return static_cast<uint32_t>(reg - AARCH64_REG_W0);
-    if (reg >= AARCH64_REG_X0 && reg <= AARCH64_REG_X28) return static_cast<uint32_t>(reg - AARCH64_REG_X0);
-    return 0;
+    if (reg == AARCH64_REG_SP || reg == AARCH64_REG_WSP) return 31;  // 分支守卫：满足前置条件后再进入后续处理路径。
+    if (reg == AARCH64_REG_FP || reg == AARCH64_REG_X29) return 29;  // 分支守卫：满足前置条件后再进入后续处理路径。
+    if (reg == AARCH64_REG_LR || reg == AARCH64_REG_X30) return 30;  // 分支守卫：满足前置条件后再进入后续处理路径。
+    if (reg >= AARCH64_REG_W0 && reg <= AARCH64_REG_W30) return static_cast<uint32_t>(reg - AARCH64_REG_W0);  // 分支守卫：满足前置条件后再进入后续处理路径。
+    if (reg >= AARCH64_REG_X0 && reg <= AARCH64_REG_X28) return static_cast<uint32_t>(reg - AARCH64_REG_X0);  // 分支守卫：满足前置条件后再进入后续处理路径。
+    return 0;  // 返回阶段：输出当前路径计算结果。
 }
 
-uint32_t getOrAddReg(std::vector<uint32_t>& regIdList, uint32_t reg) {
+uint32_t getOrAddReg(std::vector<uint32_t>& regIdList, uint32_t reg) {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 返回寄存器在 regIdList 中的索引，不存在则追加。
-    for (size_t registerIndex = 0; registerIndex < regIdList.size(); ++registerIndex) {
-        if (regIdList[registerIndex] == reg) return static_cast<uint32_t>(registerIndex);
+    for (size_t registerIndex = 0; registerIndex < regIdList.size(); ++registerIndex) {  // 迭代步骤：按既定顺序推进状态聚合。
+        if (regIdList[registerIndex] == reg) return static_cast<uint32_t>(registerIndex);  // 分支守卫：满足前置条件后再进入后续处理路径。
     }
-    regIdList.push_back(reg);
-    return static_cast<uint32_t>(regIdList.size() - 1);
+    regIdList.push_back(reg);  // 状态更新：记录本步骤的中间结果或配置。
+    return static_cast<uint32_t>(regIdList.size() - 1);  // 返回阶段：输出当前路径计算结果。
 }
 
-bool isArm64WReg(unsigned int reg) {
+bool isArm64WReg(unsigned int reg) {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 判断是否 32 位通用寄存器（w0-w30/wsp/wzr）。
-    return (reg >= AARCH64_REG_W0 && reg <= AARCH64_REG_W30) ||
-           reg == AARCH64_REG_WSP || reg == AARCH64_REG_WZR;
+    return (reg >= AARCH64_REG_W0 && reg <= AARCH64_REG_W30) ||  // 返回阶段：输出当前路径计算结果。
+           reg == AARCH64_REG_WSP || reg == AARCH64_REG_WZR;  // 状态更新：记录本步骤的中间结果或配置。
 }
 
-bool isArm64GpReg(unsigned int reg) {
+bool isArm64GpReg(unsigned int reg) {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 判断是否通用寄存器（含 sp/fp/lr/零寄存器）。
-    if (reg == AARCH64_REG_SP || reg == AARCH64_REG_WSP ||
-        reg == AARCH64_REG_FP || reg == AARCH64_REG_X29 ||
-        reg == AARCH64_REG_LR || reg == AARCH64_REG_X30 ||
-        reg == AARCH64_REG_WZR || reg == AARCH64_REG_XZR) {
-        return true;
+    if (reg == AARCH64_REG_SP || reg == AARCH64_REG_WSP ||  // 分支守卫：满足前置条件后再进入后续处理路径。
+        reg == AARCH64_REG_FP || reg == AARCH64_REG_X29 ||  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+        reg == AARCH64_REG_LR || reg == AARCH64_REG_X30 ||  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+        reg == AARCH64_REG_WZR || reg == AARCH64_REG_XZR) {  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+        return true;  // 返回阶段：输出当前路径计算结果。
     }
-    return (reg >= AARCH64_REG_W0 && reg <= AARCH64_REG_W30) ||
-           (reg >= AARCH64_REG_X0 && reg <= AARCH64_REG_X28);
+    return (reg >= AARCH64_REG_W0 && reg <= AARCH64_REG_W30) ||  // 返回阶段：输出当前路径计算结果。
+           (reg >= AARCH64_REG_X0 && reg <= AARCH64_REG_X28);  // 状态更新：记录本步骤的中间结果或配置。
 }
 
 // 统一判断 ARM64 的零寄存器（wzr/xzr）。
-bool isArm64ZeroReg(unsigned int reg) {
-    return reg == AARCH64_REG_WZR || reg == AARCH64_REG_XZR;
+bool isArm64ZeroReg(unsigned int reg) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    return reg == AARCH64_REG_WZR || reg == AARCH64_REG_XZR;  // 返回阶段：输出当前路径计算结果。
 }
 
 // 根据立即数宽度生成 OP_LOAD_IMM / OP_LOAD_CONST64。
-void emitLoadImm(std::vector<uint32_t>& opcodeList, uint32_t dstIndex, uint64_t imm) {
-    if (imm <= 0xFFFFFFFFull) {
+void emitLoadImm(std::vector<uint32_t>& opcodeList, uint32_t dstIndex, uint64_t imm) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    if (imm <= 0xFFFFFFFFull) {  // 分支守卫：满足前置条件后再进入后续处理路径。
         // 32 位可表达：直接走 OP_LOAD_IMM，字数更短。
-        opcodeList = { OP_LOAD_IMM, dstIndex, static_cast<uint32_t>(imm) };
-    } else {
+        opcodeList = { OP_LOAD_IMM, dstIndex, static_cast<uint32_t>(imm) };  // 状态更新：记录本步骤的中间结果或配置。
+    } else {  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
         // 超过 32 位：拆成低/高 32 位写入 OP_LOAD_CONST64。
         opcodeList = { OP_LOAD_CONST64, dstIndex,
                        static_cast<uint32_t>(imm & 0xFFFFFFFFull),

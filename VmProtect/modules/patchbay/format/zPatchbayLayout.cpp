@@ -1,17 +1,17 @@
 #include "zPatchbayLayout.h"
 
 // 校验 ELF 表布局是否满足 Android 端基本装载约束。
-bool validateElfTablesForAndroid(const std::vector<uint8_t>& fileBytes, std::string* error) {
+bool validateElfTablesForAndroid(const std::vector<uint8_t>& fileBytes, std::string* error) {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 至少需要容纳一个 ELF64 文件头。
-    if (fileBytes.size() < sizeof(Elf64_Ehdr)) {
-        if (error != nullptr) {
+    if (fileBytes.size() < sizeof(Elf64_Ehdr)) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        if (error != nullptr) {  // 分支守卫：满足前置条件后再进入后续处理路径。
             *error = "output image too small for ELF header";
         }
-        return false;
+        return false;  // 失败出口：当前条件下中止并上抛错误。
     }
 
     // 将文件起始字节解释为 ELF64 头视图。
-    const auto* ehdr = reinterpret_cast<const Elf64_Ehdr*>(fileBytes.data());
+    const auto* ehdr = reinterpret_cast<const Elf64_Ehdr*>(fileBytes.data());  // 状态更新：记录本步骤的中间结果或配置。
 
     // 校验 Program Header 表范围以及 PT_LOAD 对齐同余关系。
     if (ehdr->e_phnum > 0) {

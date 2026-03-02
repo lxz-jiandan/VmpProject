@@ -5,30 +5,30 @@
  */
 #include "zInst.h"
 
-namespace {
+namespace {  // 命名空间入口：收敛内部实现细节，避免对外暴露辅助符号。
 
 // 统一发射 MADD/MSUB：dst = (lhs * rhs) +/- addend。
-bool tryEmitMaddMsubLike(
-    std::vector<uint32_t>& opcode_list,
-    std::vector<uint32_t>& reg_id_list,
-    std::vector<uint32_t>& type_id_list,
-    int dst_reg,
-    int lhs_reg,
-    int rhs_reg,
-    int addend_reg,
-    bool is_sub
-) {
-    if (!isArm64GpReg(dst_reg) ||
-        !isArm64GpReg(lhs_reg) ||
-        !isArm64GpReg(rhs_reg) ||
-        !isArm64GpReg(addend_reg)) {
-        return false;
+bool tryEmitMaddMsubLike(  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+    std::vector<uint32_t>& opcode_list,  // 参数声明：该参数参与当前语义分发或结果组装。
+    std::vector<uint32_t>& reg_id_list,  // 参数声明：该参数参与当前语义分发或结果组装。
+    std::vector<uint32_t>& type_id_list,  // 参数声明：该参数参与当前语义分发或结果组装。
+    int dst_reg,  // 参数声明：该参数参与当前语义分发或结果组装。
+    int lhs_reg,  // 参数声明：该参数参与当前语义分发或结果组装。
+    int rhs_reg,  // 参数声明：该参数参与当前语义分发或结果组装。
+    int addend_reg,  // 参数声明：该参数参与当前语义分发或结果组装。
+    bool is_sub  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+) {  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+    if (!isArm64GpReg(dst_reg) ||  // 分支守卫：满足前置条件后再进入后续处理路径。
+        !isArm64GpReg(lhs_reg) ||  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+        !isArm64GpReg(rhs_reg) ||  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+        !isArm64GpReg(addend_reg)) {  // 处理阶段入口：进入该函数或代码块的主流程。
+        return false;  // 失败出口：当前条件下中止并上抛错误。
     }
-    const uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(dst_reg));
-    const uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(lhs_reg));
-    const uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(rhs_reg));
-    const uint32_t add_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(addend_reg));
-    const uint32_t type_idx = getOrAddTypeTagForRegWidth(type_id_list, dst_reg);
+    const uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(dst_reg));  // 状态更新：记录本步骤的中间结果或配置。
+    const uint32_t lhs_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(lhs_reg));  // 状态更新：记录本步骤的中间结果或配置。
+    const uint32_t rhs_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(rhs_reg));  // 状态更新：记录本步骤的中间结果或配置。
+    const uint32_t add_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(addend_reg));  // 状态更新：记录本步骤的中间结果或配置。
+    const uint32_t type_idx = getOrAddTypeTagForRegWidth(type_id_list, dst_reg);  // 状态更新：记录本步骤的中间结果或配置。
     const uint32_t tmp_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X16));
     opcode_list = {
         OP_BINARY, BIN_MUL, type_idx, lhs_idx, rhs_idx, tmp_idx,
@@ -150,7 +150,7 @@ bool dispatchArm64ArithCase(
  * - Grouped by instruction domain.
  */
 
-            case ARM64_INS_SUB: {
+            case ARM64_INS_SUB: { // 指令分支：ARM64_INS_SUB，在此分支内完成等价 VM 语义映射。
                 // SUB: dst = lhs - rhs/imm
                 if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG) {
                     // 目标与左操作数都必须先映射到 VM 寄存器索引。
@@ -170,8 +170,8 @@ bool dispatchArm64ArithCase(
             }
             // 存储类：STR -> OP_SET_FIELD。
 
-            case ARM64_INS_ADD:
-            case ARM64_INS_ADDS: {
+            case ARM64_INS_ADD: // 指令分支：ARM64_INS_ADD，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_ADDS: { // 指令分支：ARM64_INS_ADDS，在此分支内完成等价 VM 语义映射。
                 // ADDS 需要更新条件标志，这里通过扩展位 BIN_UPDATE_FLAGS 标记。
                 static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
                 // ADD/ADDS: dst = lhs + rhs/imm
@@ -229,7 +229,7 @@ bool dispatchArm64ArithCase(
                 break;
             }
 
-            case ARM64_INS_MOVK: {
+            case ARM64_INS_MOVK: { // 指令分支：ARM64_INS_MOVK，在此分支内完成等价 VM 语义映射。
                 // MOVK：保留原值其它位，仅覆盖 16bit 片段。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_IMM) {
                     // 目标寄存器索引（写回位置）。
@@ -280,33 +280,33 @@ bool dispatchArm64ArithCase(
             // 算术类：MUL -> OP_BINARY(BIN_MUL)。
 
             // 算术类：ADD/ADDS -> OP_BINARY/OP_BINARY_IMM(BIN_ADD)。
-            case ARM64_INS_LSL:
-            case ARM64_INS_LSLR:
-            case ARM64_INS_ALIAS_LSL: {
+            case ARM64_INS_LSL: // 指令分支：ARM64_INS_LSL，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_LSLR: // 指令分支：ARM64_INS_LSLR，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_ALIAS_LSL: { // 指令分支：ARM64_INS_ALIAS_LSL，在此分支内完成等价 VM 语义映射。
                 // 统一处理左移：覆盖三操作数、两操作数+shift 等结构化形态。
                 (void)tryEmitLslLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
                 break;
             }
 
-            case ARM64_INS_LSR: {
+            case ARM64_INS_LSR: { // 指令分支：ARM64_INS_LSR，在此分支内完成等价 VM 语义映射。
                 // 统一处理逻辑右移：覆盖三操作数、两操作数+shift 等结构化形态。
                 (void)tryEmitLsrLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
                 break;
             }
 
-            case ARM64_INS_ASR: {
+            case ARM64_INS_ASR: { // 指令分支：ARM64_INS_ASR，在此分支内完成等价 VM 语义映射。
                 // 统一处理算术右移：覆盖三操作数、两操作数+shift 等结构化形态。
                 (void)tryEmitAsrLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
                 break;
             }
 
-            case ARM64_INS_ROR: {
+            case ARM64_INS_ROR: { // 指令分支：ARM64_INS_ROR，在此分支内完成等价 VM 语义映射。
                 // 统一处理循环右移：优先覆盖 immediate 形态。
                 (void)tryEmitRorLike(opcode_list, reg_id_list, type_id_list, insn[j], op_count, ops);
                 break;
             }
 
-            case ARM64_INS_CLZ: {
+            case ARM64_INS_CLZ: { // 指令分支：ARM64_INS_CLZ，在此分支内完成等价 VM 语义映射。
                 // CLZ：统计前导零，映射到 OP_UNARY(UNARY_CLZ)。
                 if (op_count >= 2 &&
                     ops &&
@@ -337,7 +337,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 位段写入类：MOVK 通过 AND/OR 组合实现片段覆盖。
-            case ARM64_INS_MUL: {
+            case ARM64_INS_MUL: { // 指令分支：ARM64_INS_MUL，在此分支内完成等价 VM 语义映射。
                 // 纯寄存器三操作数乘法。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
@@ -353,7 +353,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 乘加：MADD -> dst = (lhs * rhs) + addend。
-            case ARM64_INS_MADD: {
+            case ARM64_INS_MADD: { // 指令分支：ARM64_INS_MADD，在此分支内完成等价 VM 语义映射。
                 // Capstone 常把 "mul dst, lhs, rhs" 记作 MADD 别名（隐式 addend=xzr），
                 // 此时 op_count=3，需要按纯乘法落地。
                 if (op_count >= 3 &&
@@ -386,7 +386,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 乘减：MSUB -> dst = addend - (lhs * rhs)。
-            case ARM64_INS_MSUB: {
+            case ARM64_INS_MSUB: { // 指令分支：ARM64_INS_MSUB，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 4 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -407,7 +407,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 长乘（无符号）：UMULL -> dst = (uint32)lhs * (uint32)rhs。
-            case ARM64_INS_UMULL: {
+            case ARM64_INS_UMULL: { // 指令分支：ARM64_INS_UMULL，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -428,7 +428,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 长乘（有符号）：SMULL -> dst = (int32)lhs * (int32)rhs。
-            case ARM64_INS_SMULL: {
+            case ARM64_INS_SMULL: { // 指令分支：ARM64_INS_SMULL，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -449,7 +449,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 长乘加（无符号）：UMADDL -> dst = ((uint32)lhs*(uint32)rhs) + addend。
-            case ARM64_INS_UMADDL: {
+            case ARM64_INS_UMADDL: { // 指令分支：ARM64_INS_UMADDL，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 4 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -471,7 +471,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 长乘加（有符号）：SMADDL -> dst = ((int32)lhs*(int32)rhs) + addend。
-            case ARM64_INS_SMADDL: {
+            case ARM64_INS_SMADDL: { // 指令分支：ARM64_INS_SMADDL，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 4 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -493,7 +493,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 高位长乘（无符号）：UMULH -> (lhs * rhs) >> 64。
-            case ARM64_INS_UMULH: {
+            case ARM64_INS_UMULH: { // 指令分支：ARM64_INS_UMULH，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -512,7 +512,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 高位长乘（有符号）：SMULH -> signed_high64(lhs * rhs)。
-            case ARM64_INS_SMULH: {
+            case ARM64_INS_SMULH: { // 指令分支：ARM64_INS_SMULH，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -531,7 +531,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 无符号除法：UDIV -> dst = lhs / rhs。
-            case ARM64_INS_UDIV: {
+            case ARM64_INS_UDIV: { // 指令分支：ARM64_INS_UDIV，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -550,7 +550,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 有符号除法：SDIV -> dst = lhs / rhs。
-            case ARM64_INS_SDIV: {
+            case ARM64_INS_SDIV: { // 指令分支：ARM64_INS_SDIV，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -569,7 +569,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 地址构造类：ADR -> 直接加载绝对地址立即数。
-            case ARM64_INS_ADR: {
+            case ARM64_INS_ADR: { // 指令分支：ARM64_INS_ADR，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_IMM) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(ops[0].reg));
                     uint64_t imm = static_cast<uint64_t>(ops[1].imm);
@@ -579,7 +579,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 地址构造类：ADRP -> OP_ADRP。
-            case ARM64_INS_ADRP: {
+            case ARM64_INS_ADRP: { // 指令分支：ARM64_INS_ADRP，在此分支内完成等价 VM 语义映射。
                 // ADRP：提取页对齐基址，拆成高低 32bit 存入 OP_ADRP。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_IMM) {
                     // 目标寄存器索引。
@@ -596,7 +596,7 @@ bool dispatchArm64ArithCase(
             }
 
             // 系统寄存器读取：当前保守降级为零写入。
-            case ARM64_INS_MRS: {
+            case ARM64_INS_MRS: { // 指令分支：ARM64_INS_MRS，在此分支内完成等价 VM 语义映射。
                 // MRS 暂不模拟系统寄存器语义，先降级为目标寄存器写 0。
                 if (op_count >= 1 && ops[0].type == AARCH64_OP_REG) {
                     uint32_t dst_idx = getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(ops[0].reg));
@@ -605,18 +605,18 @@ bool dispatchArm64ArithCase(
                 break;
             }
 
-            case ARM64_INS_HINT:
+            case ARM64_INS_HINT: // 指令分支：ARM64_INS_HINT，在此分支内完成等价 VM 语义映射。
 
-            case ARM64_INS_CLREX:
+            case ARM64_INS_CLREX: // 指令分支：ARM64_INS_CLREX，在此分支内完成等价 VM 语义映射。
 
-            case ARM64_INS_BRK:
+            case ARM64_INS_BRK: // 指令分支：ARM64_INS_BRK，在此分支内完成等价 VM 语义映射。
 
-            case ARM64_INS_SVC:
+            case ARM64_INS_SVC: // 指令分支：ARM64_INS_SVC，在此分支内完成等价 VM 语义映射。
                 // 系统/调试类指令在当前单线程回归场景下保守降级为 NOP。
                 opcode_list = { OP_NOP };
                 break;
 
-            case ARM64_INS_SUBS: {
+            case ARM64_INS_SUBS: { // 指令分支：ARM64_INS_SUBS，在此分支内完成等价 VM 语义映射。
                 // SUBS：与 SUB 类似，但需要更新条件标志。
                 static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
                 // cmp alias：Capstone 常把 "cmp lhs, rhs/imm" 记作 SUBS（op_count=2）。

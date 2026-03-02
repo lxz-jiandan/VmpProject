@@ -5,9 +5,9 @@
  */
 #include "zInst.h"
 
-bool dispatchArm64MemoryCase(
-    unsigned int id,
-    uint8_t op_count,
+bool dispatchArm64MemoryCase(  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+    unsigned int id,  // 参数声明：该参数参与当前语义分发或结果组装。
+    uint8_t op_count,  // 参数声明：该参数参与当前语义分发或结果组装。
     cs_arm64_op* ops,
     cs_detail* detail,
     const cs_insn* insn,
@@ -30,7 +30,7 @@ bool dispatchArm64MemoryCase(
  * - Grouped by instruction domain.
  */
 
-            case ARM64_INS_STR: {
+            case ARM64_INS_STR: { // 指令分支：ARM64_INS_STR，在此分支内完成等价 VM 语义映射。
                 // STR: 映射为 OP_SET_FIELD(base + offset <- value)。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     // mem.disp 是相对基址偏移，按 int32 读取后再写入 word。
@@ -51,7 +51,7 @@ bool dispatchArm64MemoryCase(
             }
             // 存储类：STRB -> OP_SET_FIELD(type=INT8_UNSIGNED)。
 
-            case ARM64_INS_LDR: {
+            case ARM64_INS_LDR: { // 指令分支：ARM64_INS_LDR，在此分支内完成等价 VM 语义映射。
                 // LDR: 映射为 OP_GET_FIELD(dst <- *(base+offset))。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     // 读取偏移同样来自 mem.disp。
@@ -68,7 +68,7 @@ bool dispatchArm64MemoryCase(
             }
             // 读取类：LDRB -> OP_GET_FIELD(type=INT8_UNSIGNED)。
 
-            case ARM64_INS_STP: {
+            case ARM64_INS_STP: { // 指令分支：ARM64_INS_STP，在此分支内完成等价 VM 语义映射。
                 // STP：拆成两个连续 OP_SET_FIELD。
                 if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG && ops[2].type == AARCH64_OP_MEM) {
                     // 两次写入的起始地址偏移。
@@ -98,7 +98,7 @@ bool dispatchArm64MemoryCase(
             }
             // 非扩展寻址存储：STUR -> OP_SET_FIELD。
 
-            case ARM64_INS_LDP: {
+            case ARM64_INS_LDP: { // 指令分支：ARM64_INS_LDP，在此分支内完成等价 VM 语义映射。
                 // LDP：拆成两个连续 OP_GET_FIELD。
                 if (op_count >= 3 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_REG && ops[2].type == AARCH64_OP_MEM) {
                     // 基址 + 位移。
@@ -121,7 +121,7 @@ bool dispatchArm64MemoryCase(
                 break;
             }
 
-            case ARM64_INS_STRB: {
+            case ARM64_INS_STRB: { // 指令分支：ARM64_INS_STRB，在此分支内完成等价 VM 语义映射。
                 // STRB：按 8bit 无符号语义写入 base+offset。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -140,7 +140,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 存储类：STRH -> OP_SET_FIELD(type=INT16_UNSIGNED)。
-            case ARM64_INS_STRH: {
+            case ARM64_INS_STRH: { // 指令分支：ARM64_INS_STRH，在此分支内完成等价 VM 语义映射。
                 // STRH：按 16bit 无符号语义写入 base+offset。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -159,7 +159,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 读取类：LDR -> OP_GET_FIELD。
-            case ARM64_INS_LDRB: {
+            case ARM64_INS_LDRB: { // 指令分支：ARM64_INS_LDRB，在此分支内完成等价 VM 语义映射。
                 // LDRB：按 8bit 无符号语义从 base+offset 读取到目标寄存器。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -175,7 +175,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 读取类：LDRH -> OP_GET_FIELD(type=INT16_UNSIGNED)。
-            case ARM64_INS_LDRH: {
+            case ARM64_INS_LDRH: { // 指令分支：ARM64_INS_LDRH，在此分支内完成等价 VM 语义映射。
                 // LDRH：按 16bit 无符号语义从 base+offset 读取到目标寄存器。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -191,7 +191,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 成对存储：STP 拆成两条 OP_SET_FIELD。
-            case ARM64_INS_STUR: {
+            case ARM64_INS_STUR: { // 指令分支：ARM64_INS_STUR，在此分支内完成等价 VM 语义映射。
                 // STUR：非扩展寻址的 store，映射为 OP_SET_FIELD。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     // 内存偏移可正可负，这里按带符号位移读取。
@@ -213,7 +213,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 非扩展寻址字节存储：STURB -> OP_SET_FIELD(type=INT8_UNSIGNED)。
-            case ARM64_INS_STURB: {
+            case ARM64_INS_STURB: { // 指令分支：ARM64_INS_STURB，在此分支内完成等价 VM 语义映射。
                 // STURB：按 8bit 写入内存。
                 if (op_count >= 2 && isArm64GpReg(ops[0].reg) && isArm64GpReg(ops[1].mem.base)) {
                     // 字节存储同样采用 base + disp 计算地址。
@@ -234,7 +234,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 非扩展寻址半字存储：STURH -> OP_SET_FIELD(type=INT16_UNSIGNED)。
-            case ARM64_INS_STURH: {
+            case ARM64_INS_STURH: { // 指令分支：ARM64_INS_STURH，在此分支内完成等价 VM 语义映射。
                 // STURH：按 16bit 写入内存。
                 if (op_count >= 2 && isArm64GpReg(ops[0].reg) && isArm64GpReg(ops[1].mem.base)) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -253,7 +253,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // release 字节存储：STLRB -> OP_ATOMIC_STORE(type=INT8_UNSIGNED, order=RELEASE)。
-            case ARM64_INS_STLRB: {
+            case ARM64_INS_STLRB: { // 指令分支：ARM64_INS_STLRB，在此分支内完成等价 VM 语义映射。
                 // STLRB：按 release 内存序执行 8bit 原子写入。
                 if (op_count >= 2 && isArm64GpReg(ops[0].reg) && isArm64GpReg(ops[1].mem.base)) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -273,7 +273,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // release 半字存储：STLRH -> OP_ATOMIC_STORE(type=INT16_UNSIGNED, order=RELEASE)。
-            case ARM64_INS_STLRH: {
+            case ARM64_INS_STLRH: { // 指令分支：ARM64_INS_STLRH，在此分支内完成等价 VM 语义映射。
                 // STLRH：按 release 内存序执行 16bit 原子写入。
                 if (op_count >= 2 && isArm64GpReg(ops[0].reg) && isArm64GpReg(ops[1].mem.base)) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -293,7 +293,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // release 字/双字存储：STLR -> OP_ATOMIC_STORE(type=reg-width, order=RELEASE)。
-            case ARM64_INS_STLR: {
+            case ARM64_INS_STLR: { // 指令分支：ARM64_INS_STLR，在此分支内完成等价 VM 语义映射。
                 // STLR：按 release 内存序执行原子写入。
                 if (op_count >= 2 && isArm64GpReg(ops[0].reg) && isArm64GpReg(ops[1].mem.base)) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -316,7 +316,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 独占 release 存储：STLXR -> OP_ATOMIC_STORE + status=0。
-            case ARM64_INS_STLXR: {
+            case ARM64_INS_STLXR: { // 指令分支：ARM64_INS_STLXR，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -336,7 +336,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 独占 relaxed 存储：STXR -> OP_ATOMIC_STORE + status=0。
-            case ARM64_INS_STXR: {
+            case ARM64_INS_STXR: { // 指令分支：ARM64_INS_STXR，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_REG &&
@@ -356,7 +356,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 非扩展寻址读取：LDUR -> OP_GET_FIELD。
-            case ARM64_INS_LDUR: {
+            case ARM64_INS_LDUR: { // 指令分支：ARM64_INS_LDUR，在此分支内完成等价 VM 语义映射。
                 // LDUR：非扩展寻址的 load，映射为 OP_GET_FIELD。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     // 内存偏移可正可负，这里按带符号位移读取。
@@ -374,7 +374,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 独占 acquire 读取：LDAXR -> OP_ATOMIC_LOAD。
-            case ARM64_INS_LDAXR: {
+            case ARM64_INS_LDAXR: { // 指令分支：ARM64_INS_LDAXR，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 2 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_MEM) {
@@ -392,7 +392,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 独占 relaxed 读取：LDXR -> OP_ATOMIC_LOAD。
-            case ARM64_INS_LDXR: {
+            case ARM64_INS_LDXR: { // 指令分支：ARM64_INS_LDXR，在此分支内完成等价 VM 语义映射。
                 if (op_count >= 2 &&
                     ops[0].type == AARCH64_OP_REG &&
                     ops[1].type == AARCH64_OP_MEM) {
@@ -410,7 +410,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 原子 acquire 字节读取：LDARB -> OP_ATOMIC_LOAD(type=INT8_UNSIGNED, order=ACQUIRE)。
-            case ARM64_INS_LDARB: {
+            case ARM64_INS_LDARB: { // 指令分支：ARM64_INS_LDARB，在此分支内完成等价 VM 语义映射。
                 // LDARB：按 acquire 内存序执行 8bit 原子读取。
                 if (op_count >= 2 && isArm64GpReg(ops[0].reg) && isArm64GpReg(ops[1].mem.base)) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -427,7 +427,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 原子 acquire 半字读取：LDARH -> OP_ATOMIC_LOAD(type=INT16_UNSIGNED, order=ACQUIRE)。
-            case ARM64_INS_LDARH: {
+            case ARM64_INS_LDARH: { // 指令分支：ARM64_INS_LDARH，在此分支内完成等价 VM 语义映射。
                 // LDARH：按 acquire 内存序执行 16bit 原子读取。
                 if (op_count >= 2 && isArm64GpReg(ops[0].reg) && isArm64GpReg(ops[1].mem.base)) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -444,7 +444,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 原子 acquire 字/双字读取：LDAR -> OP_ATOMIC_LOAD(type=reg-width, order=ACQUIRE)。
-            case ARM64_INS_LDAR: {
+            case ARM64_INS_LDAR: { // 指令分支：ARM64_INS_LDAR，在此分支内完成等价 VM 语义映射。
                 // LDAR：按 acquire 内存序执行原子读取。
                 if (op_count >= 2 && isArm64GpReg(ops[0].reg) && isArm64GpReg(ops[1].mem.base)) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -464,7 +464,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 非扩展寻址 8bit 读取：LDURB。
-            case ARM64_INS_LDURB: {
+            case ARM64_INS_LDURB: { // 指令分支：ARM64_INS_LDURB，在此分支内完成等价 VM 语义映射。
                 // LDURB：按 8bit 无符号类型读取。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     // 字节读取同样采用 base + disp 计算地址。
@@ -482,7 +482,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 非扩展寻址 16bit 读取：LDURH。
-            case ARM64_INS_LDURH: {
+            case ARM64_INS_LDURH: { // 指令分支：ARM64_INS_LDURH，在此分支内完成等价 VM 语义映射。
                 // LDURH：按 16bit 无符号类型读取。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -498,8 +498,8 @@ bool dispatchArm64MemoryCase(
             }
 
             // 非扩展寻址有符号 32bit 读取并扩展到 64 位：LDURSW。
-            case ARM64_INS_LDURSW:
-            case ARM64_INS_ALIAS_LDURSW: {
+            case ARM64_INS_LDURSW: // 指令分支：ARM64_INS_LDURSW，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_ALIAS_LDURSW: { // 指令分支：ARM64_INS_ALIAS_LDURSW，在此分支内完成等价 VM 语义映射。
                 // LDURSW：与 LDRSW 语义一致，仅寻址编码不同（仍按 base+disp 处理）。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -525,7 +525,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 有符号 8bit 读取：LDRSB。
-            case ARM64_INS_LDRSB: {
+            case ARM64_INS_LDRSB: { // 指令分支：ARM64_INS_LDRSB，在此分支内完成等价 VM 语义映射。
                 // LDRSB：按 int8 读取并符号扩展；目标是 w 寄存器时再做 32 位收口。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -550,7 +550,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 有符号 16bit 读取：LDRSH。
-            case ARM64_INS_LDRSH: {
+            case ARM64_INS_LDRSH: { // 指令分支：ARM64_INS_LDRSH，在此分支内完成等价 VM 语义映射。
                 // LDRSH：按 int16 读取并符号扩展；目标是 w 寄存器时再做 32 位收口。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);
@@ -575,7 +575,7 @@ bool dispatchArm64MemoryCase(
             }
 
             // 有符号 32bit 读取并扩展到 64 位：LDRSW。
-            case ARM64_INS_LDRSW: {
+            case ARM64_INS_LDRSW: { // 指令分支：ARM64_INS_LDRSW，在此分支内完成等价 VM 语义映射。
                 // LDRSW：先以 int32 读取，再在 x 目标寄存器路径做显式符号扩展。
                 if (op_count >= 2 && ops[0].type == AARCH64_OP_REG && ops[1].type == AARCH64_OP_MEM) {
                     int32_t offset = static_cast<int32_t>(ops[1].mem.disp);

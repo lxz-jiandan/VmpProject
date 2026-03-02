@@ -5,22 +5,22 @@
  */
 #include "zInst.h"
 
-bool dispatchArm64BranchCase(
-    unsigned int id,
-    uint8_t op_count,
-    cs_arm64_op* ops,
-    cs_detail* detail,
-    const cs_insn* insn,
-    size_t j,
-    uint64_t addr,
-    std::vector<uint32_t>& opcode_list,
-    std::vector<uint32_t>& reg_id_list,
-    std::vector<uint32_t>& type_id_list,
-    std::vector<uint64_t>& branch_id_list,
-    std::vector<uint64_t>& call_target_list
-) {
+bool dispatchArm64BranchCase(  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+    unsigned int id,  // 参数声明：该参数参与当前语义分发或结果组装。
+    uint8_t op_count,  // 参数声明：该参数参与当前语义分发或结果组装。
+    cs_arm64_op* ops,  // 参数声明：该参数参与当前语义分发或结果组装。
+    cs_detail* detail,  // 参数声明：该参数参与当前语义分发或结果组装。
+    const cs_insn* insn,  // 参数声明：该参数参与当前语义分发或结果组装。
+    size_t j,  // 参数声明：该参数参与当前语义分发或结果组装。
+    uint64_t addr,  // 参数声明：该参数参与当前语义分发或结果组装。
+    std::vector<uint32_t>& opcode_list,  // 参数声明：该参数参与当前语义分发或结果组装。
+    std::vector<uint32_t>& reg_id_list,  // 参数声明：该参数参与当前语义分发或结果组装。
+    std::vector<uint32_t>& type_id_list,  // 参数声明：该参数参与当前语义分发或结果组装。
+    std::vector<uint64_t>& branch_id_list,  // 参数声明：该参数参与当前语义分发或结果组装。
+    std::vector<uint64_t>& call_target_list  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
+) {  // 流程注记：该语句参与当前阶段的数据组织与控制流推进。
     // branch 指令分发：由原 Dispatch.inc 迁移为 cpp 函数，避免片段 include。
-    (void)detail;
+    (void)detail;  // 状态更新：记录本步骤的中间结果或配置。
     (void)addr;
     (void)branch_id_list;
     (void)call_target_list;
@@ -30,13 +30,13 @@ bool dispatchArm64BranchCase(
  * - Grouped by instruction domain.
  */
 
-            case ARM64_INS_RET:
+            case ARM64_INS_RET: // 指令分支：ARM64_INS_RET，在此分支内完成等价 VM 语义映射。
                 // 约定 ret 返回 x0。
                 // OP_RETURN 布局：{opcode, ret_count, ret_reg...}。
                 opcode_list = { OP_RETURN, 1, getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X0)) };
                 break;
 
-            case ARM64_INS_BR:
+            case ARM64_INS_BR: // 指令分支：ARM64_INS_BR，在此分支内完成等价 VM 语义映射。
                 // br lr 视为 ret，同样返回 x0。
                 if (op_count >= 1 && ops[0].type == AARCH64_OP_REG && (ops[0].reg == AARCH64_REG_LR || ops[0].reg == AARCH64_REG_X30)) {
                     opcode_list = { OP_RETURN, 1, getOrAddReg(reg_id_list, arm64CapstoneToArchIndex(AARCH64_REG_X0)) };
@@ -51,7 +51,7 @@ bool dispatchArm64BranchCase(
                 break;
             // 间接调用：BLR -> OP_CALL（func 在寄存器）。
 
-            case ARM64_INS_BLR: {
+            case ARM64_INS_BLR: { // 指令分支：ARM64_INS_BLR，在此分支内完成等价 VM 语义映射。
                 // BLR：间接调用，按当前约定打包 x0-x5 六个参数寄存器。
                 if (op_count >= 1 && ops[0].type == AARCH64_OP_REG) {
                     // 被调函数地址寄存器。
@@ -70,7 +70,7 @@ bool dispatchArm64BranchCase(
             }
             // 跳转类：B/B.cond -> OP_BRANCH / OP_BRANCH_IF_CC。
 
-            case ARM64_INS_B: {
+            case ARM64_INS_B: { // 指令分支：ARM64_INS_B，在此分支内完成等价 VM 语义映射。
                 // B / B.cond：按条件码分派到 OP_BRANCH 或 OP_BRANCH_IF_CC。
                 if (op_count >= 1 && ops[0].type == AARCH64_OP_IMM && detail) {
                     // 取出 Capstone 解码的条件码。
@@ -116,7 +116,7 @@ bool dispatchArm64BranchCase(
             }
             // 条件选择：CSEL 展开为 mov + conditional branch + mov。
 
-            case ARM64_INS_CSEL: {
+            case ARM64_INS_CSEL: { // 指令分支：ARM64_INS_CSEL，在此分支内完成等价 VM 语义映射。
                 if (detail &&
                     op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
@@ -174,8 +174,8 @@ bool dispatchArm64BranchCase(
             }
             // 条件选择并自增：CSINC 展开为 csel + (false 分支自增)。
 
-            case ARM64_INS_CBZ:
-            case ARM64_INS_CBNZ: {
+            case ARM64_INS_CBZ: // 指令分支：ARM64_INS_CBZ，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_CBNZ: { // 指令分支：ARM64_INS_CBNZ，在此分支内完成等价 VM 语义映射。
                 // CBZ/CBNZ：先做“cmp reg, #0”更新 NZCV，再走条件跳转。
                 // CBZ 语义=EQ（零），CBNZ 语义=NE（非零）。
                 if (op_count >= 2 &&
@@ -208,8 +208,8 @@ bool dispatchArm64BranchCase(
                 break;
             }
 
-            case ARM64_INS_TBZ:
-            case ARM64_INS_TBNZ: {
+            case ARM64_INS_TBZ: // 指令分支：ARM64_INS_TBZ，在此分支内完成等价 VM 语义映射。
+            case ARM64_INS_TBNZ: { // 指令分支：ARM64_INS_TBNZ，在此分支内完成等价 VM 语义映射。
                 // TBZ/TBNZ：拆成“右移取位 + 与 1 + 条件分支”三段 VM 指令。
                 static const uint32_t BIN_UPDATE_FLAGS = 0x40u;
                 if (op_count >= 3 &&
@@ -237,7 +237,7 @@ bool dispatchArm64BranchCase(
             }
             // 算术+标志：SUBS 与 SUB 类似，但必须更新 NZCV。
 
-            case ARM64_INS_BL: {
+            case ARM64_INS_BL: { // 指令分支：ARM64_INS_BL，在此分支内完成等价 VM 语义映射。
                 // BL：本地只记录目标地址索引，稍后可 remap 到全局 branch_addr_list。
                 if (op_count >= 1 && ops[0].type == AARCH64_OP_IMM) {
                     // 目标地址来自立即数操作数。
@@ -251,7 +251,7 @@ bool dispatchArm64BranchCase(
             }
             // 成对读取：LDP 拆成两条 OP_GET_FIELD。
 
-            case ARM64_INS_CSINC: {
+            case ARM64_INS_CSINC: { // 指令分支：ARM64_INS_CSINC，在此分支内完成等价 VM 语义映射。
                 // CSINC 有两类常见落地：
                 // 1) 真正四元语义（Capstone operands 常为 3 个寄存器 + cc）；
                 // 2) CSET 别名（Capstone 可能给出 id=CSINC + op_count=1）。
@@ -351,7 +351,7 @@ bool dispatchArm64BranchCase(
             }
 
             // 条件选择并取反：CSINV（cond=true -> t，cond=false -> ~f）。
-            case ARM64_INS_CSINV: {
+            case ARM64_INS_CSINV: { // 指令分支：ARM64_INS_CSINV，在此分支内完成等价 VM 语义映射。
                 if (detail &&
                     op_count >= 3 &&
                     ops[0].type == AARCH64_OP_REG &&
@@ -410,7 +410,7 @@ bool dispatchArm64BranchCase(
                 break;
             }
 
-            case ARM64_INS_ALIAS_CSET: {
+            case ARM64_INS_ALIAS_CSET: { // 指令分支：ARM64_INS_ALIAS_CSET，在此分支内完成等价 VM 语义映射。
                 // CSET：条件成立写 1，否则写 0。
                 // 展开为：dst=1; if(cc) goto next; dst=0;
                 if (detail &&

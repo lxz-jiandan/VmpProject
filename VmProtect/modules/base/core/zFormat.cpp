@@ -12,11 +12,11 @@
 // 引入临时字符缓冲。
 #include <vector>
 
-namespace vmp::base::format {
+namespace vmp::base::format {  // 流程注记：该语句参与当前阶段的语义实现。
 
-std::string vformat(const char* fmt, va_list args) {
+std::string vformat(const char* fmt, va_list args) {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 格式串为空时直接返回空串。
-    if (fmt == nullptr) {
+    if (fmt == nullptr) {  // 分支守卫：满足前置条件后再进入后续处理路径。
         return std::string();
     }
 

@@ -31,143 +31,143 @@
 #include <vector>
 
 // 进入匿名命名空间，封装内部辅助结构与函数。
-namespace {
+namespace {  // 流程注记：该语句参与当前阶段的语义实现。
 
 // 前置声明：解析并校验 ELF Header + Program Header 表，返回可写视图。
-bool parseElfHeaderAndPhdr(std::vector<uint8_t>* fileBytes,
-                           Elf64_Ehdr** outEhdr,
-                           Elf64_Phdr** outPhdrs,
-                           std::string* error);
+bool parseElfHeaderAndPhdr(std::vector<uint8_t>* fileBytes,  // 流程注记：该语句参与当前阶段的语义实现。
+                           Elf64_Ehdr** outEhdr,  // 流程注记：该语句参与当前阶段的语义实现。
+                           Elf64_Phdr** outPhdrs,  // 流程注记：该语句参与当前阶段的语义实现。
+                           std::string* error);  // 状态更新：记录本步骤的中间结果或配置。
 
 // 复用 base 层统一实现，避免 patchbay 内部重复维护同名算术工具。
-using vmp::base::u64math::alignUpU64;
-using vmp::base::u64math::isPowerOfTwoU64;
-using vmp::base::u64math::addU64Checked;
+using vmp::base::u64math::alignUpU64;  // 状态更新：记录本步骤的中间结果或配置。
+using vmp::base::u64math::isPowerOfTwoU64;  // 状态更新：记录本步骤的中间结果或配置。
+using vmp::base::u64math::addU64Checked;  // 状态更新：记录本步骤的中间结果或配置。
 
 // 设置某个 DT_* 指针值。
-bool setDynPtr(std::vector<Elf64_Dyn>* dynEntries, Elf64_Sxword tag, Elf64_Xword value) {
+bool setDynPtr(std::vector<Elf64_Dyn>* dynEntries, Elf64_Sxword tag, Elf64_Xword value) {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 输入数组不能为空。
-    if (dynEntries == nullptr) {
-        return false;
+    if (dynEntries == nullptr) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return false;  // 失败出口：当前条件下中止并上抛错误。
     }
     // 遍历 dynamic 条目查找目标 tag 并改写。
-    for (Elf64_Dyn& ent : *dynEntries) {
-        if (ent.d_tag == tag) {
-            ent.d_un.d_ptr = value;
-            return true;
+    for (Elf64_Dyn& ent : *dynEntries) {  // 迭代步骤：按既定顺序推进状态聚合。
+        if (ent.d_tag == tag) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+            ent.d_un.d_ptr = value;  // 状态更新：记录本步骤的中间结果或配置。
+            return true;  // 返回阶段：输出当前路径计算结果。
         }
     }
-    return false;
+    return false;  // 失败出口：当前条件下中止并上抛错误。
 }
 
 // 半开区间重叠判断：[aBegin, aEnd) 与 [bBegin, bEnd)。
-bool rangesOverlapOpenU64(uint64_t aBegin, uint64_t aEnd, uint64_t bBegin, uint64_t bEnd) {
-    if (aBegin >= aEnd || bBegin >= bEnd) {
-        return false;
+bool rangesOverlapOpenU64(uint64_t aBegin, uint64_t aEnd, uint64_t bBegin, uint64_t bEnd) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    if (aBegin >= aEnd || bBegin >= bEnd) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return false;  // 失败出口：当前条件下中止并上抛错误。
     }
-    return aBegin < bEnd && bBegin < aEnd;
+    return aBegin < bEnd && bBegin < aEnd;  // 返回阶段：输出当前路径计算结果。
 }
 
 // 收口流程：把可写 PT_LOAD 的 p_memsz 至少扩展到 relro_end，确保字节级覆盖。
-bool closeRelroCoverageByMemsz(std::vector<uint8_t>* fileBytes, std::string* error) {
-    Elf64_Ehdr* ehdr = nullptr;
-    Elf64_Phdr* phdrs = nullptr;
-    if (!parseElfHeaderAndPhdr(fileBytes, &ehdr, &phdrs, error)) {
-        return false;
+bool closeRelroCoverageByMemsz(std::vector<uint8_t>* fileBytes, std::string* error) {  // 处理阶段入口：进入该函数或代码块的主流程。
+    Elf64_Ehdr* ehdr = nullptr;  // 状态更新：记录本步骤的中间结果或配置。
+    Elf64_Phdr* phdrs = nullptr;  // 状态更新：记录本步骤的中间结果或配置。
+    if (!parseElfHeaderAndPhdr(fileBytes, &ehdr, &phdrs, error)) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return false;  // 失败出口：当前条件下中止并上抛错误。
     }
 
-    bool updated = false;
-    for (uint16_t relroIndex = 0; relroIndex < ehdr->e_phnum; ++relroIndex) {
-        const Elf64_Phdr& relroPhdr = phdrs[relroIndex];
-        if (relroPhdr.p_type != PT_GNU_RELRO || relroPhdr.p_memsz == 0) {
-            continue;
+    bool updated = false;  // 状态更新：记录本步骤的中间结果或配置。
+    for (uint16_t relroIndex = 0; relroIndex < ehdr->e_phnum; ++relroIndex) {  // 迭代步骤：按既定顺序推进状态聚合。
+        const Elf64_Phdr& relroPhdr = phdrs[relroIndex];  // 状态更新：记录本步骤的中间结果或配置。
+        if (relroPhdr.p_type != PT_GNU_RELRO || relroPhdr.p_memsz == 0) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+            continue;  // 状态更新：记录本步骤的中间结果或配置。
         }
 
-        const uint64_t relroBegin = static_cast<uint64_t>(relroPhdr.p_vaddr);
-        uint64_t relroEnd = 0;
-        if (!addU64Checked(relroBegin, static_cast<uint64_t>(relroPhdr.p_memsz), &relroEnd)) {
-            if (error != nullptr) {
+        const uint64_t relroBegin = static_cast<uint64_t>(relroPhdr.p_vaddr);  // 状态更新：记录本步骤的中间结果或配置。
+        uint64_t relroEnd = 0;  // 状态更新：记录本步骤的中间结果或配置。
+        if (!addU64Checked(relroBegin, static_cast<uint64_t>(relroPhdr.p_memsz), &relroEnd)) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+            if (error != nullptr) {  // 分支守卫：满足前置条件后再进入后续处理路径。
                 *error = "PT_GNU_RELRO range overflow";
             }
-            return false;
+            return false;  // 失败出口：当前条件下中止并上抛错误。
         }
 
-        int writableLoadIndex = -1;
-        uint64_t writableLoadBegin = 0;
-        uint64_t writableLoadEnd = 0;
+        int writableLoadIndex = -1;  // 状态更新：记录本步骤的中间结果或配置。
+        uint64_t writableLoadBegin = 0;  // 状态更新：记录本步骤的中间结果或配置。
+        uint64_t writableLoadEnd = 0;  // 状态更新：记录本步骤的中间结果或配置。
 
         // 选择“覆盖 relro 起点”的可写 PT_LOAD，优先起点更靠后的段。
-        for (uint16_t loadIndex = 0; loadIndex < ehdr->e_phnum; ++loadIndex) {
-            const Elf64_Phdr& loadPhdr = phdrs[loadIndex];
-            if (loadPhdr.p_type != PT_LOAD || (loadPhdr.p_flags & PF_W) == 0) {
-                continue;
+        for (uint16_t loadIndex = 0; loadIndex < ehdr->e_phnum; ++loadIndex) {  // 迭代步骤：按既定顺序推进状态聚合。
+            const Elf64_Phdr& loadPhdr = phdrs[loadIndex];  // 状态更新：记录本步骤的中间结果或配置。
+            if (loadPhdr.p_type != PT_LOAD || (loadPhdr.p_flags & PF_W) == 0) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+                continue;  // 状态更新：记录本步骤的中间结果或配置。
             }
 
-            const uint64_t loadBegin = static_cast<uint64_t>(loadPhdr.p_vaddr);
-            uint64_t loadEnd = 0;
-            if (!addU64Checked(loadBegin, static_cast<uint64_t>(loadPhdr.p_memsz), &loadEnd)) {
-                if (error != nullptr) {
+            const uint64_t loadBegin = static_cast<uint64_t>(loadPhdr.p_vaddr);  // 状态更新：记录本步骤的中间结果或配置。
+            uint64_t loadEnd = 0;  // 状态更新：记录本步骤的中间结果或配置。
+            if (!addU64Checked(loadBegin, static_cast<uint64_t>(loadPhdr.p_memsz), &loadEnd)) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+                if (error != nullptr) {  // 分支守卫：满足前置条件后再进入后续处理路径。
                     *error = "PT_LOAD range overflow at index " + std::to_string(loadIndex);
                 }
-                return false;
+                return false;  // 失败出口：当前条件下中止并上抛错误。
             }
-            if (!(relroBegin >= loadBegin && relroBegin < loadEnd)) {
-                continue;
+            if (!(relroBegin >= loadBegin && relroBegin < loadEnd)) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+                continue;  // 状态更新：记录本步骤的中间结果或配置。
             }
-            if (writableLoadIndex < 0 || loadBegin > writableLoadBegin) {
-                writableLoadIndex = static_cast<int>(loadIndex);
-                writableLoadBegin = loadBegin;
-                writableLoadEnd = loadEnd;
+            if (writableLoadIndex < 0 || loadBegin > writableLoadBegin) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+                writableLoadIndex = static_cast<int>(loadIndex);  // 状态更新：记录本步骤的中间结果或配置。
+                writableLoadBegin = loadBegin;  // 状态更新：记录本步骤的中间结果或配置。
+                writableLoadEnd = loadEnd;  // 状态更新：记录本步骤的中间结果或配置。
             }
         }
 
-        if (writableLoadIndex < 0) {
-            if (error != nullptr) {
+        if (writableLoadIndex < 0) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+            if (error != nullptr) {  // 分支守卫：满足前置条件后再进入后续处理路径。
                 *error = "cannot find writable PT_LOAD covering PT_GNU_RELRO begin";
             }
-            return false;
+            return false;  // 失败出口：当前条件下中止并上抛错误。
         }
-        if (relroEnd <= writableLoadEnd) {
-            continue;
+        if (relroEnd <= writableLoadEnd) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+            continue;  // 状态更新：记录本步骤的中间结果或配置。
         }
 
         // 仅阻止“新增重叠”；已有重叠保持原样不扩大风险。
-        for (uint16_t otherIndex = 0; otherIndex < ehdr->e_phnum; ++otherIndex) {
-            if (static_cast<int>(otherIndex) == writableLoadIndex) {
-                continue;
+        for (uint16_t otherIndex = 0; otherIndex < ehdr->e_phnum; ++otherIndex) {  // 迭代步骤：按既定顺序推进状态聚合。
+            if (static_cast<int>(otherIndex) == writableLoadIndex) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+                continue;  // 状态更新：记录本步骤的中间结果或配置。
             }
-            const Elf64_Phdr& otherPhdr = phdrs[otherIndex];
-            if (otherPhdr.p_type != PT_LOAD) {
-                continue;
+            const Elf64_Phdr& otherPhdr = phdrs[otherIndex];  // 状态更新：记录本步骤的中间结果或配置。
+            if (otherPhdr.p_type != PT_LOAD) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+                continue;  // 状态更新：记录本步骤的中间结果或配置。
             }
 
-            const uint64_t otherBegin = static_cast<uint64_t>(otherPhdr.p_vaddr);
-            uint64_t otherEnd = 0;
-            if (!addU64Checked(otherBegin, static_cast<uint64_t>(otherPhdr.p_memsz), &otherEnd)) {
-                if (error != nullptr) {
+            const uint64_t otherBegin = static_cast<uint64_t>(otherPhdr.p_vaddr);  // 状态更新：记录本步骤的中间结果或配置。
+            uint64_t otherEnd = 0;  // 状态更新：记录本步骤的中间结果或配置。
+            if (!addU64Checked(otherBegin, static_cast<uint64_t>(otherPhdr.p_memsz), &otherEnd)) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+                if (error != nullptr) {  // 分支守卫：满足前置条件后再进入后续处理路径。
                     *error = "PT_LOAD range overflow at index " + std::to_string(otherIndex);
                 }
-                return false;
+                return false;  // 失败出口：当前条件下中止并上抛错误。
             }
 
-            const bool oldOverlap = rangesOverlapOpenU64(
-                writableLoadBegin, writableLoadEnd, otherBegin, otherEnd);
-            const bool newOverlap = rangesOverlapOpenU64(
-                writableLoadBegin, relroEnd, otherBegin, otherEnd);
-            if (!oldOverlap && newOverlap) {
-                if (error != nullptr) {
+            const bool oldOverlap = rangesOverlapOpenU64(  // 流程注记：该语句参与当前阶段的语义实现。
+                writableLoadBegin, writableLoadEnd, otherBegin, otherEnd);  // 状态更新：记录本步骤的中间结果或配置。
+            const bool newOverlap = rangesOverlapOpenU64(  // 流程注记：该语句参与当前阶段的语义实现。
+                writableLoadBegin, relroEnd, otherBegin, otherEnd);  // 状态更新：记录本步骤的中间结果或配置。
+            if (!oldOverlap && newOverlap) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+                if (error != nullptr) {  // 分支守卫：满足前置条件后再进入后续处理路径。
                     *error = "close RELRO by memsz would overlap PT_LOAD index " +
-                             std::to_string(otherIndex);
+                             std::to_string(otherIndex);  // 状态更新：记录本步骤的中间结果或配置。
                 }
-                return false;
+                return false;  // 失败出口：当前条件下中止并上抛错误。
             }
         }
 
-        const uint64_t newMemsz = relroEnd - writableLoadBegin;
-        phdrs[writableLoadIndex].p_memsz = static_cast<Elf64_Xword>(newMemsz);
-        updated = true;
-        LOGI("close RELRO coverage: load_index=%d old_memsz=0x%llx new_memsz=0x%llx relro_end=0x%llx",
-             writableLoadIndex,
+        const uint64_t newMemsz = relroEnd - writableLoadBegin;  // 状态更新：记录本步骤的中间结果或配置。
+        phdrs[writableLoadIndex].p_memsz = static_cast<Elf64_Xword>(newMemsz);  // 状态更新：记录本步骤的中间结果或配置。
+        updated = true;  // 状态更新：记录本步骤的中间结果或配置。
+        LOGI("close RELRO coverage: load_index=%d old_memsz=0x%llx new_memsz=0x%llx relro_end=0x%llx",  // 流程注记：该语句参与当前阶段的语义实现。
+             writableLoadIndex,  // 流程注记：该语句参与当前阶段的语义实现。
              static_cast<unsigned long long>(writableLoadEnd - writableLoadBegin),
              static_cast<unsigned long long>(newMemsz),
              static_cast<unsigned long long>(relroEnd));

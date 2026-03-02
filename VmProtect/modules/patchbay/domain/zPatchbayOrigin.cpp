@@ -19,41 +19,41 @@
 #include <vector>
 
 // 进入匿名命名空间，封装内部辅助函数。
-namespace {
+namespace {  // 流程注记：该语句参与当前阶段的语义实现。
 
 // 按状态映射 CLI 兼容退出码。
-int mapPatchbayOriginExitCode(zPatchbayOriginStatus status) {
+int mapPatchbayOriginExitCode(zPatchbayOriginStatus status) {  // 处理阶段入口：进入该函数或代码块的主流程。
     // 成功返回 0。
-    if (status == zPatchbayOriginStatus::ok) {
-        return 0;
+    if (status == zPatchbayOriginStatus::ok) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return 0;  // 返回阶段：输出当前路径计算结果。
     }
     // 参数类错误返回 1。
-    if (status == zPatchbayOriginStatus::invalidInput) {
-        return 1;
+    if (status == zPatchbayOriginStatus::invalidInput) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return 1;  // 返回阶段：输出当前路径计算结果。
     }
     // 加载/收集阶段错误返回 2。
-    if (status == zPatchbayOriginStatus::loadFailed ||
-        status == zPatchbayOriginStatus::collectFailed) {
-        return 2;
+    if (status == zPatchbayOriginStatus::loadFailed ||  // 分支守卫：满足前置条件后再进入后续处理路径。
+        status == zPatchbayOriginStatus::collectFailed) {  // 流程注记：该语句参与当前阶段的语义实现。
+        return 2;  // 返回阶段：输出当前路径计算结果。
     }
     // 其余规则/冲突/patch 错误返回 3。
-    return 3;
+    return 3;  // 返回阶段：输出当前路径计算结果。
 }
 
 // 统一写入结果结构。
-void fillPatchbayOriginResult(zPatchbayOriginResult* outResult,
-                             zPatchbayOriginStatus status,
-                             const std::string& errorText,
-                             size_t originExportCount,
-                             size_t inputExportCount,
-                             size_t appendCount,
-                             bool keyMode) {
+void fillPatchbayOriginResult(zPatchbayOriginResult* outResult,  // 流程注记：该语句参与当前阶段的语义实现。
+                             zPatchbayOriginStatus status,  // 流程注记：该语句参与当前阶段的语义实现。
+                             const std::string& errorText,  // 流程注记：该语句参与当前阶段的语义实现。
+                             size_t originExportCount,  // 流程注记：该语句参与当前阶段的语义实现。
+                             size_t inputExportCount,  // 流程注记：该语句参与当前阶段的语义实现。
+                             size_t appendCount,  // 流程注记：该语句参与当前阶段的语义实现。
+                             bool keyMode) {  // 流程注记：该语句参与当前阶段的语义实现。
     // 调用方不关心结果时可传空指针。
-    if (outResult == nullptr) {
-        return;
+    if (outResult == nullptr) {  // 分支守卫：满足前置条件后再进入后续处理路径。
+        return;  // 状态更新：记录本步骤的中间结果或配置。
     }
     // 回填状态与兼容退出码。
-    outResult->status = status;
+    outResult->status = status;  // 状态更新：记录本步骤的中间结果或配置。
     outResult->exitCode = mapPatchbayOriginExitCode(status);
     // 回填错误文本与统计信息。
     outResult->error = errorText;
